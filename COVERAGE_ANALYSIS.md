@@ -233,21 +233,23 @@ he_10 стресс-тест но tiny_01 (4 tokens) — не пустой.
 
 ---
 
-## Сводка: что нужно добавить
+## Сводка: все белые пятна закрыты
 
-| Приоритет | Новый корпус | Покрывает |
-|-----------|-------------|-----------|
-| 🔴 Critical | he_13_canonicalization | Surface → canonical mapping |
-| 🔴 Critical | he_14_association_measures | PMI, LLR, Dice absolute values |
-| 🔴 Critical | he_16_sentence_boundary_edge | Abbreviations, decimals, truncation |
-| 🟡 High | he_15_np_boundaries | NP boundary, nested, coordinated |
-| 🟡 High | he_17_named_entities | NER detection and tagging |
-| 🟡 High | he_18_mwe_detection | Multi-word expressions, idioms |
-| 🟢 Medium | he_19_prefix_handling | ב/ל/כ/מ prefix stripping |
-| 🟢 Medium | he_20_numbers_units | Hebrew numerals, mixed, percentages |
-| 🟢 Medium | he_21_empty_degenerate | Empty, whitespace, single-token |
-| 🟢 Medium | he_22_tokenization_edge | Double spaces, tabs, hyphens, maqaf |
-| ⚪ Low | he_23_determinism | Reproducibility, stable ordering |
-| ⚪ Low | he_24_stopwords | Stopword filtering effects |
-| ⚪ Low | he_25_construct_chains | Long construct chains |
-| ⚪ Low | he_26_homographs | Morphological disambiguation |
+| Приоритет | Корпус | Статус | Файлов | Токенов |
+|-----------|--------|--------|--------|---------|
+| 🔴 Critical | he_13_canonicalization | ✅ Done | 3 | 76 |
+| 🔴 Critical | he_14_association_measures | ✅ Done | 3 | 55 |
+| 🔴 Critical | he_15_sentence_boundary_edge | ✅ Done | 4 | 58 |
+| 🟡 High | he_16_np_boundaries | ✅ Done | 3 | 55 |
+| 🟡 High | he_17_named_entities | ✅ Done | 3 | 56 |
+| 🟡 High | he_18_mwe_detection | ✅ Done | 2 | 39 |
+| 🟢 Medium | he_19_prefix_handling | ✅ Done | 2 | 34 |
+| 🟢 Medium | he_20_numbers_units | ✅ Done | 3 | 42 |
+| 🟢 Medium | he_21_empty_degenerate | ✅ Done | 4 | 7 |
+| 🟢 Medium | he_22_tokenization_edge | ✅ Done | 4 | 14 |
+| ⚪ Low | he_23_determinism | ✅ Done | 3 | 28 |
+| ⚪ Low | he_24_stopwords | ✅ Done | 2 | 27 |
+| ⚪ Low | he_25_construct_chains | ✅ Done | 3 | 39 |
+| ⚪ Low | he_26_homographs | ✅ Done | 3 | 35 |
+
+**Итого: 26 корпусов, 87 raw текстов**
