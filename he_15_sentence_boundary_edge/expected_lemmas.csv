@@ -1,52 +1,56 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-abbr_hebrew,פרופ׳,1,1,TBD,False,exact,
-abbr_hebrew,כהן,1,1,TBD,False,exact,
-abbr_hebrew,פרסם,1,1,TBD,False,exact,
-abbr_hebrew,מאמר.,1,1,TBD,False,exact,
-abbr_hebrew,ד״ר,1,1,TBD,False,exact,
-abbr_hebrew,לוי,1,1,TBD,False,exact,
-abbr_hebrew,בדק,1,1,TBD,False,exact,
-abbr_hebrew,את,2,1,TBD,False,exact,
-abbr_hebrew,תוצאות.,1,1,TBD,False,exact,
-abbr_hebrew,מהנדס,1,1,TBD,False,exact,
-abbr_hebrew,ב׳,1,1,TBD,False,exact,
-abbr_hebrew,גיש,1,1,TBD,False,exact,
-abbr_hebrew,דו״ח.,1,1,TBD,False,exact,
-abbr_hebrew,מר,1,1,TBD,False,exact,
-abbr_hebrew,ישראלי,1,1,TBD,False,exact,
-abbr_hebrew,גיע,1,1,TBD,False,exact,
-abbr_hebrew,למעבדה.,1,1,TBD,False,exact,
-decimals,טמפרטורה,1,1,TBD,False,exact,
-decimals,ייתה,2,1,TBD,False,exact,
-decimals,מעלות.,1,1,TBD,False,exact,
-decimals,לחץ,1,1,TBD,False,exact,
-decimals,עמד,1,1,TBD,False,exact,
-decimals,על,1,1,TBD,False,exact,
-decimals,מגהפסקל.,1,1,TBD,False,exact,
-decimals,תוצאה,1,1,TBD,False,exact,
-decimals,אחוז.,1,1,TBD,False,exact,
-decimals,מספר,1,1,TBD,False,exact,
-decimals,אושר.,1,1,TBD,False,exact,
-multi_punct,אם,1,1,TBD,False,exact,
-multi_punct,תהליך,1,1,TBD,False,exact,
-multi_punct,תקין???,1,1,TBD,False,exact,
-multi_punct,כן!!!,1,1,TBD,False,exact,
-multi_punct,תוצאה,1,1,TBD,False,exact,
-multi_punct,טובה...,1,1,TBD,False,exact,
-multi_punct,בהחלט.,1,1,TBD,False,exact,
-multi_punct,אולי...,1,1,TBD,False,exact,
-multi_punct,נבדוק,1,1,TBD,False,exact,
-multi_punct,שוב.,1,1,TBD,False,exact,
-no_period,פלדה,1,1,TBD,False,exact,
-no_period,יא,2,1,TBD,False,exact,
-no_period,סגסוגת,1,1,TBD,False,exact,
-no_period,ברזל.,1,1,TBD,False,exact,
-no_period,חוזק,1,1,TBD,False,exact,
-no_period,מתיחה,1,1,TBD,False,exact,
-no_period,גבוה.,1,1,TBD,False,exact,
-no_period,טמפרטורת,1,1,TBD,False,exact,
-no_period,התכה,1,1,TBD,False,exact,
-no_period,אלף,1,1,TBD,False,exact,
-no_period,חמש,1,1,TBD,False,exact,
-no_period,מאות,1,1,TBD,False,exact,
-no_period,מעלות,1,1,TBD,False,exact,
+abbr_hebrew,פרופ׳,1,1,NOUN,False,exact,abbreviation with geresh
+abbr_hebrew,כהן,1,1,PROPN,False,exact,surname
+abbr_hebrew,פרסם,1,1,VERB,False,exact,past
+abbr_hebrew,מאמר,1,1,NOUN,False,exact,
+abbr_hebrew,ד״ר,1,1,NOUN,False,exact,abbreviation with gershayim
+abbr_hebrew,לוי,1,1,PROPN,False,exact,surname
+abbr_hebrew,בדק,1,1,VERB,False,exact,past
+abbr_hebrew,את,2,1,ADP,False,exact,את×2
+abbr_hebrew,תוצאה,1,1,NOUN,True,exact,DET: התוצאות
+abbr_hebrew,מהנדס,1,1,NOUN,False,exact,
+abbr_hebrew,ב׳,1,1,PROPN,False,exact,letter+geresh
+abbr_hebrew,גיש,1,1,VERB,False,exact,הגיש = hif'il
+abbr_hebrew,דו״ח,1,1,NOUN,True,exact,DET: הדו״ח — abbreviation
+abbr_hebrew,מר,1,1,NOUN,False,exact,title
+abbr_hebrew,ישראלי,1,1,PROPN,False,exact,surname
+abbr_hebrew,הגיע,1,1,VERB,False,exact,past
+abbr_hebrew,מעבדה,1,1,NOUN,False,exact,למעבדה
+decimals,טמפרטורה,1,1,NOUN,True,exact,DET: הטמפרטורה
+decimals,היה,2,1,VERB,False,exact,הייתה×2
+decimals,3.14,1,1,NUM,False,exact,decimal — NOT sentence boundary
+decimals,מעלה,1,1,NOUN,False,exact,מעלות
+decimals,לחץ,1,1,NOUN,True,exact,DET: הלחץ
+decimals,עמד,1,1,VERB,False,exact,past
+decimals,על,1,1,ADP,False,exact,
+decimals,100.5,1,1,NUM,False,exact,decimal
+decimals,מגהפסקל,1,1,NOUN,False,exact,unit
+decimals,תוצאה,1,1,NOUN,True,exact,DET: התוצאה
+decimals,0.001,1,1,NUM,False,exact,decimal
+decimals,אחוז,1,1,NOUN,False,exact,
+decimals,מספר,1,1,NOUN,True,exact,DET: המספר
+decimals,42.0,1,1,NUM,False,exact,decimal with trailing zero
+decimals,אושר,1,1,VERB,False,exact,huf'al
+no_period,פלדה,1,1,NOUN,False,exact,
+no_period,הוא,1,1,PRON,False,exact,היא
+no_period,סגסוגת,1,1,NOUN,False,exact,
+no_period,ברזל,1,1,NOUN,False,exact,
+no_period,חוזק,1,1,NOUN,False,exact,
+no_period,מתיחה,1,1,NOUN,True,exact,DET: המתיחה
+no_period,גבוה,1,1,ADJ,False,exact,
+no_period,טמפרטורה,1,1,NOUN,False,exact,טמפרטורת
+no_period,התכה,1,1,NOUN,True,exact,DET: ההתכה
+no_period,אלף,1,1,NUM,False,exact,
+no_period,חמש,1,1,NUM,False,exact,
+no_period,מאה,1,1,NUM,False,exact,מאות
+no_period,מעלה,1,1,NOUN,False,exact,"מעלות — LAST TOKEN, no period"
+multi_punct,האם,1,1,ADV,False,exact,interrogative
+multi_punct,תהליך,1,1,NOUN,True,exact,DET: התהליך
+multi_punct,תקין,1,1,ADJ,False,exact,תקין??? — punct attached
+multi_punct,כן,1,1,ADV,False,exact,כן!!! — punct attached
+multi_punct,תוצאה,1,1,NOUN,True,exact,DET: התוצאה
+multi_punct,טוב,1,1,ADJ,False,exact,טובה... — punct attached
+multi_punct,בהחלט,1,1,ADV,False,exact,
+multi_punct,אולי,1,1,ADV,False,exact,אולי... — punct attached
+multi_punct,נבדק,1,1,VERB,False,exact,future
+multi_punct,שוב,1,1,ADV,False,exact,

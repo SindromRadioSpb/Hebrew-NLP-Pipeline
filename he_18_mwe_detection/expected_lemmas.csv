@@ -1,40 +1,40 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-mwe_idiomatic,תהליך,1,1,TBD,False,exact,
-mwe_idiomatic,לך,1,1,TBD,False,exact,
-mwe_idiomatic,חלק,1,1,TBD,False,exact,
-mwe_idiomatic,כמו,1,1,TBD,False,exact,
-mwe_idiomatic,משי.,1,1,TBD,False,exact,
-mwe_idiomatic,תוצאות,1,1,TBD,False,exact,
-mwe_idiomatic,מדברות,1,1,TBD,False,exact,
-mwe_idiomatic,בעד,1,1,TBD,False,exact,
-mwe_idiomatic,עצמן.,1,1,TBD,False,exact,
-mwe_idiomatic,מהנדס,1,1,TBD,False,exact,
-mwe_idiomatic,שם,1,1,TBD,False,exact,
-mwe_idiomatic,את,1,1,TBD,False,exact,
-mwe_idiomatic,כל,1,1,TBD,False,exact,
-mwe_idiomatic,ביצים,1,1,TBD,False,exact,
-mwe_idiomatic,בסל,1,1,TBD,False,exact,
-mwe_idiomatic,אחד.,1,1,TBD,False,exact,
-mwe_idiomatic,פרויקט,1,1,TBD,False,exact,
-mwe_idiomatic,עלה,1,1,TBD,False,exact,
-mwe_idiomatic,על,1,1,TBD,False,exact,
-mwe_idiomatic,שרטון.,1,1,TBD,False,exact,
-mwe_technical,בדיקה,1,1,TBD,False,exact,
-mwe_technical,לא,1,1,TBD,False,exact,
-mwe_technical,רסנית,1,1,TBD,False,exact,
-mwe_technical,מזהה,1,1,TBD,False,exact,
-mwe_technical,פגמים.,1,1,TBD,False,exact,
-mwe_technical,חומר,1,1,TBD,False,exact,
-mwe_technical,מרוכב,1,1,TBD,False,exact,
-mwe_technical,מסיבי,1,1,TBD,False,exact,
-mwe_technical,פחמן,1,1,TBD,False,exact,
-mwe_technical,קל,1,1,TBD,False,exact,
-mwe_technical,במיוחד.,1,1,TBD,False,exact,
-mwe_technical,טמפרטורת,1,1,TBD,False,exact,
-mwe_technical,חדר,1,1,TBD,False,exact,
-mwe_technical,משפיעה,1,1,TBD,False,exact,
-mwe_technical,על,1,1,TBD,False,exact,
-mwe_technical,תוצאות.,1,1,TBD,False,exact,
-mwe_technical,לחץ,1,1,TBD,False,exact,
-mwe_technical,אטמוספירי,1,1,TBD,False,exact,
-mwe_technical,נמדד.,1,1,TBD,False,exact,
+mwe_technical,בדיקה,1,1,NOUN,False,exact,part of MWE: בדיקה לא הרסנית
+mwe_technical,לא,1,1,ADV,False,exact,part of MWE
+mwe_technical,הרסני,1,1,ADJ,False,exact,part of MWE: בדיקה לא הרסנית
+mwe_technical,מצא,1,1,VERB,False,exact,מזהה
+mwe_technical,פגם,1,1,NOUN,False,exact,פגמים
+mwe_technical,חומר,1,1,NOUN,False,exact,part of MWE: חומר מרוכב מסיבי פחמן
+mwe_technical,מרוכב,1,1,ADJ,False,exact,part of MWE
+mwe_technical,סיב,1,1,NOUN,False,exact,מסיבי
+mwe_technical,פחמן,1,1,NOUN,False,exact,part of MWE
+mwe_technical,קל,1,1,ADJ,False,exact,
+mwe_technical,מיוחד,1,1,ADJ,False,exact,במיוחד
+mwe_technical,טמפרטורה,1,1,NOUN,False,exact,טמפרטורת
+mwe_technical,חדר,1,1,NOUN,False,exact,part of MWE: טמפרטורת חדר
+mwe_technical,השפיע,1,1,VERB,False,exact,משפיעה
+mwe_technical,על,1,1,ADP,False,exact,
+mwe_technical,תוצאה,1,1,NOUN,False,exact,התוצאות
+mwe_technical,לחץ,1,1,NOUN,False,exact,part of MWE: לחץ אטמוספירי
+mwe_technical,אטמוספירי,1,1,ADJ,False,exact,part of MWE
+mwe_technical,נמדד,1,1,VERB,False,exact,nif'al
+mwe_idiomatic,תהליך,1,1,NOUN,True,exact,DET: התהליך
+mwe_idiomatic,הלך,1,1,VERB,False,exact,part of idiom: הולך חלק כמו משי
+mwe_idiomatic,חלק,1,1,ADJ,False,exact,part of idiom
+mwe_idiomatic,כמו,1,1,ADP,False,exact,part of idiom
+mwe_idiomatic,משי,1,1,NOUN,False,exact,part of idiom
+mwe_idiomatic,תוצאה,1,1,NOUN,True,exact,DET: התוצאות
+mwe_idiomatic,דבר,1,1,VERB,False,exact,מדברות = piel
+mwe_idiomatic,בעד,1,1,ADP,False,exact,part of idiom: בעד עצמן
+mwe_idiomatic,עצם,1,1,PRON,False,exact,עצמן = reflexive
+mwe_idiomatic,מהנדס,1,1,NOUN,True,exact,DET: המהנדס
+mwe_idiomatic,שם,1,1,VERB,False,exact,past
+mwe_idiomatic,את,1,1,ADP,False,exact,
+mwe_idiomatic,כל,1,1,DET,False,exact,
+mwe_idiomatic,ביצה,1,1,NOUN,False,exact,part of idiom: שם את כל הביצים
+mwe_idiomatic,סל,1,1,NOUN,False,exact,part of idiom: בסל אחד
+mwe_idiomatic,אחד,1,1,NUM,False,exact,
+mwe_idiomatic,פרויקט,1,1,NOUN,True,exact,DET: הפרויקט
+mwe_idiomatic,עלה,1,1,VERB,False,exact,part of idiom: עלה על שרטון
+mwe_idiomatic,על,1,1,ADP,False,exact,part of idiom
+mwe_idiomatic,שרטון,1,1,NOUN,False,exact,part of idiom

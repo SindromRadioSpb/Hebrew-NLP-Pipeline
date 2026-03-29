@@ -1,9 +1,14 @@
 ﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
-sentence_count,terms_contrast,5,,,,
-token_count,terms_contrast,17,,,,
+pmi_check,חוזק_מתיחה,PMI > threshold,,,,should be very high — 8 co-occurrences
+pmi_check,בדיקת_איכות,PMI > threshold,,,,should be high — 4 co-occurrences
+pmi_check,חומר_חדש,PMI < חוזק_מתיחה,,,,generic words — lower PMI
+ranking,חוזק_מתיחה > בדיקת_איכות,higher_than,,,,8 vs 4 co-occurrences
+ranking,בדיקת_איכות > שחיקה,higher_than,,,,bigram vs unigram
+freq_check,חוזק_מתיחה,8,,,,in terms_high_pmi
+freq_check,שחיקה,3,,,,in terms_contrast
 sentence_count,terms_high_pmi,4,,,,
-token_count,terms_high_pmi,22,,,,
 sentence_count,terms_low_pmi,4,,,,
+sentence_count,terms_contrast,5,,,,
+token_count,terms_high_pmi,22,,,,
 token_count,terms_low_pmi,16,,,,
-sentence_count,CORPUS_TOTAL,13,,,,
-token_count,CORPUS_TOTAL,55,,,,
+token_count,terms_contrast,17,,,,

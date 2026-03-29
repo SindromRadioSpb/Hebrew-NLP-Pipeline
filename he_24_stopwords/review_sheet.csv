@@ -1,7 +1,16 @@
 ﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
-sentence_count,content_heavy,1,,,,
-token_count,content_heavy,10,,,,
+stopword,stopword_heavy: הוא,filtered,,,,should NOT appear in terms
+stopword,stopword_heavy: היא,filtered,,,,should NOT appear in terms
+stopword,stopword_heavy: הם,filtered,,,,should NOT appear in terms
+stopword,stopword_heavy: את,filtered,,,,should NOT appear in terms
+stopword,stopword_heavy: של,filtered,,,,should NOT appear in terms
+stopword,stopword_heavy: על,filtered,,,,should NOT appear in terms
+stopword,stopword_heavy: בין,filtered,,,,should NOT appear in terms
+content,stopword_heavy: חוזק,kept,,,,CONTENT word — should appear
+content,stopword_heavy: חומר,kept,,,,CONTENT word — should appear
+content,stopword_heavy: תוצאה,kept,,,,CONTENT word — should appear
+comparison,content_heavy terms > stopword_heavy terms,more_terms,,,,content-only file should yield more terms
 sentence_count,stopword_heavy,1,,,,
+sentence_count,content_heavy,1,,,,
 token_count,stopword_heavy,17,,,,
-sentence_count,CORPUS_TOTAL,2,,,,
-token_count,CORPUS_TOTAL,27,,,,
+token_count,content_heavy,10,,,,

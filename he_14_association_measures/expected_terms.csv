@@ -1,2 +1,5 @@
 ﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
-he_14_association_measures,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder
+he_14,חוזק_מתיחה,,"חוזק,מתיחה",8,1,non_noise,top_1,dominant,very_high,very_high,very_high,manual_review,manual_review,manual_review,exact,8 co-occurrences → extremely high PMI expected
+he_14,בדיקת_איכות,,"בדיקה,איכות",4,1,non_noise,top_3,strong,high,high,high,manual_review,manual_review,manual_review,present_only,4 co-occurrences in terms_contrast
+he_14,שחיקה,,שחיקה,3,1,non_noise,top_5,medium,n/a,n/a,n/a,manual_review,manual_review,manual_review,present_only,unigram — PMI not applicable
+he_14,חומר_חדש,,"חומר,חדש",1,1,non_noise,top_20,weak,low,low,low,manual_review,manual_review,manual_review,relational,low PMI expected — generic words

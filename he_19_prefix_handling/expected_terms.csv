@@ -1,2 +1,3 @@
 ﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
-he_19_prefix_handling,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder
+he_19,פלדה,NOUN,פלדה,2,2,non_noise,top_5,strong,high,high,high,manual_review,manual_review,manual_review,present_only,bare + בפלדה + ובפלדה → canonical פלדה
+he_19,ברזל,NOUN,ברזל,2,2,non_noise,top_5,strong,high,high,high,manual_review,manual_review,manual_review,present_only,לברזל + אבלברזל → canonical ברזל

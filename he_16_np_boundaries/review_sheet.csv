@@ -1,9 +1,14 @@
 ﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
-sentence_count,coordinated_np,4,,,,
-token_count,coordinated_np,16,,,,
+np_boundary,חוזק_המתיחה,[N [DET N]],,,,nested NP
+np_boundary,הרכב_הסגסוגת_החדשה,[N [DET N] [DET ADJ]],,,,3-level nested
+np_boundary,שכבת_ההגנה_הדקה,[N [DET N] [DET ADJ]],,,,construct + DET + ADJ
+np_boundary,חוזק_ועמידות,[N CONJ N],,,,coordinated
+np_boundary,פלדה_ואלומיניום,[N CONJ N],,,,coordinated
+np_boundary,בדיקה_בטמפרטורה_גבוהה,[N [PP [N ADJ]]],,,,PP-attached
+np_boundary,ריתוך_בקשת_חשמלית,[N [PP [N ADJ]]],,,,PP-attached
 sentence_count,nested_np,4,,,,
-token_count,nested_np,19,,,,
+sentence_count,coordinated_np,4,,,,
 sentence_count,pp_attached,4,,,,
+token_count,nested_np,19,,,,
+token_count,coordinated_np,16,,,,
 token_count,pp_attached,20,,,,
-sentence_count,CORPUS_TOTAL,12,,,,
-token_count,CORPUS_TOTAL,55,,,,

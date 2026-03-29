@@ -1,9 +1,15 @@
 ﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+number,אלף_חמש_מאות,3 tokens,,,,Hebrew numeral — 3 words
+number,520,1 token,,,,Arabic numeral
+number,18%,1 token,,,,number+percent attached
+number,3.5,1 token,,,,decimal
+number,0.3,1 token,,,,decimal
+number,ב-15,1 or 2 tokens?,,,,prefix attached to number
+unit,מגהפסקל,standalone unit,,,,
+unit,מילימטר,standalone unit,,,,
 sentence_count,hebrew_numerals,5,,,,
-token_count,hebrew_numerals,15,,,,
 sentence_count,mixed_numbers,6,,,,
-token_count,mixed_numbers,10,,,,
 sentence_count,percentages,5,,,,
+token_count,hebrew_numerals,15,,,,
+token_count,mixed_numbers,10,,,,
 token_count,percentages,17,,,,
-sentence_count,CORPUS_TOTAL,16,,,,
-token_count,CORPUS_TOTAL,42,,,,

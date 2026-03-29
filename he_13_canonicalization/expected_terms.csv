@@ -1,2 +1,4 @@
 ﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
-he_13_canonicalization,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder
+he_13,טמפרטורת_התכה,,"טמפרטורה,התכה",5,1,non_noise,top_1,dominant,high,high,high,manual_review,manual_review,manual_review,present_only,canonical: טמפרטורת התכה — 5 surface variants
+he_13,ניקל,,ניקל,4,1,non_noise,top_3,strong,high,high,high,manual_review,manual_review,manual_review,present_only,canonical: ניקל — 4 variants (bare/b-/h-/construct)
+he_13,סגסוגת_חדשה,,"סגסוגת,חדש",2,1,non_noise,top_10,medium,medium,medium,medium,manual_review,manual_review,manual_review,present_only,canonical: סגסוגת חדשה — singular/plural/DET variants

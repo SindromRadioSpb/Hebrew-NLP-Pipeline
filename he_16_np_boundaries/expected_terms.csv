@@ -1,2 +1,6 @@
 ﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
-he_16_np_boundaries,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder
+he_16,חוזק_המתיחה,,"חוזק,מתיחה",1,1,non_noise,top_10,strong,high,high,high,manual_review,manual_review,manual_review,present_only,[NP: חוזק [המתיחה]]
+he_16,הרכב_הסגסוגת_החדשה,,"הרכב,סגסוגת,חדש",1,1,non_noise,top_10,strong,high,high,high,manual_review,manual_review,manual_review,present_only,nested NP: [הרכב [הסגסוגת] החדשה]
+he_16,שכבת_ההגנה_הדקה,,"שכבה,הגנה,דק",1,1,non_noise,top_10,strong,high,high,high,manual_review,manual_review,manual_review,present_only,nested NP: [שכבת [ההגנה] הדקה]
+he_16,חוזק_ועמידות,,"חוזק,עמידות",1,1,non_noise,present,coordinated,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,present_only,coordinated NP
+he_16,בדיקה_בטמפרטורה_גבוהה,,"בדיקה,טמפרטורה,גבוה",1,1,non_noise,top_10,medium,medium,medium,medium,manual_review,manual_review,manual_review,present_only,PP-attached: [בדיקה [בטמפרטורה גבוהה]]

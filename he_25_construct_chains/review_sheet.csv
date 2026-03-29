@@ -1,9 +1,15 @@
 ﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
-sentence_count,long_construct,5,,,,
-token_count,long_construct,16,,,,
-sentence_count,nested_construct,3,,,,
-token_count,nested_construct,13,,,,
+construct,חוזק_מתיחה,2-word construct,,,,short
+construct,שכבת_הגנה,2-word construct,,,,short
+construct,בדיקת_איכות,2-word construct,,,,short
+construct,טמפרטורת_התכה,2-word construct,,,,short
+construct,הרכב_הסגסוגת_החדשה,3-word construct,,,,long: construct+DET+ADJ
+construct,תוצאות_בדיקת_איכות_המוצר,5-word construct,,,,nested: [תוצאות [[בדיקת איכות] [המוצר]]]
+construct,נתוני_טמפרטורת_התכה_הגבוהה,5-word construct,,,,nested: [נתוני [[טמפרטורת התכה] הגבוהה]]
+construct,הרכב_שכבת_ההגנה_הכימית,4-word construct,,,,nested: [הרכב [[שכבת הגנה] הכימית]]
 sentence_count,short_construct,5,,,,
+sentence_count,long_construct,5,,,,
+sentence_count,nested_construct,3,,,,
 token_count,short_construct,10,,,,
-sentence_count,CORPUS_TOTAL,13,,,,
-token_count,CORPUS_TOTAL,39,,,,
+token_count,long_construct,16,,,,
+token_count,nested_construct,13,,,,

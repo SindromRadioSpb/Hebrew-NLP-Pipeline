@@ -1,31 +1,37 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-hebrew_numerals,אלף,1,1,TBD,False,exact,
-hebrew_numerals,חמש,2,1,TBD,False,exact,
-hebrew_numerals,מאות,2,1,TBD,False,exact,
-hebrew_numerals,מעלות.,1,1,TBD,False,exact,
-hebrew_numerals,מאה,1,1,TBD,False,exact,
-hebrew_numerals,עשרים,1,1,TBD,False,exact,
-hebrew_numerals,מגהפסקל.,1,1,TBD,False,exact,
-hebrew_numerals,שלושה,1,1,TBD,False,exact,
-hebrew_numerals,אחוזי,1,1,TBD,False,exact,
-hebrew_numerals,פחמן.,1,1,TBD,False,exact,
-hebrew_numerals,גרם.,1,1,TBD,False,exact,
-hebrew_numerals,אלפיים,1,1,TBD,False,exact,
-hebrew_numerals,ליטר.,1,1,TBD,False,exact,
-mixed_numbers,מגהפסקל.,1,1,TBD,False,exact,
-mixed_numbers,כרום.,1,1,TBD,False,exact,
-mixed_numbers,ניקל.,1,1,TBD,False,exact,
-mixed_numbers,מעלות.,1,1,TBD,False,exact,
-mixed_numbers,מילימטר.,1,1,TBD,False,exact,
-percentages,סגסוגת,1,1,TBD,False,exact,
-percentages,מכילה,1,1,TBD,False,exact,
-percentages,אחוז,2,1,TBD,False,exact,
-percentages,כרום.,1,1,TBD,False,exact,
-percentages,ניקל,1,1,TBD,False,exact,
-percentages,נוסף.,1,1,TBD,False,exact,
-percentages,פחמן,1,1,TBD,False,exact,
-percentages,מהווה,1,1,TBD,False,exact,
-percentages,אחוז.,2,1,TBD,False,exact,
-percentages,עלות,1,1,TBD,False,exact,
-percentages,עלתה,1,1,TBD,False,exact,
-percentages,ב-15,1,1,TBD,False,exact,
+hebrew_numerals,אלף,1,1,NUM,False,exact,
+hebrew_numerals,חמש,2,1,NUM,False,exact,חמש×2
+hebrew_numerals,מאה,2,1,NUM,False,exact,מאות×2
+hebrew_numerals,מעלה,1,1,NOUN,False,exact,מעלות
+hebrew_numerals,עשרים,1,1,NUM,False,exact,
+hebrew_numerals,מגהפסקל,1,1,NOUN,False,exact,unit
+hebrew_numerals,שלושה,1,1,NUM,False,exact,
+hebrew_numerals,אחוז,1,1,NOUN,False,exact,אחוזי = construct
+hebrew_numerals,פחמן,1,1,NOUN,False,exact,
+hebrew_numerals,גרם,1,1,NOUN,False,exact,
+hebrew_numerals,אלפיים,1,1,NUM,False,exact,
+hebrew_numerals,ליטר,1,1,NOUN,False,exact,
+mixed_numbers,520,1,1,NUM,False,exact,
+mixed_numbers,מגהפסקל,2,1,NOUN,False,exact,unit ×2
+mixed_numbers,18%,1,1,NUM,False,exact,number+percent attached
+mixed_numbers,כרום,1,1,NOUN,False,exact,
+mixed_numbers,8%,1,1,NUM,False,exact,
+mixed_numbers,ניקל,1,1,NOUN,False,exact,
+mixed_numbers,1450,1,1,NUM,False,exact,
+mixed_numbers,מעלה,1,1,NOUN,False,exact,מעלות
+mixed_numbers,3.5,1,1,NUM,False,exact,decimal
+mixed_numbers,מילימטר,1,1,NOUN,False,exact,unit
+percentages,סגסוגת,1,1,NOUN,True,exact,DET: הסגסוגת
+percentages,הכיל,1,1,VERB,False,exact,מכילה = hif'il
+percentages,18,1,1,NUM,False,exact,standalone number
+percentages,אחוז,4,1,NOUN,False,exact,אחוז×4
+percentages,כרום,1,1,NOUN,False,exact,
+percentages,8,1,1,NUM,False,exact,
+percentages,ניקל,1,1,NOUN,False,exact,
+percentages,הוסיף,1,1,VERB,False,exact,נוסף = nif'al
+percentages,פחמן,1,1,NOUN,True,exact,DET: הפחמן
+percentages,הווה,1,1,VERB,False,exact,מהווה = hif'il
+percentages,0.3,1,1,NUM,False,exact,decimal
+percentages,עלות,1,1,NOUN,True,exact,DET: העלות
+percentages,עלה,1,1,VERB,False,exact,past
+percentages,15,1,1,NUM,False,exact,in ב-15 — prefix+number

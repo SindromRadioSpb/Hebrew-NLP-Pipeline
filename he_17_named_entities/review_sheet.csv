@@ -1,9 +1,20 @@
 ﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
-sentence_count,entities_geo,4,,,,
-token_count,entities_geo,17,,,,
+ner,טכניון,ORG,,,,
+ner,חיפה,LOC,,,,
+ner,תל אביב,LOC,,,,multi-word entity
+ner,דימונה,LOC,,,,
+ner,אילת,LOC,,,,
+ner,ירושלים,LOC,,,,
+ner,משרד הביטחון,ORG,,,,compound entity
+ner,רפאל,ORG,,,,
+ner,התעשייה האווירית,ORG,,,,DET+compound
+ner,פרופ׳ כהן,PER,,,,title+name
+ner,ד״ר לוי,PER,,,,title+name
+ner,המהנדס ישראלי,PER,,,,title+name — DET on title
+ner,העובד כהן,PER,,,,DET+title+name
 sentence_count,entities_org,4,,,,
-token_count,entities_org,19,,,,
+sentence_count,entities_geo,4,,,,
 sentence_count,entities_person,4,,,,
+token_count,entities_org,19,,,,
+token_count,entities_geo,17,,,,
 token_count,entities_person,20,,,,
-sentence_count,CORPUS_TOTAL,12,,,,
-token_count,CORPUS_TOTAL,56,,,,

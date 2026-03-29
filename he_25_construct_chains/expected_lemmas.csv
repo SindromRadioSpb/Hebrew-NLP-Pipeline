@@ -1,40 +1,40 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-long_construct,חוזק,1,1,TBD,False,exact,
-long_construct,מתיחה,1,1,TBD,False,exact,
-long_construct,של,1,1,TBD,False,exact,
-long_construct,פלדה.,1,1,TBD,False,exact,
-long_construct,רכב,1,1,TBD,False,exact,
-long_construct,סגסוגת,1,1,TBD,False,exact,
-long_construct,חדשה.,1,1,TBD,False,exact,
-long_construct,טמפרטורת,1,1,TBD,False,exact,
-long_construct,התכה,1,1,TBD,False,exact,
-long_construct,גבוהה.,1,1,TBD,False,exact,
-long_construct,בדיקת,1,1,TBD,False,exact,
-long_construct,איכות,1,1,TBD,False,exact,
-long_construct,סופית.,1,1,TBD,False,exact,
-long_construct,שכבת,1,1,TBD,False,exact,
-long_construct,הגנה,1,1,TBD,False,exact,
-long_construct,דקה.,1,1,TBD,False,exact,
-nested_construct,תוצאות,1,1,TBD,False,exact,
-nested_construct,בדיקת,1,1,TBD,False,exact,
-nested_construct,איכות,1,1,TBD,False,exact,
-nested_construct,מוצר,1,1,TBD,False,exact,
-nested_construct,סופי.,1,1,TBD,False,exact,
-nested_construct,נתוני,1,1,TBD,False,exact,
-nested_construct,טמפרטורת,1,1,TBD,False,exact,
-nested_construct,התכה,1,1,TBD,False,exact,
-nested_construct,גבוהה.,1,1,TBD,False,exact,
-nested_construct,רכב,1,1,TBD,False,exact,
-nested_construct,שכבת,1,1,TBD,False,exact,
-nested_construct,הגנה,1,1,TBD,False,exact,
-nested_construct,כימית.,1,1,TBD,False,exact,
-short_construct,חוזק,1,1,TBD,False,exact,
-short_construct,מתיחה.,1,1,TBD,False,exact,
-short_construct,שכבת,1,1,TBD,False,exact,
-short_construct,גנה.,1,1,TBD,False,exact,
-short_construct,בדיקת,1,1,TBD,False,exact,
-short_construct,איכות.,1,1,TBD,False,exact,
-short_construct,טמפרטורת,1,1,TBD,False,exact,
-short_construct,תכה.,1,1,TBD,False,exact,
-short_construct,רכב,1,1,TBD,False,exact,
-short_construct,סגסוגת.,1,1,TBD,False,exact,
+short_construct,חוזק,1,1,NOUN,False,exact,construct: חוזק מתיחה
+short_construct,מתיחה,1,1,NOUN,False,exact,
+short_construct,שכבה,1,1,NOUN,False,exact,שכבת = construct
+short_construct,הגנה,1,1,NOUN,False,exact,
+short_construct,בדיקה,1,1,NOUN,False,exact,בדיקת = construct
+short_construct,איכות,1,1,NOUN,False,exact,
+short_construct,טמפרטורה,1,1,NOUN,False,exact,טמפרטורת = construct
+short_construct,התכה,1,1,NOUN,False,exact,
+short_construct,הרכב,1,1,NOUN,True,exact,DET — part of word
+short_construct,סגסוגת,1,1,NOUN,False,exact,
+long_construct,חוזק,1,1,NOUN,False,exact,
+long_construct,מתיחה,1,1,NOUN,False,exact,
+long_construct,של,1,1,ADP,False,exact,
+long_construct,פלדה,1,1,NOUN,True,exact,DET: הפלדה
+long_construct,הרכב,1,1,NOUN,True,exact,DET — part of word
+long_construct,סגסוגת,1,1,NOUN,True,exact,DET: הסגסוגת
+long_construct,חדש,1,1,ADJ,True,exact,DET: החדשה
+long_construct,טמפרטורה,1,1,NOUN,False,exact,טמפרטורת
+long_construct,התכה,1,1,NOUN,True,exact,DET: ההתכה
+long_construct,גבוה,1,1,ADJ,True,exact,DET: הגבוהה
+long_construct,בדיקה,1,1,NOUN,False,exact,בדיקת
+long_construct,איכות,1,1,NOUN,True,exact,DET: האיכות
+long_construct,סופי,1,1,ADJ,True,exact,DET: הסופית
+long_construct,שכבה,1,1,NOUN,False,exact,שכבת
+long_construct,הגנה,1,1,NOUN,True,exact,DET: ההגנה
+long_construct,דק,1,1,ADJ,True,exact,DET: הדקה
+nested_construct,תוצאה,1,1,NOUN,False,exact,תוצאות = pl
+nested_construct,בדיקה,1,1,NOUN,False,exact,בדיקת
+nested_construct,איכות,1,1,NOUN,False,exact,
+nested_construct,מוצר,1,1,NOUN,True,exact,DET: המוצר
+nested_construct,סופי,1,1,ADJ,True,exact,DET: הסופי
+nested_construct,נתון,1,1,NOUN,False,exact,נתוני = construct.pl
+nested_construct,טמפרטורה,1,1,NOUN,False,exact,טמפרטורת
+nested_construct,התכה,1,1,NOUN,True,exact,DET: ההתכה
+nested_construct,גבוה,1,1,ADJ,True,exact,DET: הגבוהה
+nested_construct,הרכב,1,1,NOUN,True,exact,DET — part of word
+nested_construct,שכבה,1,1,NOUN,False,exact,שכבת
+nested_construct,הגנה,1,1,NOUN,True,exact,DET: ההגנה
+nested_construct,כימי,1,1,ADJ,True,exact,DET: הכימית

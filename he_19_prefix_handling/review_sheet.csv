@@ -1,7 +1,14 @@
 ﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+prefix,בפלדה→פלדה,פלדה,,,,single prefix ב
+prefix,לברזל→ברזל,ברזל,,,,single prefix ל
+prefix,באלומיניום→אלומיניום,אלומיניום,,,,single prefix ב
+prefix,לניקל→ניקל,ניקל,,,,single prefix ל
+prefix,בכרום→כרום,כרום,,,,single prefix ב
+prefix,ובפלדה→פלדה,פלדה,,,,combined ו+ב
+prefix,ולניקל→ניקל,ניקל,,,,combined ו+ל
+prefix,ובכרום→כרום,כרום,,,,combined ו+ב
+prefix,אבלברזל→???,ברזל or אבלברזל,,,,⚠️ ambiguous: אבל+ברזל vs prefix chain
 sentence_count,prefix_basic,5,,,,
-token_count,prefix_basic,17,,,,
 sentence_count,prefix_combined,5,,,,
+token_count,prefix_basic,17,,,,
 token_count,prefix_combined,17,,,,
-sentence_count,CORPUS_TOTAL,10,,,,
-token_count,CORPUS_TOTAL,34,,,,

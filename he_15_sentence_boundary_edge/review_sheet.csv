@@ -1,11 +1,17 @@
 ﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+boundary,prof_geresh,1 sentence,,,,"פרופ׳.כהן — geresh in abbreviation, NOT boundary"
+boundary,dr_gershayim,1 sentence,,,,"ד״ר.לוי — gershayim, NOT boundary"
+boundary,decimal_3.14,1 sentence,,,,3.14 מעלות — decimal NOT boundary
+boundary,decimal_100.5,1 sentence,,,,100.5 מגהפסקל — decimal NOT boundary
+boundary,no_period_last,1 sentence,,,,"מעלות — no terminal period, still 1 sentence"
+boundary,multi_question,1 sentence,,,,תקין??? — triple ? is still 1 sentence
+boundary,multi_exclaim,1 sentence,,,,כן!!! — triple ! is still 1 sentence
+boundary,ellipsis,1 sentence,,,,טובה... — ellipsis NOT boundary
 sentence_count,abbr_hebrew,4,,,,
-token_count,abbr_hebrew,18,,,,
-sentence_count,decimals,8,,,,
-token_count,decimals,16,,,,
+sentence_count,decimals,4,,,,
+sentence_count,no_period,3,,,,last has no period
 sentence_count,multi_punct,4,,,,
-token_count,multi_punct,10,,,,
-sentence_count,no_period,3,,,,
+token_count,abbr_hebrew,18,,,,
+token_count,decimals,16,,,,
 token_count,no_period,14,,,,
-sentence_count,CORPUS_TOTAL,19,,,,
-token_count,CORPUS_TOTAL,58,,,,
+token_count,multi_punct,10,,,,

@@ -1,9 +1,14 @@
 ﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+homograph,הרכב_1='car',general,,,,הרכב של המכונית אדום — car
+homograph,הרכב_2='composition',domain,,,,הרכב הכימי של הסגסוגת — composition
+homograph,הרכב_3='composition',domain,,,,הרכב החדש הגיע למפעל — could be car or composition
+homograph,בדיקה_noun,NOUN,,,,בדיקת האיכות בוצעה — noun
+homograph,בדק_verb,VERB,,,,העובד בדק את הדגם — verb (same root)
+homograph,פני='surface',domain,,,,פני השטח חלקים — surface
+homograph,פני='faces',general,,,,פני החוקרים נראו מודאגים — faces
 sentence_count,homograph_comp,3,,,,
-token_count,homograph_comp,13,,,,
-sentence_count,homograph_construct,3,,,,
-token_count,homograph_construct,10,,,,
 sentence_count,homograph_verb_noun,3,,,,
+sentence_count,homograph_construct,3,,,,
+token_count,homograph_comp,13,,,,
 token_count,homograph_verb_noun,12,,,,
-sentence_count,CORPUS_TOTAL,9,,,,
-token_count,CORPUS_TOTAL,35,,,,
+token_count,homograph_construct,10,,,,

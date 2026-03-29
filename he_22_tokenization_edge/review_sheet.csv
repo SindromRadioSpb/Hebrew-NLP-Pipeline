@@ -1,11 +1,16 @@
 ﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
-sentence_count,apostrophe,4,,,,
-token_count,apostrophe,6,,,,
+tokenization,double_spaces,"5 tokens, no empty",,,,double spaces must not create empty tokens
+tokenization,maqaf,1 token or split?,,,,"אל-חלד.חוזק-משקל... — all maqaf, no spaces"
+tokenization,prof_geresh,1 token,,,,פרופ׳ — geresh is part of abbreviation
+tokenization,dr_gershayim,1 token,,,,ד״ר — gershayim is part of abbreviation
+tokenization,bet_samekh,1 token,,,,ב״ס — abbreviation
+tokenization,resh_samekh_nun,1 token,,,,רס״ן — abbreviation
+tokenization,mixed_sep,2 tokens (tab=space?),,,,"פלדה	ברזל.סגסוגת, — mixed separators"
 sentence_count,double_spaces,2,,,,
-token_count,double_spaces,5,,,,
-sentence_count,maqaf,4,,,,
-token_count,maqaf,1,,,,
-sentence_count,mixed_separators,3,,,,
+sentence_count,maqaf,4,,,,4 dots in the text
+sentence_count,apostrophe,4,,,,4 dots
+sentence_count,mixed_separators,3,,,,3 dots
+token_count,double_spaces,5,,,,no empty tokens
+token_count,maqaf,1,,,,entire line = 1 token
+token_count,apostrophe,6,,,,
 token_count,mixed_separators,2,,,,
-sentence_count,CORPUS_TOTAL,13,,,,
-token_count,CORPUS_TOTAL,14,,,,

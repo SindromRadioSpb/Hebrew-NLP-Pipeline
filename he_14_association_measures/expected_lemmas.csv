@@ -1,42 +1,42 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-terms_contrast,בדיקת,2,1,TBD,False,exact,
-terms_contrast,איכות,2,1,TBD,False,exact,
-terms_contrast,מוצר,1,1,TBD,False,exact,
-terms_contrast,סופי.,1,1,TBD,False,exact,
-terms_contrast,כללה,1,1,TBD,False,exact,
-terms_contrast,מדידה.,1,1,TBD,False,exact,
-terms_contrast,שחיקה,3,1,TBD,False,exact,
-terms_contrast,מתרחשת,1,1,TBD,False,exact,
-terms_contrast,במגעים.,1,1,TBD,False,exact,
-terms_contrast,נמדדה,1,1,TBD,False,exact,
-terms_contrast,במעבדה.,1,1,TBD,False,exact,
-terms_contrast,ייתה,1,1,TBD,False,exact,
-terms_contrast,מינימלית.,1,1,TBD,False,exact,
-terms_high_pmi,חוזק,4,1,TBD,False,exact,
-terms_high_pmi,מתיחה,4,1,TBD,False,exact,
-terms_high_pmi,נמדד,1,1,TBD,False,exact,
-terms_high_pmi,בכל,1,1,TBD,False,exact,
-terms_high_pmi,דגמים.,1,1,TBD,False,exact,
-terms_high_pmi,ממוצע,1,1,TBD,False,exact,
-terms_high_pmi,יה,1,1,TBD,False,exact,
-terms_high_pmi,מגהפסקל.,1,1,TBD,False,exact,
-terms_high_pmi,עלה,1,1,TBD,False,exact,
-terms_high_pmi,לאחר,1,1,TBD,False,exact,
-terms_high_pmi,טיפול,1,1,TBD,False,exact,
-terms_high_pmi,בחום.,1,1,TBD,False,exact,
-terms_high_pmi,וא,1,1,TBD,False,exact,
-terms_high_pmi,מדד,1,1,TBD,False,exact,
-terms_high_pmi,מרכזי.,1,1,TBD,False,exact,
-terms_low_pmi,חומר,3,1,TBD,False,exact,
-terms_low_pmi,חדש,1,1,TBD,False,exact,
-terms_low_pmi,פותח,1,1,TBD,False,exact,
-terms_low_pmi,במעבדה.,1,1,TBD,False,exact,
-terms_low_pmi,זה,1,1,TBD,False,exact,
-terms_low_pmi,שימש,1,1,TBD,False,exact,
-terms_low_pmi,בניסוי.,1,1,TBD,False,exact,
-terms_low_pmi,ראה,1,1,TBD,False,exact,
-terms_low_pmi,תכונות,1,1,TBD,False,exact,
-terms_low_pmi,טובות.,1,1,TBD,False,exact,
-terms_low_pmi,נוסף,1,1,TBD,False,exact,
-terms_low_pmi,נבדק,1,1,TBD,False,exact,
-terms_low_pmi,בהמשך.,1,1,TBD,False,exact,
+terms_high_pmi,חוזק,4,1,NOUN,False,exact,חוזק×4
+terms_high_pmi,מתיחה,4,1,NOUN,False,exact,מתיחה×4
+terms_high_pmi,מדד,2,1,VERB,False,exact,"נמדד, מדד"
+terms_high_pmi,בכל,1,1,ADP,False,exact,ב+כל
+terms_high_pmi,דגם,1,1,NOUN,True,exact,DET: הדגמים
+terms_high_pmi,ממוצע,1,1,ADJ,False,exact,
+terms_high_pmi,היה,1,1,VERB,False,exact,past
+terms_high_pmi,520,1,1,NUM,False,exact,
+terms_high_pmi,מגהפסקל,1,1,NOUN,False,exact,unit
+terms_high_pmi,עלה,1,1,VERB,False,exact,past
+terms_high_pmi,לאחר,1,1,ADP,False,exact,
+terms_high_pmi,טיפול,1,1,NOUN,False,exact,
+terms_high_pmi,חום,1,1,NOUN,False,exact,בחום
+terms_high_pmi,הוא,1,1,PRON,False,exact,
+terms_high_pmi,מרכזי,1,1,ADJ,False,exact,
+terms_low_pmi,חומר,4,1,NOUN,True,exact,"חומר×3, DET: החומר"
+terms_low_pmi,חדש,1,1,ADJ,False,exact,
+terms_low_pmi,פתח,1,1,VERB,False,exact,פותח = pu'al
+terms_low_pmi,מעבדה,1,1,NOUN,False,exact,במעבדה
+terms_low_pmi,זה,1,1,PRON,False,exact,dem pronoun
+terms_low_pmi,שימש,1,1,VERB,False,exact,past
+terms_low_pmi,ניסוי,1,1,NOUN,False,exact,בניסוי
+terms_low_pmi,ראה,1,1,VERB,False,exact,הראה = hif'il
+terms_low_pmi,תכונה,1,1,NOUN,False,exact,תכונות = pl
+terms_low_pmi,טוב,1,1,ADJ,False,exact,טובות = fem.pl
+terms_low_pmi,הוסיף,1,1,VERB,False,exact,נוסף = nif'al
+terms_low_pmi,נבדק,1,1,VERB,False,exact,nif'al
+terms_low_pmi,המשך,1,1,NOUN,False,exact,בהמשך
+terms_contrast,בדיקה,2,1,NOUN,False,exact,בדיקת×2
+terms_contrast,איכות,2,1,NOUN,False,exact,
+terms_contrast,מוצר,1,1,NOUN,True,exact,DET: המוצר
+terms_contrast,סופי,1,1,ADJ,True,exact,DET: הסופי
+terms_contrast,כלל,1,1,VERB,False,exact,כללה = piel past
+terms_contrast,מדידה,1,1,NOUN,False,exact,
+terms_contrast,שחיקה,3,1,NOUN,False,exact,שחיקה×3
+terms_contrast,התרחש,1,1,VERB,False,exact,מתרחשת
+terms_contrast,מגע,1,1,NOUN,False,exact,במגעים
+terms_contrast,נמדד,1,1,VERB,False,exact,נמדדה = pu'al
+terms_contrast,מעבדה,1,1,NOUN,False,exact,במעבדה
+terms_contrast,היה,1,1,VERB,False,exact,הייתה
+terms_contrast,מינימלי,1,1,ADJ,False,exact,מינימלית

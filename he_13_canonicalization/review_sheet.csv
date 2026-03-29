@@ -1,9 +1,18 @@
 ﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
-sentence_count,canon_construct,5,,,,
-token_count,canon_construct,29,,,,
-sentence_count,canon_det_variants,5,,,,
-token_count,canon_det_variants,20,,,,
+canonical,ניקל_bare→canonical,ניקל,,,,surface=ניקל
+canonical,בניקל→canonical,ניקל,,,,surface=בניקל
+canonical,הניקל→canonical,ניקל,,,,surface=הניקל
+canonical,יישומי_ניקל→canonical,ניקל,,,,surface=יישומי ניקל
+canonical,טמפרטורת_התכה→canonical,טמפרטורת התכה,,,,construct form
+canonical,טמפרטורות_התכה→canonical,טמפרטורת התכה,,,,plural construct
+canonical,טמפרטורה_גבוהה→canonical,טמפרטורה גבוהה,,,,bare form
+canonical,הטמפרטורות_הגבוהות→canonical,טמפרטורה גבוהה,,,,DET+pl+adj
+canonical,סגסוגת→canonical,סגסוגת,,,,bare
+canonical,הסגסוגת→canonical,סגסוגת,,,,DET
+canonical,סגסוגות→canonical,סגסוגת,,,,plural
 sentence_count,canon_variants,6,,,,
+sentence_count,canon_construct,5,,,,
+sentence_count,canon_det_variants,5,,,,
 token_count,canon_variants,27,,,,
-sentence_count,CORPUS_TOTAL,16,,,,
-token_count,CORPUS_TOTAL,76,,,,
+token_count,canon_construct,29,,,,
+token_count,canon_det_variants,20,,,,

@@ -1,55 +1,55 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-coordinated_np,חוזק,1,1,TBD,False,exact,
-coordinated_np,עמידות,1,1,TBD,False,exact,
-coordinated_np,נמדדו,1,1,TBD,False,exact,
-coordinated_np,במעבדה.,1,1,TBD,False,exact,
-coordinated_np,פלדה,1,1,TBD,False,exact,
-coordinated_np,אלומיניום,1,1,TBD,False,exact,
-coordinated_np,שמשו,1,1,TBD,False,exact,
-coordinated_np,בניסוי.,1,1,TBD,False,exact,
-coordinated_np,שחיקה,1,1,TBD,False,exact,
-coordinated_np,קורוזיה,1,1,TBD,False,exact,
-coordinated_np,הם,1,1,TBD,False,exact,
-coordinated_np,גורמי,1,1,TBD,False,exact,
-coordinated_np,כשל.,1,1,TBD,False,exact,
-coordinated_np,טמפרטורה,1,1,TBD,False,exact,
-coordinated_np,לחץ,1,1,TBD,False,exact,
-coordinated_np,נשלטו.,1,1,TBD,False,exact,
-nested_np,חוזק,1,1,TBD,False,exact,
-nested_np,מתיחה,1,1,TBD,False,exact,
-nested_np,של,1,1,TBD,False,exact,
-nested_np,פלדה,1,1,TBD,False,exact,
-nested_np,מוקשחת,1,1,TBD,False,exact,
-nested_np,נמדד.,1,1,TBD,False,exact,
-nested_np,רכב,1,1,TBD,False,exact,
-nested_np,סגסוגת,1,1,TBD,False,exact,
-nested_np,חדשה,1,1,TBD,False,exact,
-nested_np,אושר.,1,1,TBD,False,exact,
-nested_np,שכבת,1,1,TBD,False,exact,
-nested_np,הגנה,1,1,TBD,False,exact,
-nested_np,דקה,1,1,TBD,False,exact,
-nested_np,מנעה,1,1,TBD,False,exact,
-nested_np,קורוזיה.,1,1,TBD,False,exact,
-nested_np,בדיקת,1,1,TBD,False,exact,
-nested_np,איכות,1,1,TBD,False,exact,
-nested_np,סופית,1,1,TBD,False,exact,
-nested_np,עברה.,1,1,TBD,False,exact,
-pp_attached,בדיקה,1,1,TBD,False,exact,
-pp_attached,בטמפרטורה,1,1,TBD,False,exact,
-pp_attached,גבוהה,2,1,TBD,False,exact,
-pp_attached,בוצעה.,1,1,TBD,False,exact,
-pp_attached,חימום,1,1,TBD,False,exact,
-pp_attached,בלחץ,1,1,TBD,False,exact,
-pp_attached,מבוקר,1,1,TBD,False,exact,
-pp_attached,שיפר,1,1,TBD,False,exact,
-pp_attached,את,1,1,TBD,False,exact,
-pp_attached,תוצאה.,1,1,TBD,False,exact,
-pp_attached,קירור,1,1,TBD,False,exact,
-pp_attached,במהירות,1,1,TBD,False,exact,
-pp_attached,גרם,1,1,TBD,False,exact,
-pp_attached,לסדקים.,1,1,TBD,False,exact,
-pp_attached,ריתוך,1,1,TBD,False,exact,
-pp_attached,בקשת,1,1,TBD,False,exact,
-pp_attached,חשמלית,1,1,TBD,False,exact,
-pp_attached,דורש,1,1,TBD,False,exact,
-pp_attached,מיומנות.,1,1,TBD,False,exact,
+nested_np,חוזק,1,1,NOUN,False,exact,
+nested_np,מתיחה,1,1,NOUN,True,exact,DET: המתיחה
+nested_np,של,1,1,ADP,False,exact,
+nested_np,פלדה,1,1,NOUN,True,exact,DET: הפלדה
+nested_np,הקשיח,1,1,VERB,True,exact,DET: המוקשחת
+nested_np,נמדד,1,1,VERB,False,exact,nif'al
+nested_np,הרכב,1,1,NOUN,True,exact,DET — part of word
+nested_np,סגסוגת,1,1,NOUN,True,exact,DET: הסגסוגת
+nested_np,חדש,1,1,ADJ,True,exact,DET: החדשה
+nested_np,אושר,1,1,VERB,False,exact,huf'al
+nested_np,שכבה,1,1,NOUN,False,exact,שכבת
+nested_np,הגנה,1,1,NOUN,True,exact,DET: ההגנה
+nested_np,דק,1,1,ADJ,True,exact,DET: הדקה
+nested_np,מנע,1,1,VERB,False,exact,מנעה
+nested_np,קורוזיה,1,1,NOUN,False,exact,
+nested_np,בדיקה,1,1,NOUN,False,exact,בדיקת
+nested_np,איכות,1,1,NOUN,True,exact,DET: האיכות
+nested_np,סופי,1,1,ADJ,True,exact,DET: הסופית
+nested_np,עבר,1,1,VERB,False,exact,עברה
+coordinated_np,חוזק,1,1,NOUN,False,exact,
+coordinated_np,עמידות,1,1,NOUN,False,exact,ועמידות
+coordinated_np,נמדד,1,1,VERB,False,exact,נמדדו
+coordinated_np,מעבדה,1,1,NOUN,False,exact,במעבדה
+coordinated_np,פלדה,1,1,NOUN,False,exact,
+coordinated_np,אלומיניום,1,1,NOUN,False,exact,ואלומיניום
+coordinated_np,שמש,1,1,VERB,False,exact,שמשו
+coordinated_np,ניסוי,1,1,NOUN,False,exact,בניסוי
+coordinated_np,שחיקה,1,1,NOUN,False,exact,
+coordinated_np,קורוזיה,1,1,NOUN,False,exact,וקורוזיה
+coordinated_np,הם,1,1,PRON,False,exact,
+coordinated_np,גורם,1,1,NOUN,False,exact,גורמי = construct.pl
+coordinated_np,כשל,1,1,NOUN,False,exact,
+coordinated_np,טמפרטורה,1,1,NOUN,False,exact,
+coordinated_np,לחץ,1,1,NOUN,False,exact,ולחץ
+coordinated_np,נשלט,1,1,VERB,False,exact,nif'al
+pp_attached,בדיקה,1,1,NOUN,False,exact,
+pp_attached,טמפרטורה,1,1,NOUN,False,exact,בטמפרטורה
+pp_attached,גבוה,2,1,ADJ,False,exact,גבוהה×2
+pp_attached,בצע,1,1,VERB,False,exact,בוצעה = pu'al
+pp_attached,חימום,1,1,NOUN,False,exact,
+pp_attached,לחץ,1,1,NOUN,False,exact,בלחץ
+pp_attached,מבוקר,1,1,ADJ,False,exact,
+pp_attached,שיפר,1,1,VERB,False,exact,past
+pp_attached,את,1,1,ADP,False,exact,
+pp_attached,תוצאה,1,1,NOUN,True,exact,DET: התוצאה
+pp_attached,קירור,1,1,NOUN,False,exact,
+pp_attached,מהירות,1,1,NOUN,False,exact,במהירות
+pp_attached,גרם,1,1,VERB,False,exact,past
+pp_attached,סדק,1,1,NOUN,False,exact,לסדקים
+pp_attached,ריתוך,1,1,NOUN,False,exact,
+pp_attached,קשת,1,1,NOUN,False,exact,בקשת
+pp_attached,חשמלי,1,1,ADJ,False,exact,חשמלית
+pp_attached,דרש,1,1,VERB,False,exact,דורש
+pp_attached,מיומנות,1,1,NOUN,False,exact,

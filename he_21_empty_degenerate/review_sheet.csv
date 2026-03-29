@@ -1,11 +1,13 @@
 ﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
-sentence_count,one_sentence_no_dot,1,,,,
-token_count,one_sentence_no_dot,5,,,,
-sentence_count,single_dot,0,,,,
-token_count,single_dot,1,,,,
-sentence_count,single_word,1,,,,
+degenerate,single_word.txt,"1 word, 0 or 1 sentence",,,,פלדה — single token
+degenerate,single_dot.txt,"1 token ('.'), 0 sentences",,,,only punctuation
+degenerate,whitespace_only.txt,"0 tokens, 0 sentences",,,,only spaces
+degenerate,one_sentence_no_dot.txt,"5 tokens, 1 sentence",,,,no terminal period
+sentence_count,single_word,0,,,,no period → 0 or 1? pipeline-dependent
+sentence_count,single_dot,0,,,,only dot → 0
+sentence_count,whitespace_only,0,,,,empty
+sentence_count,one_sentence_no_dot,1,,,,text without period → 1
 token_count,single_word,1,,,,
-sentence_count,whitespace_only,0,,,,
+token_count,single_dot,1,,,,
 token_count,whitespace_only,0,,,,
-sentence_count,CORPUS_TOTAL,2,,,,
-token_count,CORPUS_TOTAL,7,,,,
+token_count,one_sentence_no_dot,5,,,,

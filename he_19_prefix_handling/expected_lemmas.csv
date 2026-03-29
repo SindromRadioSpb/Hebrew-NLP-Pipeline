@@ -1,31 +1,31 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-prefix_basic,בפלדה,1,1,TBD,False,exact,
-prefix_basic,משתמשים,1,1,TBD,False,exact,
-prefix_basic,בבניין.,1,1,TBD,False,exact,
-prefix_basic,לברזל,1,1,TBD,False,exact,
-prefix_basic,יש,2,1,TBD,False,exact,
-prefix_basic,תכונות,1,1,TBD,False,exact,
-prefix_basic,מיוחדות.,1,1,TBD,False,exact,
-prefix_basic,באלומיניום,1,1,TBD,False,exact,
-prefix_basic,קל,1,1,TBD,False,exact,
-prefix_basic,לטפל.,1,1,TBD,False,exact,
-prefix_basic,לניקל,1,1,TBD,False,exact,
-prefix_basic,עמידות,1,1,TBD,False,exact,
-prefix_basic,גבוהה.,1,1,TBD,False,exact,
-prefix_basic,בכרום,1,1,TBD,False,exact,
-prefix_basic,גנה,1,1,TBD,False,exact,
-prefix_basic,טבעית.,1,1,TBD,False,exact,
-prefix_combined,בפלדה,1,1,TBD,False,exact,
-prefix_combined,משתמשים,1,1,TBD,False,exact,
-prefix_combined,גם,1,1,TBD,False,exact,
-prefix_combined,בתעופה.,1,1,TBD,False,exact,
-prefix_combined,אבלברזל,1,1,TBD,False,exact,
-prefix_combined,יש,4,1,TBD,False,exact,
-prefix_combined,אחוז,1,1,TBD,False,exact,
-prefix_combined,פחמן.,1,1,TBD,False,exact,
-prefix_combined,באלומיניום,1,1,TBD,False,exact,
-prefix_combined,מגנזיום.,1,1,TBD,False,exact,
-prefix_combined,לניקל,1,1,TBD,False,exact,
-prefix_combined,עמידות.,1,1,TBD,False,exact,
-prefix_combined,בכרום,1,1,TBD,False,exact,
-prefix_combined,גנה.,1,1,TBD,False,exact,
+prefix_basic,פלדה,1,1,NOUN,False,exact,בפלדה = ב+פלדה
+prefix_basic,שמש,1,1,VERB,False,exact,משתמשים = participle pl
+prefix_basic,בניין,1,1,NOUN,False,exact,בבניין = ב+בניין
+prefix_basic,ברזל,1,1,NOUN,False,exact,לברזל = ל+ברזל
+prefix_basic,יש,1,1,VERB,False,exact,existential
+prefix_basic,תכונה,1,1,NOUN,False,exact,תכונות = pl
+prefix_basic,מיוחד,1,1,ADJ,False,exact,מיוחדות = fem.pl
+prefix_basic,אלומיניום,1,1,NOUN,False,exact,באלומיניום = ב+אלומיניום
+prefix_basic,קל,1,1,ADJ,False,exact,
+prefix_basic,טיפול,1,1,NOUN,False,exact,לטיפול = ל+טיפול
+prefix_basic,ניקל,1,1,NOUN,False,exact,לניקל = ל+ניקל
+prefix_basic,עמידות,1,1,NOUN,False,exact,
+prefix_basic,גבוה,1,1,ADJ,False,exact,גבוהה = fem
+prefix_basic,כרום,1,1,NOUN,False,exact,בכרום = ב+כרום
+prefix_basic,הגנה,1,1,NOUN,False,exact,
+prefix_basic,טבעי,1,1,ADJ,False,exact,טבעית = fem
+prefix_combined,פלדה,1,1,NOUN,False,exact,ובפלדה = ו+ב+פלדה
+prefix_combined,שמש,1,1,VERB,False,exact,משתמשים
+prefix_combined,גם,1,1,ADV,False,exact,
+prefix_combined,תעופה,1,1,NOUN,False,exact,בתעופה = ב+תעופה
+prefix_combined,אבלברזל,1,1,NOUN,False,exact,⚠️ אבל+ברזל or א+ב+ל+ברזל?
+prefix_combined,יש,2,1,VERB,False,exact,יש×2
+prefix_combined,אחוז,1,1,NOUN,False,exact,
+prefix_combined,פחמן,1,1,NOUN,False,exact,
+prefix_combined,אלומיניום,1,1,NOUN,False,exact,ובאלומיניום = ו+ב+אלומיניום
+prefix_combined,מגנזיום,1,1,NOUN,False,exact,
+prefix_combined,ניקל,1,1,NOUN,False,exact,ולניקל = ו+ל+ניקל
+prefix_combined,עמידות,1,1,NOUN,False,exact,
+prefix_combined,כרום,1,1,NOUN,False,exact,ובכרום = ו+ב+כרום
+prefix_combined,הגנה,1,1,NOUN,False,exact,

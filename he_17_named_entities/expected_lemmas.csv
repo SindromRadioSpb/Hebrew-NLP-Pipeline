@@ -1,53 +1,51 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-entities_geo,מחקר,1,1,TBD,False,exact,
-entities_geo,בוצע,1,1,TBD,False,exact,
-entities_geo,בתל,1,1,TBD,False,exact,
-entities_geo,אביב.,1,1,TBD,False,exact,
-entities_geo,מפעל,1,1,TBD,False,exact,
-entities_geo,בדימונה,1,1,TBD,False,exact,
-entities_geo,מייצר,1,1,TBD,False,exact,
-entities_geo,פלדה.,1,1,TBD,False,exact,
-entities_geo,נמל,1,1,TBD,False,exact,
-entities_geo,באילת,1,1,TBD,False,exact,
-entities_geo,משמש,1,1,TBD,False,exact,
-entities_geo,לייצוא.,1,1,TBD,False,exact,
-entities_geo,מעבדה,1,1,TBD,False,exact,
-entities_geo,בירושלים,1,1,TBD,False,exact,
-entities_geo,בדקה,1,1,TBD,False,exact,
-entities_geo,את,1,1,TBD,False,exact,
-entities_geo,דגמים.,1,1,TBD,False,exact,
-entities_org,טכניון,1,1,TBD,False,exact,
-entities_org,בחיפה,1,1,TBD,False,exact,
-entities_org,פרסם,1,1,TBD,False,exact,
-entities_org,מחקר,1,1,TBD,False,exact,
-entities_org,חדש.,1,1,TBD,False,exact,
-entities_org,משרד,1,1,TBD,False,exact,
-entities_org,ביטחון,1,1,TBD,False,exact,
-entities_org,זמין,1,1,TBD,False,exact,
-entities_org,סגסוגות,1,1,TBD,False,exact,
-entities_org,חדשות.,1,1,TBD,False,exact,
-entities_org,חברת,1,1,TBD,False,exact,
-entities_org,רפאל,1,1,TBD,False,exact,
-entities_org,פיתחה,1,1,TBD,False,exact,
-entities_org,מערכת,1,1,TBD,False,exact,
-entities_org,גנה.,1,1,TBD,False,exact,
-entities_org,תעשייה,1,1,TBD,False,exact,
-entities_org,אווירית,1,1,TBD,False,exact,
-entities_org,ייצרה,1,1,TBD,False,exact,
-entities_org,רכיבים.,1,1,TBD,False,exact,
-entities_person,פרופ׳,1,1,TBD,False,exact,
-entities_person,כהן,2,1,TBD,False,exact,
-entities_person,חקר,1,1,TBD,False,exact,
-entities_person,את,4,1,TBD,False,exact,
-entities_person,סגסוגות.,1,1,TBD,False,exact,
-entities_person,ד״ר,1,1,TBD,False,exact,
-entities_person,לוי,1,1,TBD,False,exact,
-entities_person,פרסמה,1,1,TBD,False,exact,
-entities_person,תוצאות.,1,1,TBD,False,exact,
-entities_person,מהנדס,1,1,TBD,False,exact,
-entities_person,ישראלי,1,1,TBD,False,exact,
-entities_person,תכנן,1,1,TBD,False,exact,
-entities_person,מערכת.,1,1,TBD,False,exact,
-entities_person,עובד,1,1,TBD,False,exact,
-entities_person,בדק,1,1,TBD,False,exact,
-entities_person,איכות.,1,1,TBD,False,exact,
+entities_org,טכניון,1,1,PROPN,False,exact,ORG entity
+entities_org,חיפה,1,1,PROPN,False,exact,LOC entity
+entities_org,פרסם,1,1,VERB,False,exact,past
+entities_org,מחקר,1,1,NOUN,False,exact,
+entities_org,חדש,2,1,ADJ,False,exact,חדש×2
+entities_org,משרד,1,1,NOUN,False,exact,part of ORG: משרד הביטחון
+entities_org,ביטחון,1,1,NOUN,True,exact,DET: הביטחון
+entities_org,הזמין,1,1,VERB,False,exact,hif'il past
+entities_org,סגסוגת,2,1,NOUN,False,exact,סגסוגות = pl
+entities_org,חברת,1,1,NOUN,False,exact,part of: חברת רפאל
+entities_org,רפאל,1,1,PROPN,False,exact,ORG entity
+entities_org,פתח,1,1,VERB,False,exact,פיתחה = pi'el fem
+entities_org,מערכת,1,1,NOUN,False,exact,
+entities_org,הגנה,1,1,NOUN,False,exact,
+entities_org,תעשייה,1,1,NOUN,True,exact,DET: התעשייה — part of ORG
+entities_org,אווירי,1,1,ADJ,True,exact,DET: האווירית — part of ORG
+entities_org,יצר,1,1,VERB,False,exact,ייצרה = hif'il fem
+entities_org,רכיב,1,1,NOUN,False,exact,רכיבים = pl
+entities_geo,מחקר,1,1,NOUN,False,exact,
+entities_geo,בצע,1,1,VERB,False,exact,בוצע = pu'al
+entities_geo,תל אביב,1,1,PROPN,False,exact,LOC — multi-word entity
+entities_geo,מפעל,1,1,NOUN,False,exact,
+entities_geo,דימונה,1,1,PROPN,False,exact,LOC entity
+entities_geo,יצר,1,1,VERB,False,exact,מייצר
+entities_geo,פלדה,1,1,NOUN,False,exact,
+entities_geo,נמל,1,1,NOUN,True,exact,DET: הנמל
+entities_geo,אילת,1,1,PROPN,False,exact,LOC entity
+entities_geo,שימש,1,1,VERB,False,exact,
+entities_geo,יצוא,1,1,NOUN,False,exact,לייצוא
+entities_geo,מעבדה,1,1,NOUN,True,exact,DET: המעבדה
+entities_geo,ירושלים,1,1,PROPN,False,exact,LOC entity
+entities_geo,בדק,1,1,VERB,False,exact,בדקה = past fem
+entities_geo,את,1,1,ADP,False,exact,
+entities_geo,דגם,1,1,NOUN,True,exact,DET: הדגמים
+entities_person,פרופ׳,1,1,NOUN,False,exact,title abbreviation
+entities_person,כהן,2,1,PROPN,False,exact,PER entity ×2
+entities_person,חקר,1,1,VERB,False,exact,past
+entities_person,את,4,1,ADP,False,exact,את×4
+entities_person,סגסוגת,1,1,NOUN,True,exact,DET: הסגסוגות
+entities_person,ד״ר,1,1,NOUN,False,exact,title abbreviation
+entities_person,לוי,1,1,PROPN,False,exact,PER entity
+entities_person,פרסם,1,1,VERB,False,exact,פרסמה = past fem
+entities_person,תוצאה,1,1,NOUN,True,exact,DET: התוצאות
+entities_person,מהנדס,1,1,NOUN,False,exact,title
+entities_person,ישראלי,1,1,PROPN,False,exact,PER entity
+entities_person,תכנן,1,1,VERB,False,exact,past
+entities_person,מערכת,1,1,NOUN,True,exact,DET: המערכת
+entities_person,עובד,1,1,NOUN,True,exact,DET: העובד
+entities_person,בדק,1,1,VERB,False,exact,past
+entities_person,איכות,1,1,NOUN,True,exact,DET: האיכות

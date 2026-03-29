@@ -1,2 +1,6 @@
 ﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
-he_26_homographs,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder
+he_26,הרכב_של_המכונית,N+PP,"הרכב,של,מכונית",1,1,non_noise,top_10,general,low,low,low,manual_review,manual_review,manual_review,relational,הרכב = 'car' — general meaning
+he_26,הרכב_של_הסגסוגת,N+PP,"הרכב,של,סגסוגת",1,1,non_noise,top_5,domain,high,high,high,manual_review,manual_review,manual_review,relational,הרכב = 'composition' — domain meaning
+he_26,בדיקת_האיכות,N+N,"בדיקה,איכות",1,1,non_noise,top_5,strong,high,high,high,manual_review,manual_review,manual_review,present_only,NOUN form of בדק
+he_26,פני_השטח,N+N,"פני,שטח",1,1,non_noise,top_5,domain,high,high,high,manual_review,manual_review,manual_review,present_only,פני = 'surface' — domain
+he_26,פני_החוקרים,N+N,"פני,חוקר",1,1,non_noise,top_20,general,low,low,low,manual_review,manual_review,manual_review,relational,פני = 'faces' — general

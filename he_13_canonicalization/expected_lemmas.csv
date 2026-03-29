@@ -1,64 +1,58 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-canon_construct,טמפרטורת,2,1,TBD,False,exact,
-canon_construct,התכה,3,1,TBD,False,exact,
-canon_construct,של,2,1,TBD,False,exact,
-canon_construct,פלדה,1,1,TBD,False,exact,
-canon_construct,יא,1,1,TBD,False,exact,
-canon_construct,אלף,1,1,TBD,False,exact,
-canon_construct,חמש,1,1,TBD,False,exact,
-canon_construct,מאות,1,1,TBD,False,exact,
-canon_construct,מעלות.,1,1,TBD,False,exact,
-canon_construct,אלומיניום,1,1,TBD,False,exact,
-canon_construct,נמוכה,1,1,TBD,False,exact,
-canon_construct,יותר.,1,1,TBD,False,exact,
-canon_construct,טמפרטורות,1,1,TBD,False,exact,
-canon_construct,נמדדו,1,1,TBD,False,exact,
-canon_construct,במעבדה.,1,1,TBD,False,exact,
-canon_construct,טמפרטורה,1,1,TBD,False,exact,
-canon_construct,גבוהה,1,1,TBD,False,exact,
-canon_construct,משפיעה,1,1,TBD,False,exact,
-canon_construct,על,1,1,TBD,False,exact,
-canon_construct,חומר.,1,1,TBD,False,exact,
-canon_construct,גבוהות,1,1,TBD,False,exact,
-canon_construct,גרמו,1,1,TBD,False,exact,
-canon_construct,לשינוי,1,1,TBD,False,exact,
-canon_construct,במבנה.,1,1,TBD,False,exact,
-canon_det_variants,סגסוגת,1,1,TBD,False,exact,
-canon_det_variants,חדשה,1,1,TBD,False,exact,
-canon_det_variants,פותחה,1,1,TBD,False,exact,
-canon_det_variants,במעבדה.,1,1,TBD,False,exact,
-canon_det_variants,עברה,1,1,TBD,False,exact,
-canon_det_variants,בדיקות.,1,1,TBD,False,exact,
-canon_det_variants,סגסוגות,1,1,TBD,False,exact,
-canon_det_variants,חדשות,1,1,TBD,False,exact,
-canon_det_variants,נוסו,1,1,TBD,False,exact,
-canon_det_variants,בתנאים,1,1,TBD,False,exact,
-canon_det_variants,שונים.,1,1,TBD,False,exact,
-canon_det_variants,רכב,1,1,TBD,False,exact,
-canon_det_variants,אושר.,1,1,TBD,False,exact,
-canon_det_variants,תוצאות,1,1,TBD,False,exact,
-canon_det_variants,יו,1,1,TBD,False,exact,
-canon_det_variants,מצוינות.,1,1,TBD,False,exact,
-canon_variants,ניקל,3,1,TBD,False,exact,
-canon_variants,וא,1,1,TBD,False,exact,
-canon_variants,יסוד,1,1,TBD,False,exact,
-canon_variants,חשוב.,1,1,TBD,False,exact,
-canon_variants,שימוש,1,1,TBD,False,exact,
-canon_variants,בניקל,1,1,TBD,False,exact,
-canon_variants,נפוץ,1,1,TBD,False,exact,
-canon_variants,בתעשייה.,1,1,TBD,False,exact,
-canon_variants,תכונות,1,1,TBD,False,exact,
-canon_variants,כוללות,1,1,TBD,False,exact,
-canon_variants,עמידות,1,1,TBD,False,exact,
-canon_variants,בחום.,1,1,TBD,False,exact,
-canon_variants,סגסוגת,1,1,TBD,False,exact,
-canon_variants,עם,1,1,TBD,False,exact,
-canon_variants,כרום,1,1,TBD,False,exact,
-canon_variants,יציבה.,1,1,TBD,False,exact,
-canon_variants,משמש,1,1,TBD,False,exact,
-canon_variants,גם,1,1,TBD,False,exact,
-canon_variants,במצברים.,1,1,TBD,False,exact,
-canon_variants,יישומי,1,1,TBD,False,exact,
-canon_variants,חדשים,1,1,TBD,False,exact,
-canon_variants,פותחו,1,1,TBD,False,exact,
-canon_variants,לאחרונה.,1,1,TBD,False,exact,
+canon_variants,ניקל,4,1,NOUN,False,exact,"ניקל×2, בניקל, הניקל — all map to canonical ניקל"
+canon_variants,הוא,1,1,PRON,False,exact,
+canon_variants,יסוד,1,1,NOUN,False,exact,
+canon_variants,חשוב,1,1,ADJ,False,exact,
+canon_variants,שימוש,1,1,NOUN,False,exact,
+canon_variants,נפוץ,1,1,ADJ,False,exact,
+canon_variants,תעשייה,1,1,NOUN,False,exact,
+canon_variants,תכונה,1,1,NOUN,False,exact,תכונות = pl
+canon_variants,כלל,1,1,VERB,False,exact,כוללות = piel fem.pl
+canon_variants,עמידות,1,1,NOUN,False,exact,
+canon_variants,חום,1,1,NOUN,False,exact,בחום
+canon_variants,סגסוגת,1,1,NOUN,False,exact,
+canon_variants,עם,1,1,ADP,False,exact,
+canon_variants,כרום,1,1,NOUN,False,exact,וכרום
+canon_variants,יציב,1,1,ADJ,False,exact,יציבה = fem
+canon_variants,שימש,1,1,VERB,False,exact,משמש
+canon_variants,גם,1,1,ADV,False,exact,
+canon_variants,מצבר,1,1,NOUN,False,exact,במצברים = pl
+canon_variants,יישום,1,1,NOUN,False,exact,יישומי = construct.pl
+canon_variants,חדש,1,1,ADJ,False,exact,חדשים = pl
+canon_variants,פתח,1,1,VERB,False,exact,פותחו = pu'al pl
+canon_variants,לאחרונה,1,1,ADV,False,exact,
+canon_construct,טמפרטורה,5,1,NOUN,False,exact,"טמפרטורת×2, טמפרטורות, טמפרטורה, הטמפרטורות — canonical: טמפרטורה"
+canon_construct,התכה,4,1,NOUN,True,exact,התכה×4 (with DET or construct) — canonical: התכה
+canon_construct,של,2,1,ADP,False,exact,
+canon_construct,פלדה,1,1,NOUN,True,exact,DET: הפלדה
+canon_construct,הוא,1,1,PRON,False,exact,היא
+canon_construct,אלף,1,1,NUM,False,exact,
+canon_construct,חמש,1,1,NUM,False,exact,
+canon_construct,מאה,1,1,NUM,False,exact,מאות
+canon_construct,מעלה,1,1,NOUN,False,exact,מעלות
+canon_construct,אלומיניום,1,1,NOUN,True,exact,DET: האלומיניום
+canon_construct,נמוך,1,1,ADJ,False,exact,נמוכה
+canon_construct,יותר,1,1,ADV,False,exact,
+canon_construct,נמדד,1,1,VERB,False,exact,נמדדו = nif'al pl
+canon_construct,מעבדה,1,1,NOUN,False,exact,במעבדה
+canon_construct,גבוה,2,1,ADJ,True,exact,"גבוהה, DET: הגבוהות"
+canon_construct,השפיע,1,1,VERB,False,exact,משפיעה
+canon_construct,על,1,1,ADP,False,exact,
+canon_construct,חומר,1,1,NOUN,True,exact,DET: החומר
+canon_construct,גרם,1,1,VERB,False,exact,גרמו = past pl
+canon_construct,שינוי,1,1,NOUN,False,exact,לשינוי
+canon_construct,מבנה,1,1,NOUN,False,exact,במבנה
+canon_det_variants,סגסוגת,3,1,NOUN,True,exact,"סגסוגת, DET: הסגסוגת, סגסוגות — canonical: סגסוגת"
+canon_det_variants,חדש,2,1,ADJ,True,exact,"חדשה, DET: החדשה — canonical: חדש"
+canon_det_variants,פתח,1,1,VERB,False,exact,פותחה = pu'al
+canon_det_variants,מעבדה,1,1,NOUN,False,exact,במעבדה
+canon_det_variants,עבר,1,1,VERB,False,exact,עברה
+canon_det_variants,בדיקה,1,1,NOUN,False,exact,בדיקות = pl
+canon_det_variants,נסה,1,1,VERB,False,exact,נוסו = nif'al pl
+canon_det_variants,תנאי,1,1,NOUN,False,exact,בתנאים = pl
+canon_det_variants,שונה,1,1,ADJ,False,exact,שונים = pl
+canon_det_variants,הרכב,1,1,NOUN,True,exact,DET — ה part of word
+canon_det_variants,אושר,1,1,VERB,False,exact,huf'al
+canon_det_variants,תוצאה,1,1,NOUN,False,exact,תוצאות = pl
+canon_det_variants,היה,1,1,VERB,False,exact,היו = past pl
+canon_det_variants,מצוין,1,1,ADJ,False,exact,מצוינות = fem.pl

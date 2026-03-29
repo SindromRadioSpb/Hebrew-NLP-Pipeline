@@ -1,2 +1,2 @@
 ﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
-he_24_stopwords,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder
+he_24,חוזק_מתיחה,,"חוזק,מתיחה",1,1,non_noise,top_5,strong,high,high,high,manual_review,manual_review,manual_review,present_only,in content_heavy — should appear
