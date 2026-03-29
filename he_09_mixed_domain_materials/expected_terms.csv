@@ -1,2 +1,6 @@
 ﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
-he_09_mixed_domain_materials,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder — заполнить вручную
+he_09,חוזק_מתיחה,,"חוזק,מתיחה",0,0,non_noise,absent,absent,absent,absent,absent,absent,absent,absent,absent,not in this corpus
+he_09,טמפרטורת_התכה,,"טמפרטורה,התכה",1,1,non_noise,top_10,medium,high,high,high,manual_review,manual_review,manual_review,present_only,domain_steel
+he_09,תהליך_ייצור,,"תהליך,ייצור",1,1,non_noise,top_10,medium,medium,medium,medium,manual_review,manual_review,manual_review,present_only,domain_steel
+he_09,סגסוגת_פלדה,,"סגסוגת,פלדה",1,1,non_noise,top_10,weak,low,low,low,manual_review,manual_review,manual_review,present_only,domain_steel — different sentences
+he_09,המחקר_בדק,,"מחקר,בדק",1,1,noise,top_20,weak,low,low,low,manual_review,manual_review,manual_review,present_only,domain_general — not a real term

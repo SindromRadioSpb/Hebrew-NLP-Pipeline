@@ -1,50 +1,50 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-filtered_01,חומרים,1,1,TBD,False,exact,
-filtered_01,נבדקו,1,1,TBD,False,exact,
-filtered_01,במעבדה.,1,1,TBD,False,exact,
-filtered_01,תוצאות,1,1,TBD,False,exact,
-filtered_01,ראו,1,1,TBD,False,exact,
-filtered_01,שיפור.,1,1,TBD,False,exact,
-filtered_01,נתונים,1,1,TBD,False,exact,
-filtered_01,נותחו,1,1,TBD,False,exact,
-filtered_01,בהרחבה.,1,1,TBD,False,exact,
-filtered_01,מסקנות,1,1,TBD,False,exact,
-filtered_01,אושרו,1,1,TBD,False,exact,
-filtered_01,על,1,1,TBD,False,exact,
-filtered_01,ידי,1,1,TBD,False,exact,
-filtered_01,מומחים.,1,1,TBD,False,exact,
-filtered_01,דווח,1,1,TBD,False,exact,
-filtered_01,פורסם,1,1,TBD,False,exact,
-filtered_01,בכתב,1,1,TBD,False,exact,
-filtered_01,עת.,1,1,TBD,False,exact,
-strong_terms_01,חוזק,1,1,TBD,False,exact,
-strong_terms_01,מתיחה,1,1,TBD,False,exact,
-strong_terms_01,וא,1,1,TBD,False,exact,
-strong_terms_01,מדד,1,1,TBD,False,exact,
-strong_terms_01,מרכזי,1,1,TBD,False,exact,
-strong_terms_01,בבחירת,1,1,TBD,False,exact,
-strong_terms_01,חומרים.,1,1,TBD,False,exact,
-strong_terms_01,טמפרטורת,1,1,TBD,False,exact,
-strong_terms_01,התכה,1,1,TBD,False,exact,
-strong_terms_01,קובעת,1,1,TBD,False,exact,
-strong_terms_01,את,1,1,TBD,False,exact,
-strong_terms_01,גבולות,1,1,TBD,False,exact,
-strong_terms_01,שימוש.,1,1,TBD,False,exact,
-strong_terms_01,רכב,1,1,TBD,False,exact,
-strong_terms_01,סגסוגת,1,1,TBD,False,exact,
-strong_terms_01,משפיע,1,1,TBD,False,exact,
-strong_terms_01,על,1,1,TBD,False,exact,
-strong_terms_01,כל,1,1,TBD,False,exact,
-strong_terms_01,תכונות,1,1,TBD,False,exact,
-strong_terms_01,מכניות.,1,1,TBD,False,exact,
-strong_terms_01,בדיקת,1,1,TBD,False,exact,
-strong_terms_01,איכות,1,1,TBD,False,exact,
-strong_terms_01,מבטיחה,1,1,TBD,False,exact,
-strong_terms_01,עמידה,1,1,TBD,False,exact,
-strong_terms_01,בתקנים.,1,1,TBD,False,exact,
-strong_terms_01,שחיקה,1,1,TBD,False,exact,
-strong_terms_01,קורוזיה,1,1,TBD,False,exact,
-strong_terms_01,הם,1,1,TBD,False,exact,
-strong_terms_01,גורמי,1,1,TBD,False,exact,
-strong_terms_01,כשל,1,1,TBD,False,exact,
-strong_terms_01,עיקריים.,1,1,TBD,False,exact,
+strong_terms_01,חוזק,1,1,NOUN,False,exact,
+strong_terms_01,מתיחה,1,1,NOUN,False,exact,
+strong_terms_01,הוא,1,1,PRON,False,exact,
+strong_terms_01,מדד,1,1,NOUN,False,exact,
+strong_terms_01,מרכזי,1,1,ADJ,False,exact,
+strong_terms_01,בחר,1,1,VERB,False,exact,בבחירת = infinitive construct
+strong_terms_01,חומר,1,1,NOUN,False,exact,חומרים = pl
+strong_terms_01,טמפרטורה,1,1,NOUN,False,exact,טמפרטורת
+strong_terms_01,התכה,1,1,NOUN,True,exact,DET: ההתכה
+strong_terms_01,קבע,1,1,VERB,False,exact,קובעת = participle fem
+strong_terms_01,את,1,1,ADP,False,exact,
+strong_terms_01,גבול,1,1,NOUN,False,exact,גבולות = pl
+strong_terms_01,שימוש,1,1,NOUN,True,exact,DET: השימוש
+strong_terms_01,הרכב,1,1,NOUN,True,exact,DET — ה חלק מהמילה
+strong_terms_01,סגסוגת,1,1,NOUN,True,exact,DET: הסגסוגת
+strong_terms_01,השפיע,1,1,VERB,False,exact,משפיע = hif'il
+strong_terms_01,על,1,1,ADP,False,exact,
+strong_terms_01,כל,1,1,DET,False,exact,quantifier
+strong_terms_01,תכונה,1,1,NOUN,False,exact,תכונות = pl
+strong_terms_01,מכני,1,1,ADJ,False,exact,מכניות = fem.pl
+strong_terms_01,בדיקה,1,1,NOUN,False,exact,בדיקת
+strong_terms_01,איכות,1,1,NOUN,False,exact,
+strong_terms_01,הבטיח,1,1,VERB,False,exact,מבטיחה = hif'il
+strong_terms_01,עמידה,1,1,NOUN,False,exact,
+strong_terms_01,תקן,1,1,NOUN,False,exact,בתקנים
+strong_terms_01,שחיקה,1,1,NOUN,False,exact,
+strong_terms_01,קורוזיה,1,1,NOUN,False,exact,וקורוזיה
+strong_terms_01,הם,1,1,PRON,False,exact,
+strong_terms_01,גורם,1,1,NOUN,False,exact,גורמי = construct.pl
+strong_terms_01,כשל,1,1,NOUN,False,exact,
+strong_terms_01,עיקרי,1,1,ADJ,False,exact,עיקריים = pl
+filtered_01,חומר,1,1,NOUN,True,exact,DET: החומרים
+filtered_01,נבדק,1,1,VERB,False,exact,נבדקו = nif'al pl
+filtered_01,מעבדה,1,1,NOUN,False,exact,במעבדה
+filtered_01,תוצאה,1,1,NOUN,True,exact,DET: התוצאות
+filtered_01,ראה,1,1,VERB,False,exact,הראו = hif'il
+filtered_01,שיפור,1,1,NOUN,False,exact,
+filtered_01,נתון,1,1,NOUN,True,exact,DET: הנתונים
+filtered_01,נתח,1,1,VERB,False,exact,נותחו = pu'al
+filtered_01,הרחבה,1,1,NOUN,False,exact,בהרחבה
+filtered_01,מסקנה,1,1,NOUN,True,exact,DET: המסקנות
+filtered_01,אושר,1,1,VERB,False,exact,אושרו = huf'al pl
+filtered_01,על,1,1,ADP,False,exact,
+filtered_01,יד,1,1,NOUN,False,exact,ידי
+filtered_01,מומחה,1,1,NOUN,False,exact,מומחים = pl
+filtered_01,דווח,1,1,NOUN,True,exact,DET: הדווח
+filtered_01,פרסם,1,1,VERB,False,exact,פורסם = pu'al
+filtered_01,כתב,1,1,NOUN,False,exact,בכתב
+filtered_01,עת,1,1,NOUN,False,exact,

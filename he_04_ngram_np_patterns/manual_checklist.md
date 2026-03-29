@@ -1,43 +1,45 @@
-# he_04_ngram_np_patterns — Manual Checklist
+# he_04_ngram_np_patterns — Чеклист ручного прогона
 
 ## Цель корпуса
-Проверка извлечения N-грамм и NP-паттернов (NOUN+NOUN, ADJ+NOUN, PROPN+PROPN, NUM+NOUN) и отсечения невалидных конструкций (DET в не-первой позиции, множественные DET).
+
+Проверяет NOUN+NOUN, NOUN+ADJ, ADJ+NOUN паттерны, DET blocking.
 
 ## Рекомендуемый профиль
-balanced
 
-## Что проверять первым
-1. Количество предложений в каждом файле (exact)
-2. Корректность NOUN+NOUN bigrams в np_noun_noun.txt
-3. Корректность ADJ+NOUN / NOUN+ADJ в np_adj_noun.txt
-4. PROPN+PROPN и NUM+NOUN в np_complex.txt
+any
 
-## Exact expectations (сверять точно)
-- sentence count: np_noun_noun=8, np_adj_noun=8, np_complex=10
-- NP candidate count: np_noun_noun=12, np_adj_noun=14, np_complex=18
-- Presence/absence конкретных bigrams (см. expected_terms.csv)
-- "לחץ אוויר", "מערכת אוטומטית", "מכון ויצמן" — должны быть извлечены
-- "הגדול מבין המבנים" — НЕ должен быть NP (DET в середине блокирует)
+## Порядок проверки
 
-## Relational expectations (порядок важнее точного числа)
-- "לחץ воздух" должен быть сильнее "לחץ עבודה" (если оба появляются)
-- Domain-specific NPs должны быть выше generic
-- NOUN+NOUN bigrams должны доминировать в np_noun_noun.txt
+### Шаг 1: Sentence splitting
+- [ ] np_adj_noun.txt: 5 предложений
+- [ ] np_complex.txt: 5 предложений
+- [ ] np_noun_adj_noun.txt: 5 предложений
+- [ ] np_noun_noun.txt: 5 предложений
+- [ ] **Итого: 20 предложений**
 
-## Manual review items
-- PMI, LLR, Dice — только проверка ненулевых значений
-- Weirdness/keyness/termhood — зависит от reference corpus
-- Граничные случаи: "יסוד" vs "יסודית" — морфологический анализ
+### Шаг 2: Tokenization (подсчёт по пробелам)
+- [ ] np_adj_noun.txt: 10 токенов
+- [ ] np_complex.txt: 25 токенов
+- [ ] np_noun_adj_noun.txt: 15 токенов
+- [ ] np_noun_noun.txt: 10 токенов
+- [ ] **Итого: 60 токенов**
 
-## Что считать багом
-- Отсутствие явных NOUN+NOUN bigrams ("לחץ אוויר", "טמפרטורת המים")
-- Появление NP с DET в не-первой позиции как валидного кандидата
-- Отсутствие NUM+NOUN конструкций ("שלושה צינורות")
+### Шаг 3: Lemmas
+Проверить ключевые леммы (см. expected_lemmas.csv):
+- См. файл для полного списка
 
-## Что считать stale gold
-- Если количество NP отличается на 1-2 из-за tokenization differences
-- Если морфологические варианты лемматизируются иначе
+### Шаг 4: Terms
+Проверить ключевые термины (см. expected_terms.csv):
+- См. файл для полного списка
 
-## Что считать допустимой особенностью
-- Разное ранжирование weak NP candidates
-- Граничные случаи с compound numbers ("חמש עשרה")
+## Какие расхождения считать багом
+- Неверное число предложений (при корректных точках)
+- Неверное число токенов (при корректных пробелах)
+
+
+## Какие расхождения — stale gold
+- Конкретная форма леммы глагола (зависит от морфологического анализатора)
+
+## Какие расхождения — допустимые особенности
+- Морфологическая неоднозначность
+- Конкретная форма construct

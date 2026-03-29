@@ -1,2 +1,4 @@
 ﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
-he_02_noise_and_borderline,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder — заполнить вручную
+he_02,GDP,,,0,0,noise,absent,absent,absent,absent,absent,absent,absent,absent,absent,latin — not Hebrew term
+he_02,Fe2O3,,,0,0,noise,absent,absent,absent,absent,absent,absent,absent,absent,absent,chemical formula — not term
+he_02,5kg,,,0,0,noise,absent,absent,absent,absent,absent,absent,absent,absent,absent,quantity — not term

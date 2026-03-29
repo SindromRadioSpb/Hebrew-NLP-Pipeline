@@ -1,2 +1,8 @@
 ﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
-he_06_terms_recall_hapax,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder — заполнить вручную
+he_06,חוזק_מתיחה,,"חוזק,מתיחה",2,2,non_noise,top_5,strong,high,high,high,manual_review,manual_review,manual_review,present_only,rare + mixed
+he_06,סגסוגת_אינקונל,,"סגסוגת,אינקונל",1,1,non_noise,top_10,hapax,high,high,high,manual_review,manual_review,manual_review,present_only,hapax — rare alloy
+he_06,פלדת_אל-חלד,,"פלדה,אל-חלד",1,1,non_noise,top_10,hapax,high,high,high,manual_review,manual_review,manual_review,present_only,hapax — stainless steel
+he_06,טיטניום,,טיטניום,1,1,non_noise,top_15,hapax,medium,medium,medium,manual_review,manual_review,manual_review,present_only,hapax — rare metal
+he_06,מוליבדן,,מוליבדן,1,1,non_noise,top_15,hapax,medium,medium,medium,manual_review,manual_review,manual_review,present_only,hapax — rare metal
+he_06,ונדיום,,ונדיום,1,1,non_noise,top_15,hapax,medium,medium,medium,manual_review,manual_review,manual_review,present_only,hapax — rare metal
+he_06,עמידות_בחום,,"עמידות,חום",1,1,non_noise,top_10,medium,high,high,high,manual_review,manual_review,manual_review,present_only,rare_terms_01

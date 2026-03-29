@@ -1,43 +1,43 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-mixed_freq_01,פלדה,5,1,TBD,False,exact,
-mixed_freq_01,ברזל,1,1,TBD,False,exact,
-mixed_freq_01,הם,1,1,TBD,False,exact,
-mixed_freq_01,חומרים,1,1,TBD,False,exact,
-mixed_freq_01,נפוצים.,1,1,TBD,False,exact,
-mixed_freq_01,משמשת,1,1,TBD,False,exact,
-mixed_freq_01,בבניין.,1,1,TBD,False,exact,
-mixed_freq_01,סגסוגת,1,1,TBD,False,exact,
-mixed_freq_01,חדשה,1,1,TBD,False,exact,
-mixed_freq_01,פותחה.,1,1,TBD,False,exact,
-mixed_freq_01,חוזק,1,1,TBD,False,exact,
-mixed_freq_01,נבדק,1,1,TBD,False,exact,
-mixed_freq_01,במעבדה.,1,1,TBD,False,exact,
-mixed_freq_01,מיוצאת,1,1,TBD,False,exact,
-mixed_freq_01,למדינות,1,1,TBD,False,exact,
-mixed_freq_01,רבות.,1,1,TBD,False,exact,
-mixed_freq_01,נמצא,1,1,TBD,False,exact,
-mixed_freq_01,בטבע,1,1,TBD,False,exact,
-mixed_freq_01,כתחמוצת.,1,1,TBD,False,exact,
-rare_terms_01,סגסוגת,1,1,TBD,False,exact,
-rare_terms_01,אינקונל,1,1,TBD,False,exact,
-rare_terms_01,משמשת,1,1,TBD,False,exact,
-rare_terms_01,בטמפרטורות,1,1,TBD,False,exact,
-rare_terms_01,קיצוניות.,1,1,TBD,False,exact,
-rare_terms_01,פלדת,1,1,TBD,False,exact,
-rare_terms_01,אל-חלד,1,1,TBD,False,exact,
-rare_terms_01,עמידה,1,1,TBD,False,exact,
-rare_terms_01,בפני,1,1,TBD,False,exact,
-rare_terms_01,קורוזיה.,1,1,TBD,False,exact,
-rare_terms_01,טיטניום,1,1,TBD,False,exact,
-rare_terms_01,קל,1,1,TBD,False,exact,
-rare_terms_01,חזק,1,1,TBD,False,exact,
-rare_terms_01,במיוחד.,1,1,TBD,False,exact,
-rare_terms_01,מוליבדן,1,1,TBD,False,exact,
-rare_terms_01,משפר,1,1,TBD,False,exact,
-rare_terms_01,עמידות,1,1,TBD,False,exact,
-rare_terms_01,בחום.,1,1,TBD,False,exact,
-rare_terms_01,נדיום,1,1,TBD,False,exact,
-rare_terms_01,מגדיל,1,1,TBD,False,exact,
-rare_terms_01,את,1,1,TBD,False,exact,
-rare_terms_01,חוזק,1,1,TBD,False,exact,
-rare_terms_01,מתיחה.,1,1,TBD,False,exact,
+rare_terms_01,סגסוגת,1,1,NOUN,False,exact,
+rare_terms_01,אינקונל,1,1,NOUN,False,exact,hapax — rare alloy name
+rare_terms_01,שימש,1,1,VERB,False,exact,משמשת
+rare_terms_01,טמפרטורה,1,1,NOUN,False,exact,בטמפרטורות = pl
+rare_terms_01,קיצוני,1,1,ADJ,False,exact,קיצוניות = fem.pl
+rare_terms_01,פלדה,1,1,NOUN,False,exact,פלדת = construct
+rare_terms_01,אל-חלד,1,1,NOUN,False,exact,hapax — stainless steel
+rare_terms_01,עמיד,1,1,ADJ,False,exact,עמידה
+rare_terms_01,פני,1,1,NOUN,False,exact,בפני
+rare_terms_01,קורוזיה,1,1,NOUN,False,exact,
+rare_terms_01,טיטניום,1,1,NOUN,False,exact,hapax — rare metal
+rare_terms_01,קל,1,1,ADJ,False,exact,
+rare_terms_01,חזק,1,1,ADJ,False,exact,וחזק
+rare_terms_01,מיוחד,1,1,ADJ,False,exact,במיוחד
+rare_terms_01,מוליבדן,1,1,NOUN,False,exact,hapax — rare metal
+rare_terms_01,שיפר,1,1,VERB,False,exact,משפר
+rare_terms_01,עמידות,1,1,NOUN,False,exact,
+rare_terms_01,חום,1,1,NOUN,False,exact,בחום
+rare_terms_01,ונדיום,1,1,NOUN,False,exact,hapax — rare metal
+rare_terms_01,הגדיל,1,1,VERB,False,exact,מגדיל
+rare_terms_01,את,1,1,ADP,False,exact,
+rare_terms_01,חוזק,1,1,NOUN,False,exact,
+rare_terms_01,מתיחה,1,1,NOUN,True,exact,DET: המתיחה
+mixed_freq_01,פלדה,5,1,NOUN,False,exact,פלדה×5 (high freq)
+mixed_freq_01,ברזל,2,1,NOUN,False,exact,"וברזל, ברזל"
+mixed_freq_01,הוא,1,1,PRON,False,exact,הם
+mixed_freq_01,חומר,1,1,NOUN,False,exact,חומרים = pl
+mixed_freq_01,נפוץ,1,1,ADJ,False,exact,נפוצים = pl
+mixed_freq_01,שימש,1,1,VERB,False,exact,משמשת
+mixed_freq_01,בניין,1,1,NOUN,False,exact,בבניין
+mixed_freq_01,סגסוגת,1,1,NOUN,False,exact,
+mixed_freq_01,חדש,1,1,ADJ,False,exact,חדשה = fem
+mixed_freq_01,פתח,1,1,VERB,False,exact,פותחה = pu'al
+mixed_freq_01,חוזק,1,1,NOUN,False,exact,
+mixed_freq_01,נבדק,1,1,VERB,False,exact,nif'al
+mixed_freq_01,מעבדה,1,1,NOUN,False,exact,במעבדה
+mixed_freq_01,ייצא,1,1,VERB,False,exact,מיוצאת = pu'al
+mixed_freq_01,מדינה,1,1,NOUN,False,exact,למדינות = pl
+mixed_freq_01,רב,1,1,ADJ,False,exact,רבות = fem.pl
+mixed_freq_01,מצא,1,1,VERB,False,exact,נמצא = nif'al
+mixed_freq_01,טבע,1,1,NOUN,False,exact,בטבע
+mixed_freq_01,תחמוצת,1,1,NOUN,False,exact,כתחמוצת

@@ -1,65 +1,64 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-domain_general,מחקר,2,1,TBD,False,exact,
-domain_general,בדק,1,1,TBD,False,exact,
-domain_general,את,1,1,TBD,False,exact,
-domain_general,שפעת,1,1,TBD,False,exact,
-domain_general,טמפרטורה,1,1,TBD,False,exact,
-domain_general,על,1,1,TBD,False,exact,
-domain_general,חוזק.,1,1,TBD,False,exact,
-domain_general,נתונים,1,1,TBD,False,exact,
-domain_general,נאספו,1,1,TBD,False,exact,
-domain_general,מניסויים,1,1,TBD,False,exact,
-domain_general,רבים.,1,1,TBD,False,exact,
-domain_general,תוצאות,1,1,TBD,False,exact,
-domain_general,ראו,1,1,TBD,False,exact,
-domain_general,מגמה,1,1,TBD,False,exact,
-domain_general,ברורה.,1,1,TBD,False,exact,
-domain_general,חוקרים,1,1,TBD,False,exact,
-domain_general,פרסמו,1,1,TBD,False,exact,
-domain_general,מסקנות,1,1,TBD,False,exact,
-domain_general,בכתב,1,1,TBD,False,exact,
-domain_general,עת,1,1,TBD,False,exact,
-domain_general,מדעי.,1,1,TBD,False,exact,
-domain_general,זכה,1,1,TBD,False,exact,
-domain_general,להכרה,1,1,TBD,False,exact,
-domain_general,בינלאומית.,1,1,TBD,False,exact,
-domain_noise,טבלה,1,1,TBD,False,exact,
-domain_noise,מציגה,1,1,TBD,False,exact,
-domain_noise,את,1,1,TBD,False,exact,
-domain_noise,נתונים.,1,1,TBD,False,exact,
-domain_noise,עמודה,1,1,TBD,False,exact,
-domain_noise,ראשונה,1,1,TBD,False,exact,
-domain_noise,יא,3,1,TBD,False,exact,
-domain_noise,טמפרטורה.,1,1,TBD,False,exact,
-domain_noise,שנייה,1,1,TBD,False,exact,
-domain_noise,חוזק.,1,1,TBD,False,exact,
-domain_noise,שלישית,1,1,TBD,False,exact,
-domain_noise,התארכות.,1,1,TBD,False,exact,
-domain_noise,נתונים,1,1,TBD,False,exact,
-domain_noise,חושבו,1,1,TBD,False,exact,
-domain_noise,לפי,1,1,TBD,False,exact,
-domain_noise,תקן.,1,1,TBD,False,exact,
-domain_steel,תהליך,1,1,TBD,False,exact,
-domain_steel,ייצור,1,1,TBD,False,exact,
-domain_steel,פלדה,1,1,TBD,False,exact,
-domain_steel,כולל,1,1,TBD,False,exact,
-domain_steel,מספר,1,1,TBD,False,exact,
-domain_steel,שלבים.,1,1,TBD,False,exact,
-domain_steel,עפרת,1,1,TBD,False,exact,
-domain_steel,ברזל,1,1,TBD,False,exact,
-domain_steel,מותכת,1,1,TBD,False,exact,
-domain_steel,בתנור,1,1,TBD,False,exact,
-domain_steel,יתוך.,1,1,TBD,False,exact,
-domain_steel,פחמן,2,1,TBD,False,exact,
-domain_steel,נוסף,1,1,TBD,False,exact,
-domain_steel,לברזל,1,1,TBD,False,exact,
-domain_steel,נוזלי.,1,1,TBD,False,exact,
-domain_steel,תוצאה,1,1,TBD,False,exact,
-domain_steel,יא,1,1,TBD,False,exact,
-domain_steel,סגסוגת,1,1,TBD,False,exact,
-domain_steel,באחוזי,1,1,TBD,False,exact,
-domain_steel,מבוקרים.,1,1,TBD,False,exact,
-domain_steel,משמשת,1,1,TBD,False,exact,
-domain_steel,"בבניין,",1,1,TBD,False,exact,
-domain_steel,בתעופה,1,1,TBD,False,exact,
-domain_steel,בתעשייה.,1,1,TBD,False,exact,
+domain_steel,תהליך,1,1,NOUN,False,exact,
+domain_steel,ייצור,1,1,NOUN,False,exact,
+domain_steel,פלדה,2,1,NOUN,True,exact,"DET: הפלדה, פלדה"
+domain_steel,כלל,1,1,VERB,False,exact,כולל
+domain_steel,מספר,1,1,DET,False,exact,
+domain_steel,שלב,1,1,NOUN,False,exact,שלבים = pl
+domain_steel,עפרה,1,1,NOUN,False,exact,עפרת = construct
+domain_steel,ברזל,1,1,NOUN,True,exact,DET: הברזל
+domain_steel,הותך,1,1,VERB,False,exact,מותכת = huf'al
+domain_steel,תנור,1,1,NOUN,False,exact,בתנור
+domain_steel,היתוך,1,1,NOUN,False,exact,NOT DET
+domain_steel,פחמן,2,1,NOUN,False,exact,פחמן×2
+domain_steel,הוסיף,1,1,VERB,False,exact,נוסף = nif'al
+domain_steel,ברזל,1,1,NOUN,False,exact,לברזל
+domain_steel,נוזלי,1,1,ADJ,True,exact,DET: הנוזלי
+domain_steel,תוצאה,1,1,NOUN,True,exact,DET: התוצאה
+domain_steel,הוא,1,1,PRON,False,exact,היא
+domain_steel,סגסוגת,1,1,NOUN,False,exact,
+domain_steel,אחוז,1,1,NOUN,False,exact,באחוזי = pl.construct
+domain_steel,מבוקר,1,1,ADJ,False,exact,מבוקרים = pl
+domain_steel,שימש,1,1,VERB,False,exact,משמשת
+domain_steel,בניין,1,1,NOUN,False,exact,בבניין
+domain_steel,תעופה,1,1,NOUN,False,exact,בתעופה
+domain_steel,תעשייה,1,1,NOUN,False,exact,ובתעשייה
+domain_general,מחקר,2,1,NOUN,True,exact,DET: המחקר×2
+domain_general,בדק,1,1,VERB,False,exact,past
+domain_general,את,2,1,ADP,False,exact,את×2
+domain_general,השפעה,1,1,NOUN,True,exact,DET: השפעת
+domain_general,טמפרטורה,1,1,NOUN,True,exact,DET: הטמפרטורה
+domain_general,על,1,1,ADP,False,exact,
+domain_general,חוזק,1,1,NOUN,True,exact,DET: החוזק
+domain_general,נתון,1,1,NOUN,True,exact,DET: הנתונים
+domain_general,אסף,1,1,VERB,False,exact,נאספו = nif'al
+domain_general,ניסוי,1,1,NOUN,False,exact,מניסויים = pl
+domain_general,רב,1,1,ADJ,False,exact,רבים = pl
+domain_general,תוצאה,1,1,NOUN,True,exact,DET: התוצאות
+domain_general,ראה,1,1,VERB,False,exact,הראו = hif'il
+domain_general,מגמה,1,1,NOUN,False,exact,
+domain_general,ברור,1,1,ADJ,False,exact,ברורה = fem
+domain_general,חוקר,1,1,NOUN,True,exact,DET: החוקרים
+domain_general,פרסם,1,1,VERB,False,exact,פרסמו = past pl
+domain_general,מסקנה,1,1,NOUN,False,exact,מסקנות = pl
+domain_general,כתב,1,1,NOUN,False,exact,בכתב
+domain_general,עת,1,1,NOUN,False,exact,
+domain_general,מדעי,1,1,ADJ,False,exact,מדעי = adj
+domain_general,זכה,1,1,VERB,False,exact,past
+domain_general,הכרה,1,1,NOUN,False,exact,להכרה
+domain_general,בינלאומי,1,1,ADJ,False,exact,בינלאומית = fem
+domain_noise,טבלה,1,1,NOUN,True,exact,DET: הטבלה
+domain_noise,הציג,1,1,VERB,False,exact,מציגה = hif'il
+domain_noise,את,4,1,ADP,False,exact,את×4
+domain_noise,נתון,2,1,NOUN,True,exact,DET: הנתונים×2
+domain_noise,עמודה,1,1,NOUN,True,exact,DET: העמודה
+domain_noise,ראשון,1,1,ADJ,True,exact,DET: הראשונה
+domain_noise,הוא,3,1,PRON,False,exact,היא×3
+domain_noise,טמפרטורה,1,1,NOUN,True,exact,DET: הטמפרטורה
+domain_noise,שני,1,1,ADJ,True,exact,DET: השנייה
+domain_noise,חוזק,1,1,NOUN,True,exact,DET: החוזק
+domain_noise,שלישי,1,1,ADJ,True,exact,DET: השלישית
+domain_noise,התארכות,1,1,NOUN,True,exact,DET: ההתארכות
+domain_noise,חשב,1,1,VERB,False,exact,חושבו = pu'al
+domain_noise,לפי,1,1,ADP,False,exact,
+domain_noise,תקן,1,1,NOUN,True,exact,DET: התקן

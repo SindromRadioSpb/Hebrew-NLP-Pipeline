@@ -1,2 +1,8 @@
 ﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
-he_04_ngram_np_patterns,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder — заполнить вручную
+he_04,חוזק_מתיחה,,"חוזק,מתיחה",1,1,non_noise,present,medium,high,high,high,manual_review,manual_review,manual_review,present_only,NOUN+NOUN pattern
+he_04,שכבת_הגנה,,"שכבה,הגנה",2,2,non_noise,present,medium,high,high,high,manual_review,manual_review,manual_review,present_only,"NOUN+NOUN, np_noun_noun + np_complex"
+he_04,בדיקת_איכות,,"בדיקה,איכות",2,2,non_noise,present,medium,high,high,high,manual_review,manual_review,manual_review,present_only,NOUN+NOUN
+he_04,טמפרטורת_התכה,,"טמפרטורה,התכה",2,2,non_noise,present,strong,high,high,high,manual_review,manual_review,manual_review,present_only,NOUN+NOUN
+he_04,סגסוגת_פלדה,,"סגסוגת,פלדה",1,1,non_noise,present,weak,low,low,low,manual_review,manual_review,manual_review,present_only,np_noun_noun
+he_04,מתכת_חזקה,,"מתכת,חזק",1,1,non_noise,present,weak,low,medium,low,manual_review,manual_review,manual_review,present_only,"NOUN+ADJ — not a term, just NP"
+he_04,הרכב_הסגסוגת,,"הרכב,סגסוגת",1,1,non_noise,top_10,strong,high,high,high,manual_review,manual_review,manual_review,present_only,DET+NOUN compound

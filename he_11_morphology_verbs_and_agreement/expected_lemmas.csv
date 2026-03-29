@@ -1,47 +1,42 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-agreement_adj,מתכת,1,1,TBD,False,exact,
-agreement_adj,חזקה.,1,1,TBD,False,exact,
-agreement_adj,מתכות,1,1,TBD,False,exact,
-agreement_adj,חזקות.,1,1,TBD,False,exact,
-agreement_adj,חומר,1,1,TBD,False,exact,
-agreement_adj,עמיד.חומרים,1,1,TBD,False,exact,
-agreement_adj,עמידים.,1,1,TBD,False,exact,
-agreement_adj,פלדה,1,1,TBD,False,exact,
-agreement_adj,מוקשחת.,1,1,TBD,False,exact,
-agreement_adj,סגסוגות,1,1,TBD,False,exact,
-agreement_adj,מוקשחות.,1,1,TBD,False,exact,
-agreement_adj,טמפרטורה,1,1,TBD,False,exact,
-agreement_adj,גבוהה.,1,1,TBD,False,exact,
-agreement_adj,טמפרטורות,1,1,TBD,False,exact,
-agreement_adj,גבוהות.,1,1,TBD,False,exact,
-verbs_past,עובד,1,1,TBD,False,exact,
-verbs_past,בדק,1,1,TBD,False,exact,
-verbs_past,את,5,1,TBD,False,exact,
-verbs_past,דגמה.,1,1,TBD,False,exact,
-verbs_past,עובדים,1,1,TBD,False,exact,
-verbs_past,בדקו,1,1,TBD,False,exact,
-verbs_past,דגמים.,1,1,TBD,False,exact,
-verbs_past,מעצבת,1,1,TBD,False,exact,
-verbs_past,תכננה,1,1,TBD,False,exact,
-verbs_past,חלק.,1,1,TBD,False,exact,
-verbs_past,מתכננים,1,1,TBD,False,exact,
-verbs_past,תכננו,1,1,TBD,False,exact,
-verbs_past,מערכת.,1,1,TBD,False,exact,
-verbs_past,בודקת,1,1,TBD,False,exact,
-verbs_past,מדדה,1,1,TBD,False,exact,
-verbs_past,אורך.,1,1,TBD,False,exact,
-verbs_present,עובד,1,1,TBD,False,exact,
-verbs_present,בודק,1,1,TBD,False,exact,
-verbs_present,את,5,1,TBD,False,exact,
-verbs_present,דגם.,1,1,TBD,False,exact,
-verbs_present,עובדים,1,1,TBD,False,exact,
-verbs_present,בודקים,1,1,TBD,False,exact,
-verbs_present,דגמים.,1,1,TBD,False,exact,
-verbs_present,מעצבת,1,1,TBD,False,exact,
-verbs_present,מתכננת,1,1,TBD,False,exact,
-verbs_present,חלק.,1,1,TBD,False,exact,
-verbs_present,מתכננים,1,1,TBD,False,exact,
-verbs_present,מערכת.,1,1,TBD,False,exact,
-verbs_present,בודקת,1,1,TBD,False,exact,
-verbs_present,מודדת,1,1,TBD,False,exact,
-verbs_present,אורך.,1,1,TBD,False,exact,
+verbs_past,עובד,2,1,NOUN,True,exact,"DET: העובד, DET: העובדים"
+verbs_past,בדק,1,1,VERB,False,exact,past 3sg.m
+verbs_past,את,5,1,ADP,False,exact,את×5
+verbs_past,דגימה,1,1,NOUN,True,exact,DET: הדגמה
+verbs_past,בדק,1,1,VERB,False,exact,בדקו = past 3pl
+verbs_past,דגם,1,1,NOUN,True,exact,DET: הדגמים
+verbs_past,מעצב,1,1,NOUN,True,exact,DET: המעצבת = fem
+verbs_past,תכנן,2,1,VERB,False,exact,"תכננה(fem), תכננו(pl)"
+verbs_past,חלק,1,1,NOUN,True,exact,DET: החלק
+verbs_past,מתכנן,1,1,NOUN,True,exact,DET: המתכננים = pl
+verbs_past,מערכת,1,1,NOUN,True,exact,DET: המערכת
+verbs_past,בודק,1,1,NOUN,True,exact,DET: הבודקת = fem
+verbs_past,מדד,1,1,VERB,False,exact,מדדה = pi'el past fem
+verbs_past,אורך,1,1,NOUN,True,exact,DET: האורך
+verbs_present,עובד,2,1,NOUN,True,exact,"DET: העובד, DET: העובדים"
+verbs_present,בדק,1,1,VERB,False,exact,בודק = participle
+verbs_present,את,5,1,ADP,False,exact,את×5
+verbs_present,דגם,1,1,NOUN,True,exact,DET: הדגם
+verbs_present,בדק,1,1,VERB,False,exact,בודקים = participle pl
+verbs_present,דגם,1,1,NOUN,True,exact,DET: הדגמים
+verbs_present,מעצב,1,1,NOUN,True,exact,DET: המעצבת
+verbs_present,תכנן,1,1,VERB,False,exact,מתכננת = participle fem
+verbs_present,חלק,1,1,NOUN,True,exact,DET: החלק
+verbs_present,מתכנן,1,1,NOUN,True,exact,DET: המתכננים
+verbs_present,תכנן,1,1,VERB,False,exact,מתכננים = participle pl
+verbs_present,מערכת,1,1,NOUN,True,exact,DET: המערכת
+verbs_present,בודק,1,1,NOUN,True,exact,DET: הבודקת
+verbs_present,מדד,1,1,VERB,False,exact,מודדת = participle fem
+verbs_present,אורך,1,1,NOUN,True,exact,DET: האורך
+agreement_adj,מתכת,1,1,NOUN,False,exact,fem.sg
+agreement_adj,חזק,2,1,ADJ,False,exact,"חזקה(fem.sg), חזקות(fem.pl)"
+agreement_adj,מתכות,1,1,NOUN,False,exact,fem.pl
+agreement_adj,חומר,1,1,NOUN,False,exact,masc.sg
+agreement_adj,עמיד,2,1,ADJ,False,exact,"עמיד(masc.sg), עמידים(masc.pl)"
+agreement_adj,חומרים,1,1,NOUN,False,exact,masc.pl
+agreement_adj,פלדה,1,1,NOUN,False,exact,fem.sg
+agreement_adj,הקשיח,1,1,VERB,False,exact,מוקשחת = huf'al fem.sg
+agreement_adj,סגסוגת,1,1,NOUN,False,exact,fem.pl: סגסוגות
+agreement_adj,הקשיח,1,1,VERB,False,exact,מוקשחות = huf'al fem.pl
+agreement_adj,טמפרטורה,2,1,NOUN,False,exact,fem.sg + fem.pl
+agreement_adj,גבוה,2,1,ADJ,False,exact,"גבוהה(fem.sg), גבוהות(fem.pl)"

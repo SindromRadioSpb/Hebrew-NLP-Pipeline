@@ -1,39 +1,43 @@
-# he_11_morphology_verbs_and_agreement — Manual Checklist
+# he_11_morphology_verbs_and_agreement — Чеклист ручного прогона
 
-## Цель
-Проверка лемматизации глаголов и согласования род/число.
+## Цель корпуса
 
-## Профиль
-balanced
+Проверяет глагольные формы, согласование рода/числа.
 
-## Что проверять
-1. Past verbs: כתב, עבד, בנה, פתר — correct lemma
-2. Present participles: כותב/כותבת — same lemma?
-3. Agreement: מערכת גדולה/מערכות גדולות — correct
-4. Ambiguity: מנהל (noun/verb)
+## Рекомендуемый профиль
 
-## Exact expectations
-- Все past verbs present в verbs_past.txt
-- Agreement pairs present в agreement_adj.txt
-- Sentence count per file: 10
+any
 
-## Relational
-- Lemma identity across forms
-- Agreement correctness
+## Порядок проверки
 
-## Manual review
-- מנהל — noun vs verb ambiguity
-- יסודי/יסודית — lemma identity
-- כותב/כותבת — gendered participle lemma
-- דו"ח — quote mark handling
+### Шаг 1: Sentence splitting
+- [ ] agreement_adj.txt: 8 предложений
+- [ ] verbs_past.txt: 5 предложений
+- [ ] verbs_present.txt: 5 предложений
+- [ ] **Итого: 18 предложений**
 
-## Баг
-- Past verb missing
-- Agreement pair missing
+### Шаг 2: Tokenization (подсчёт по пробелам)
+- [ ] agreement_adj.txt: 15 токенов
+- [ ] verbs_past.txt: 20 токенов
+- [ ] verbs_present.txt: 20 токенов
+- [ ] **Итого: 55 токенов**
 
-## Stale gold
-- Lemma choice for ambiguous forms
+### Шаг 3: Lemmas
+Проверить ключевые леммы (см. expected_lemmas.csv):
+- См. файл для полного списка
 
-## Особенности
-- Morphological ambiguity documented in notes
-- Exact values cautious for ambiguous forms
+### Шаг 4: Terms
+Проверить ключевые термины (см. expected_terms.csv):
+- См. файл для полного списка
+
+## Какие расхождения считать багом
+- Неверное число предложений (при корректных точках)
+- Неверное число токенов (при корректных пробелах)
+
+
+## Какие расхождения — stale gold
+- Конкретная форма леммы глагола (зависит от морфологического анализатора)
+
+## Какие расхождения — допустимые особенности
+- Морфологическая неоднозначность
+- Конкретная форма construct

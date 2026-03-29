@@ -1,2 +1,8 @@
 ﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
-he_12_reference_sensitive_terms,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder — заполнить вручную
+he_12,חוזק_מתיחה,,"חוזק,מתיחה",1,1,non_noise,top_10,strong,high,high,high,high,high,high,relational,domain term — should have high weirdness/keyness
+he_12,טיפול_בחום,,"טיפול,חום",2,2,non_noise,top_10,medium,high,high,high,manual_review,manual_review,manual_review,relational,borderline — domain vs medical
+he_12,הרכב_כימי,,"הרכב,כימי",1,1,non_noise,top_10,strong,high,high,high,manual_review,manual_review,manual_review,relational,borderline — compound vs car
+he_12,בדיקה_הנדסית,,"בדיקה,הנדסי",1,1,non_noise,top_10,strong,high,high,high,manual_review,manual_review,manual_review,relational,domain-specific
+he_12,בדיקה_רפואית,,"בדיקה,רפואי",1,1,non_noise,top_20,weak,low,low,low,manual_review,manual_review,manual_review,relational,general — should be weaker than domain
+he_12,בדיקה_אולטראסונית,,"בדיקה,אולטראסוני",1,1,non_noise,top_10,strong,high,high,high,manual_review,manual_review,manual_review,relational,domain term
+he_12,חוזק_המושג,,"חוזק,מושג",0,0,non_noise,absent,absent,absent,absent,absent,absent,absent,absent,absent,not a valid compound

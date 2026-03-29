@@ -1,45 +1,45 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-tm_dedup_01,בדיקת,3,1,TBD,False,exact,
-tm_dedup_01,איכות,3,1,TBD,False,exact,
-tm_dedup_01,בוצעה,1,1,TBD,False,exact,
-tm_dedup_01,על,1,1,TBD,False,exact,
-tm_dedup_01,כל,1,1,TBD,False,exact,
-tm_dedup_01,דגמים.,1,1,TBD,False,exact,
-tm_dedup_01,כללה,1,1,TBD,False,exact,
-tm_dedup_01,בדיקה,1,1,TBD,False,exact,
-tm_dedup_01,יזואלית,1,1,TBD,False,exact,
-tm_dedup_01,מדידה.,1,1,TBD,False,exact,
-tm_dedup_01,תוצאות,1,1,TBD,False,exact,
-tm_dedup_01,תועדו,1,1,TBD,False,exact,
-tm_dedup_01,בפרוטוקול.,1,1,TBD,False,exact,
-tm_dedup_01,שחיקה,2,1,TBD,False,exact,
-tm_dedup_01,נמדדה,1,1,TBD,False,exact,
-tm_dedup_01,לאחר,1,1,TBD,False,exact,
-tm_dedup_01,אלף,1,1,TBD,False,exact,
-tm_dedup_01,מחזורים.,1,1,TBD,False,exact,
-tm_dedup_01,ייתה,1,1,TBD,False,exact,
-tm_dedup_01,מינימלית,1,1,TBD,False,exact,
-tm_dedup_01,בשכבת,1,1,TBD,False,exact,
-tm_dedup_01,הגנה.,1,1,TBD,False,exact,
-tm_stable_01,חוזק,3,1,TBD,False,exact,
-tm_stable_01,מתיחה,3,1,TBD,False,exact,
-tm_stable_01,נבדק,1,1,TBD,False,exact,
-tm_stable_01,בשלושה,1,1,TBD,False,exact,
-tm_stable_01,דגמים.,1,1,TBD,False,exact,
-tm_stable_01,ממוצע,1,1,TBD,False,exact,
-tm_stable_01,יה,1,1,TBD,False,exact,
-tm_stable_01,מגהפסקל.,1,1,TBD,False,exact,
-tm_stable_01,עולה,1,1,TBD,False,exact,
-tm_stable_01,לאחר,1,1,TBD,False,exact,
-tm_stable_01,טיפול,1,1,TBD,False,exact,
-tm_stable_01,בחום.,1,1,TBD,False,exact,
-tm_stable_01,טמפרטורת,1,1,TBD,False,exact,
-tm_stable_01,התכה,1,1,TBD,False,exact,
-tm_stable_01,של,1,1,TBD,False,exact,
-tm_stable_01,סגסוגת,1,1,TBD,False,exact,
-tm_stable_01,יא,1,1,TBD,False,exact,
-tm_stable_01,מעלות.,1,1,TBD,False,exact,
-tm_stable_01,רכב,1,1,TBD,False,exact,
-tm_stable_01,סגסוגת:,1,1,TBD,False,exact,
-tm_stable_01,"כרום,",1,1,TBD,False,exact,
-tm_stable_01,ניקל.,1,1,TBD,False,exact,
+tm_stable_01,חוזק,3,1,NOUN,False,exact,חוזק×3
+tm_stable_01,מתיחה,3,1,NOUN,False,exact,מתיחה×3
+tm_stable_01,נבדק,1,1,VERB,False,exact,nif'al
+tm_stable_01,שלושה,1,1,NUM,False,exact,בשלושה
+tm_stable_01,דגם,1,1,NOUN,False,exact,דגמים = pl
+tm_stable_01,ממוצע,1,1,ADJ,False,exact,
+tm_stable_01,היה,1,1,VERB,False,exact,past
+tm_stable_01,520,1,1,NUM,False,exact,number
+tm_stable_01,מגהפסקל,1,1,NOUN,False,exact,unit
+tm_stable_01,עלה,1,1,VERB,False,exact,עולה = participle
+tm_stable_01,לאחר,1,1,ADP,False,exact,
+tm_stable_01,טיפול,1,1,NOUN,False,exact,
+tm_stable_01,חום,1,1,NOUN,False,exact,בחום
+tm_stable_01,טמפרטורה,1,1,NOUN,False,exact,טמפרטורת
+tm_stable_01,התכה,1,1,NOUN,True,exact,DET: ההתכה
+tm_stable_01,של,1,1,ADP,False,exact,
+tm_stable_01,סגסוגת,1,1,NOUN,True,exact,DET: הסגסוגת
+tm_stable_01,הוא,1,1,PRON,False,exact,היא
+tm_stable_01,1450,1,1,NUM,False,exact,number
+tm_stable_01,מעלה,1,1,NOUN,False,exact,מעלות = pl
+tm_stable_01,הרכב,1,1,NOUN,True,exact,DET — ה part of word
+tm_stable_01,כרום,1,1,NOUN,False,exact,
+tm_stable_01,ניקל,1,1,NOUN,False,exact,
+tm_dedup_01,בדיקה,3,1,NOUN,False,exact,בדיקת×3
+tm_dedup_01,איכות,3,1,NOUN,False,exact,איכות×3
+tm_dedup_01,בצע,1,1,VERB,False,exact,בוצעה = pu'al
+tm_dedup_01,על,1,1,ADP,False,exact,
+tm_dedup_01,כל,1,1,DET,False,exact,
+tm_dedup_01,דגם,1,1,NOUN,True,exact,DET: הדגמים
+tm_dedup_01,כלל,1,1,VERB,False,exact,כללה = piel past
+tm_dedup_01,ויזואלי,1,1,ADJ,False,exact,ויזואלית = fem
+tm_dedup_01,מדידה,1,1,NOUN,False,exact,ומדידה
+tm_dedup_01,תוצאה,1,1,NOUN,False,exact,תוצאות
+tm_dedup_01,תעד,1,1,VERB,False,exact,תועדו = pu'al
+tm_dedup_01,פרוטוקול,1,1,NOUN,False,exact,בפרוטוקול
+tm_dedup_01,שחיקה,2,1,NOUN,False,exact,שחיקה×2
+tm_dedup_01,מדד,1,1,VERB,False,exact,נמדדה = pu'al
+tm_dedup_01,לאחר,1,1,ADP,False,exact,
+tm_dedup_01,אלף,1,1,NUM,False,exact,
+tm_dedup_01,מחזור,1,1,NOUN,False,exact,מחזורים = pl
+tm_dedup_01,היה,1,1,VERB,False,exact,הייתה = past fem
+tm_dedup_01,מינימלי,1,1,ADJ,False,exact,מינימלית = fem
+tm_dedup_01,שכבה,1,1,NOUN,False,exact,בשכבת
+tm_dedup_01,הגנה,1,1,NOUN,True,exact,DET: ההגנה

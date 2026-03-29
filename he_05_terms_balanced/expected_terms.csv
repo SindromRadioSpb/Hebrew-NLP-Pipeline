@@ -1,2 +1,9 @@
 ﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
-he_05_terms_balanced,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder — заполнить вручную
+he_05,חוזק_מתיחה,,"חוזק,מתיחה",3,3,non_noise,top_3,strong,high,high,high,manual_review,manual_review,manual_review,present_only,all 3 docs
+he_05,טמפרטורת_התכה,,"טמפרטורה,התכה",3,3,non_noise,top_3,strong,high,high,high,manual_review,manual_review,manual_review,present_only,all 3 docs
+he_05,שכבת_הגנה,,"שכבה,הגנה",1,1,non_noise,top_20,medium,medium,medium,medium,manual_review,manual_review,manual_review,present_only,mechanics_01
+he_05,שחיקה_וקורוזיה,,"שחיקה,קורוזיה",1,1,non_noise,top_20,medium,medium,medium,medium,manual_review,manual_review,manual_review,present_only,mechanics_01
+he_05,בקרת_איכות,,"בקרה,איכות",1,1,non_noise,top_20,medium,medium,medium,medium,manual_review,manual_review,manual_review,present_only,engineering_01
+he_05,טיפול_בחום,,"טיפול,חום",1,1,non_noise,top_20,medium,high,high,high,manual_review,manual_review,manual_review,present_only,engineering_01
+he_05,סגסוגת_פלדה,,"סגסוגת,פלדה",1,1,non_noise,top_20,weak,low,low,low,manual_review,manual_review,manual_review,present_only,materials_01
+he_05,אלקטרודת_ריתוך,,"אלקטרודה,ריתוך",0,0,non_noise,absent,absent,absent,absent,absent,absent,absent,absent,absent,absent — not in corpus

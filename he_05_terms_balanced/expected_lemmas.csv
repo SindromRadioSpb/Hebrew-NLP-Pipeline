@@ -1,78 +1,78 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-engineering_01,טמפרטורה,1,1,TBD,False,exact,
-engineering_01,גבוהה,1,1,TBD,False,exact,
-engineering_01,משפיעה,1,1,TBD,False,exact,
-engineering_01,על,1,1,TBD,False,exact,
-engineering_01,תכונות,1,1,TBD,False,exact,
-engineering_01,חומר.,2,1,TBD,False,exact,
-engineering_01,רכב,1,1,TBD,False,exact,
-engineering_01,סגסוגת,1,1,TBD,False,exact,
-engineering_01,קובע,1,1,TBD,False,exact,
-engineering_01,את,3,1,TBD,False,exact,
-engineering_01,טמפרטורת,1,1,TBD,False,exact,
-engineering_01,התכה.,1,1,TBD,False,exact,
-engineering_01,קירור,1,1,TBD,False,exact,
-engineering_01,מהיר,1,1,TBD,False,exact,
-engineering_01,מגדיל,1,1,TBD,False,exact,
-engineering_01,חוזק,1,1,TBD,False,exact,
-engineering_01,מתיחה.,1,1,TBD,False,exact,
-engineering_01,טיפול,1,1,TBD,False,exact,
-engineering_01,בחום,1,1,TBD,False,exact,
-engineering_01,משפר,1,1,TBD,False,exact,
-engineering_01,עמידות,1,1,TBD,False,exact,
-engineering_01,תהליך,1,1,TBD,False,exact,
-engineering_01,ייצור,1,1,TBD,False,exact,
-engineering_01,כולל,1,1,TBD,False,exact,
-engineering_01,בקרת,1,1,TBD,False,exact,
-engineering_01,איכות,1,1,TBD,False,exact,
-engineering_01,קפדנית.,1,1,TBD,False,exact,
-materials_01,פלדה,5,1,TBD,False,exact,
-materials_01,יא,2,1,TBD,False,exact,
-materials_01,סגסוגת,2,1,TBD,False,exact,
-materials_01,ברזל,1,1,TBD,False,exact,
-materials_01,פחמן.,2,1,TBD,False,exact,
-materials_01,חוזק,1,1,TBD,False,exact,
-materials_01,מתיחה,1,1,TBD,False,exact,
-materials_01,של,2,1,TBD,False,exact,
-materials_01,תלוי,1,1,TBD,False,exact,
-materials_01,באחוז,1,1,TBD,False,exact,
-materials_01,טמפרטורת,1,1,TBD,False,exact,
-materials_01,התכה,1,1,TBD,False,exact,
-materials_01,אלף,1,1,TBD,False,exact,
-materials_01,חמש,1,1,TBD,False,exact,
-materials_01,מאות,1,1,TBD,False,exact,
-materials_01,מעלות.,1,1,TBD,False,exact,
-materials_01,משמשת,1,1,TBD,False,exact,
-materials_01,בבניין,1,1,TBD,False,exact,
-materials_01,בתעשייה.,1,1,TBD,False,exact,
-materials_01,איכותית,1,1,TBD,False,exact,
-materials_01,נדרשת,1,1,TBD,False,exact,
-materials_01,לעמוד,1,1,TBD,False,exact,
-materials_01,בתקנים,1,1,TBD,False,exact,
-materials_01,מחמירים.,1,1,TBD,False,exact,
-mechanics_01,בדיקת,1,1,TBD,False,exact,
-mechanics_01,אולטרסאונד,1,1,TBD,False,exact,
-mechanics_01,מזהה,1,1,TBD,False,exact,
-mechanics_01,פגמים,1,1,TBD,False,exact,
-mechanics_01,בתפר,1,1,TBD,False,exact,
-mechanics_01,ריתוך.,1,1,TBD,False,exact,
-mechanics_01,חוזק,1,1,TBD,False,exact,
-mechanics_01,מתיחה,1,1,TBD,False,exact,
-mechanics_01,נמדד,1,1,TBD,False,exact,
-mechanics_01,במכונת,1,1,TBD,False,exact,
-mechanics_01,אוניברסלית.,1,1,TBD,False,exact,
-mechanics_01,שחיקה,3,1,TBD,False,exact,
-mechanics_01,מתרחשת,1,1,TBD,False,exact,
-mechanics_01,במגעים,1,1,TBD,False,exact,
-mechanics_01,בין,1,1,TBD,False,exact,
-mechanics_01,משטחים.,1,1,TBD,False,exact,
-mechanics_01,שכבת,1,1,TBD,False,exact,
-mechanics_01,גנה,1,1,TBD,False,exact,
-mechanics_01,מפחיתה,1,1,TBD,False,exact,
-mechanics_01,קורוזיה.,1,1,TBD,False,exact,
-mechanics_01,עמידות,1,1,TBD,False,exact,
-mechanics_01,חומר,1,1,TBD,False,exact,
-mechanics_01,בפני,1,1,TBD,False,exact,
-mechanics_01,יא,1,1,TBD,False,exact,
-mechanics_01,תכונה,1,1,TBD,False,exact,
-mechanics_01,חשובה.,1,1,TBD,False,exact,
+materials_01,פלדה,4,1,NOUN,False,exact,פלדה×4
+materials_01,הוא,1,1,PRON,False,exact,היא
+materials_01,סגסוגת,1,1,NOUN,False,exact,
+materials_01,ברזל,1,1,NOUN,False,exact,
+materials_01,פחמן,2,1,NOUN,True,exact,"ופחמן, DET: הפחמן"
+materials_01,חוזק,1,1,NOUN,False,exact,
+materials_01,מתיחה,1,1,NOUN,False,exact,
+materials_01,של,2,1,ADP,False,exact,של×2
+materials_01,תלוי,1,1,VERB,False,exact,participle
+materials_01,אחוז,1,1,NOUN,False,exact,באחוז
+materials_01,טמפרטורה,1,1,NOUN,False,exact,טמפרטורת
+materials_01,התכה,1,1,NOUN,True,exact,DET: ההתכה
+materials_01,אלף,1,1,NUM,False,exact,
+materials_01,חמש,1,1,NUM,False,exact,
+materials_01,מאה,1,1,NUM,False,exact,מאות
+materials_01,מעלה,1,1,NOUN,False,exact,מעלות
+materials_01,שימש,1,1,VERB,False,exact,משמשת
+materials_01,בניין,1,1,NOUN,False,exact,בבניין
+materials_01,תעשייה,1,1,NOUN,False,exact,ובתעשייה
+materials_01,איכותי,1,1,ADJ,False,exact,איכותית = fem
+materials_01,נדרש,1,1,VERB,False,exact,נדרשת = nif'al fem
+materials_01,עמד,1,1,VERB,False,exact,לעמוד = inf
+materials_01,תקן,1,1,NOUN,False,exact,בתקנים = pl
+materials_01,מחמיר,1,1,ADJ,False,exact,מחמירים = pl
+mechanics_01,בדיקה,2,1,NOUN,False,exact,בדיקת×2
+mechanics_01,אולטרסאונד,1,1,NOUN,False,exact,
+mechanics_01,מצא,1,1,VERB,False,exact,מזהה = hif'il
+mechanics_01,פגם,1,1,NOUN,False,exact,פגמים = pl
+mechanics_01,תפר,1,1,NOUN,True,exact,DET: התפר
+mechanics_01,ריתוך,1,1,NOUN,True,exact,DET: הריתוך
+mechanics_01,חוזק,2,1,NOUN,True,exact,"חוזק, DET: המתיחה"
+mechanics_01,מתיחה,2,1,NOUN,True,exact,"DET: המתיחה, מתיחה"
+mechanics_01,מדד,1,1,VERB,False,exact,נמדדת = pu'al
+mechanics_01,מכונה,1,1,NOUN,False,exact,במכונת = construct
+mechanics_01,אוניברסלי,1,1,ADJ,False,exact,אוניברסלית = fem
+mechanics_01,שחיקה,3,1,NOUN,False,exact,שחיקה×3
+mechanics_01,התרחש,1,1,VERB,False,exact,מתרחשת = hitpa'el
+mechanics_01,מגע,1,1,NOUN,False,exact,במגעים = pl
+mechanics_01,בין,1,1,ADP,False,exact,
+mechanics_01,משטח,1,1,NOUN,False,exact,משטחים = pl
+mechanics_01,שכבה,1,1,NOUN,False,exact,שכבת
+mechanics_01,הגנה,1,1,NOUN,False,exact,
+mechanics_01,הפחית,1,1,VERB,False,exact,מפחיתה = hif'il
+mechanics_01,קורוזיה,1,1,NOUN,False,exact,וקורוזיה
+mechanics_01,עמידות,1,1,NOUN,False,exact,
+mechanics_01,חומר,1,1,NOUN,True,exact,DET: החומר
+mechanics_01,פני,1,1,NOUN,False,exact,בפני
+mechanics_01,הוא,1,1,PRON,False,exact,היא
+mechanics_01,תכונה,1,1,NOUN,False,exact,
+mechanics_01,חשוב,1,1,ADJ,False,exact,חשובה = fem
+engineering_01,טמפרטורה,2,1,NOUN,True,exact,"טמפרטורה, DET: הטמפרטורה"
+engineering_01,גבוה,1,1,ADJ,False,exact,גבוהה
+engineering_01,השפיע,1,1,VERB,False,exact,משפיעה = hif'il
+engineering_01,על,2,1,ADP,False,exact,על×2
+engineering_01,תכונה,1,1,NOUN,False,exact,תכונות = pl
+engineering_01,חומר,2,1,NOUN,True,exact,"DET: החומר, החומר"
+engineering_01,הרכב,1,1,NOUN,True,exact,DET — ה חלק מהמילה
+engineering_01,סגסוגת,1,1,NOUN,True,exact,DET: הסגסוגת
+engineering_01,קבע,1,1,VERB,False,exact,קובע = participle
+engineering_01,את,2,1,ADP,False,exact,את×2
+engineering_01,טמפרטורת,1,1,NOUN,False,exact,construct of טמפרטורה
+engineering_01,התכה,1,1,NOUN,True,exact,DET: ההתכה
+engineering_01,קירור,1,1,NOUN,False,exact,
+engineering_01,מהיר,1,1,ADJ,False,exact,
+engineering_01,הגדיל,1,1,VERB,False,exact,מגדיל = hif'il
+engineering_01,חוזק,1,1,NOUN,False,exact,
+engineering_01,מתיחה,1,1,NOUN,True,exact,DET: המתיחה
+engineering_01,טיפול,1,1,NOUN,False,exact,
+engineering_01,חום,1,1,NOUN,False,exact,בחום
+engineering_01,שיפר,1,1,VERB,False,exact,משפר = piel
+engineering_01,עמידות,1,1,NOUN,False,exact,
+engineering_01,תהליך,1,1,NOUN,False,exact,
+engineering_01,ייצור,1,1,NOUN,True,exact,DET: הייצור
+engineering_01,כלל,1,1,VERB,False,exact,כולל
+engineering_01,בקרה,1,1,NOUN,False,exact,בקרת = construct
+engineering_01,איכות,1,1,NOUN,False,exact,
+engineering_01,קפדני,1,1,ADJ,False,exact,קפדנית = fem

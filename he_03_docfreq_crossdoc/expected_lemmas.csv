@@ -1,71 +1,70 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-doc_01,פלדה,3,1,TBD,False,exact,
-doc_01,יא,2,1,TBD,False,exact,
-doc_01,סגסוגת,1,1,TBD,False,exact,
-doc_01,של,2,1,TBD,False,exact,
-doc_01,ברזל,1,1,TBD,False,exact,
-doc_01,פחמן.,1,1,TBD,False,exact,
-doc_01,חוזק,1,1,TBD,False,exact,
-doc_01,מתיחה,1,1,TBD,False,exact,
-doc_01,גבוה.,1,1,TBD,False,exact,
-doc_01,טמפרטורת,1,1,TBD,False,exact,
-doc_01,התכה,1,1,TBD,False,exact,
-doc_01,אלף,1,1,TBD,False,exact,
-doc_01,חמש,1,1,TBD,False,exact,
-doc_01,מאות,1,1,TBD,False,exact,
-doc_01,מעלות.,1,1,TBD,False,exact,
-doc_01,משמשת,1,1,TBD,False,exact,
-doc_01,בבנייה,1,1,TBD,False,exact,
-doc_01,בתעשייה.,1,1,TBD,False,exact,
-doc_02,אלומיניום,3,1,TBD,False,exact,
-doc_02,יא,1,1,TBD,False,exact,
-doc_02,מתכת,1,1,TBD,False,exact,
-doc_02,קלה,1,1,TBD,False,exact,
-doc_02,עמידה,1,1,TBD,False,exact,
-doc_02,בפני,1,1,TBD,False,exact,
-doc_02,קורוזיה.,1,1,TBD,False,exact,
-doc_02,סגסוגת,1,1,TBD,False,exact,
-doc_02,מכילה,1,1,TBD,False,exact,
-doc_02,מגנזיום.,1,1,TBD,False,exact,
-doc_02,טמפרטורת,1,1,TBD,False,exact,
-doc_02,התכה,1,1,TBD,False,exact,
-doc_02,נמוכה,1,1,TBD,False,exact,
-doc_02,מזו,1,1,TBD,False,exact,
-doc_02,של,1,1,TBD,False,exact,
-doc_02,פלדה.,1,1,TBD,False,exact,
-doc_02,משמש,1,1,TBD,False,exact,
-doc_02,בתעופה.,1,1,TBD,False,exact,
-doc_03,ניקל,3,1,TBD,False,exact,
-doc_03,משמש,1,1,TBD,False,exact,
-doc_03,בסגסוגות,1,1,TBD,False,exact,
-doc_03,עמידות,1,1,TBD,False,exact,
-doc_03,בפני,1,1,TBD,False,exact,
-doc_03,חום.,1,1,TBD,False,exact,
-doc_03,רכב,1,1,TBD,False,exact,
-doc_03,סגסוגת,2,1,TBD,False,exact,
-doc_03,כולל,1,1,TBD,False,exact,
-doc_03,כרום.,1,1,TBD,False,exact,
-doc_03,חוזק,1,1,TBD,False,exact,
-doc_03,עולה,1,1,TBD,False,exact,
-doc_03,בטמפרטורות,1,1,TBD,False,exact,
-doc_03,גבוהות.,1,1,TBD,False,exact,
-doc_03,נמצא,1,1,TBD,False,exact,
-doc_03,גם,1,1,TBD,False,exact,
-doc_03,במצברים.,1,1,TBD,False,exact,
-doc_04,כרום,4,1,TBD,False,exact,
-doc_04,יוצר,1,1,TBD,False,exact,
-doc_04,שכבת,1,1,TBD,False,exact,
-doc_04,גנה,1,1,TBD,False,exact,
-doc_04,על,1,1,TBD,False,exact,
-doc_04,פני,1,1,TBD,False,exact,
-doc_04,שטח.,1,1,TBD,False,exact,
-doc_04,סגסוגת,1,1,TBD,False,exact,
-doc_04,מכילה,1,1,TBD,False,exact,
-doc_04,עמידה,1,1,TBD,False,exact,
-doc_04,במיוחד.,1,1,TBD,False,exact,
-doc_04,משמש,1,1,TBD,False,exact,
-doc_04,בתעשייה,1,1,TBD,False,exact,
-doc_04,כימית.,1,1,TBD,False,exact,
-doc_04,ציפוי,1,1,TBD,False,exact,
-doc_04,מונע,1,1,TBD,False,exact,
-doc_04,קורוזיה.,1,1,TBD,False,exact,
+doc_01,פלדה,3,1,NOUN,False,exact,"פלדה, הפלדה, פלדה"
+doc_01,הוא,1,1,PRON,False,exact,היא = fem
+doc_01,סגסוגת,1,1,NOUN,False,exact,
+doc_01,של,2,1,ADP,False,exact,של×2
+doc_01,ברזל,1,1,NOUN,False,exact,
+doc_01,פחמן,1,1,NOUN,False,exact,ופחמן
+doc_01,חוזק,1,1,NOUN,False,exact,
+doc_01,מתיחה,1,1,NOUN,True,exact,DET: המתיחה
+doc_01,גבוה,1,1,ADJ,False,exact,גבוה
+doc_01,טמפרטורה,1,1,NOUN,False,exact,טמפרטורת = construct
+doc_01,התכה,1,1,NOUN,True,exact,DET: ההתכה
+doc_01,אלף,1,1,NUM,False,exact,
+doc_01,חמש,1,1,NUM,False,exact,
+doc_01,מאה,1,1,NUM,False,exact,מאות = pl
+doc_01,מעלה,1,1,NOUN,False,exact,מעלות = pl
+doc_01,שימש,1,1,VERB,False,exact,משמשת = participle fem
+doc_01,בנייה,1,1,NOUN,False,exact,בבנייה
+doc_01,תעשייה,1,1,NOUN,False,exact,ובתעשייה
+doc_02,אלומיניום,3,1,NOUN,False,exact,"אלומיניום×2, האלומיניום(DET)"
+doc_02,הוא,1,1,PRON,False,exact,היא
+doc_02,מתכת,1,1,NOUN,False,exact,
+doc_02,קל,1,1,ADJ,False,exact,קלה = fem
+doc_02,עמיד,1,1,ADJ,False,exact,ועמידה
+doc_02,פני,1,1,NOUN,False,exact,בפני
+doc_02,קורוזיה,1,1,NOUN,False,exact,
+doc_02,סגסוגת,1,1,NOUN,False,exact,
+doc_02,הכיל,1,1,VERB,False,exact,מכילה = hif'il
+doc_02,מגנזיום,1,1,NOUN,False,exact,
+doc_02,טמפרטורה,1,1,NOUN,False,exact,טמפרטורת
+doc_02,התכה,1,1,NOUN,True,exact,DET: ההתכה
+doc_02,נמוך,1,1,ADJ,False,exact,נמוכה
+doc_02,זה,1,1,PRON,False,exact,זו = dem
+doc_02,של,1,1,ADP,False,exact,
+doc_02,פלדה,1,1,NOUN,False,exact,
+doc_02,שימש,1,1,VERB,False,exact,משמש
+doc_02,תעופה,1,1,NOUN,False,exact,בתעופה
+doc_03,ניקל,3,1,NOUN,False,exact,ניקל×3
+doc_03,שימש,1,1,VERB,False,exact,משמש
+doc_03,סגסוגת,2,1,NOUN,True,exact,"בסגסוגות, DET: הסגסוגת"
+doc_03,עמיד,1,1,ADJ,False,exact,עמידות
+doc_03,פני,1,1,NOUN,False,exact,בפני
+doc_03,חום,1,1,NOUN,False,exact,
+doc_03,הרכב,1,1,NOUN,True,exact,DET: הרכב — ה חלק מהמילה
+doc_03,כלל,1,1,VERB,False,exact,כולל = piel
+doc_03,כרום,1,1,NOUN,False,exact,וכרום
+doc_03,חוזק,1,1,NOUN,False,exact,
+doc_03,עלה,1,1,VERB,False,exact,עולה = participle
+doc_03,טמפרטורה,1,1,NOUN,False,exact,בטמפרטורות = pl
+doc_03,גבוה,1,1,ADJ,False,exact,גבוהות = fem.pl
+doc_03,מצא,1,1,VERB,False,exact,נמצא = nif'al
+doc_03,גם,1,1,ADV,False,exact,
+doc_03,מצבר,1,1,NOUN,False,exact,במצברים = pl
+doc_04,כרום,4,1,NOUN,False,exact,כרום×4
+doc_04,יצר,1,1,VERB,False,exact,יוצר = participle
+doc_04,שכבה,1,1,NOUN,False,exact,שכבת = construct
+doc_04,הגנה,1,1,NOUN,False,exact,
+doc_04,על,1,1,ADP,False,exact,
+doc_04,פני,1,1,NOUN,False,exact,
+doc_04,שטח,1,1,NOUN,True,exact,DET: השטח
+doc_04,סגסוגת,1,1,NOUN,False,exact,
+doc_04,הכיל,1,1,VERB,False,exact,המכילה = hif'il
+doc_04,עמיד,1,1,ADJ,False,exact,עמידה = fem
+doc_04,מיוחד,1,1,ADJ,False,exact,במיוחד
+doc_04,שימש,1,1,VERB,False,exact,משמש
+doc_04,תעשייה,1,1,NOUN,False,exact,בתעשייה
+doc_04,כימי,1,1,ADJ,True,exact,DET: הכימית
+doc_04,ציפוי,1,1,NOUN,False,exact,
+doc_04,מנע,1,1,VERB,False,exact,מונע = participle
+doc_04,קורוזיה,1,1,NOUN,False,exact,

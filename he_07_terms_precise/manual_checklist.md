@@ -1,40 +1,41 @@
-# he_07_terms_precise — Manual Checklist
+# he_07_terms_precise — Чеклист ручного прогона
 
 ## Цель корпуса
-Проверка precise профиля: сильные устойчивые термы, слабые отсекаются, fewer candidates.
+
+Проверяет precise profile, strong terms, weak candidates filtered.
 
 ## Рекомендуемый профиль
+
 precise
 
-## Что проверять первым
-1. Кандидатов меньше чем в balanced
-2. Сильные термы доминируют: "חוזק הבטון", "בטון מזוין"
-3. "צמנט פורטלנד" — PROPN+NOUN
-4. Generic words НЕ в top-5
+## Порядок проверки
 
-## Exact expectations
-- "חוזק הבטון" — freq ≥ 5, top-3
-- "בטון מזוין" — freq ≥ 3, top-3
-- "יחס מים־צמנט" — freq ≥ 2
-- "עמוד בטון" — present
-- "קורת פלדה" — present
+### Шаг 1: Sentence splitting
+- [ ] filtered_01.txt: 5 предложений
+- [ ] strong_terms_01.txt: 5 предложений
+- [ ] **Итого: 10 предложений**
 
-## Relational expectations
-- Domain terms >> generic
-- "חוזק הבטון" > "חוזק כללי"
-- Fewer candidates than balanced profile
+### Шаг 2: Tokenization (подсчёт по пробелам)
+- [ ] filtered_01.txt: 18 токенов
+- [ ] strong_terms_01.txt: 31 токенов
+- [ ] **Итого: 49 токенов**
 
-## Manual review items
-- PMI/LLR/Dice — non-zero
-- Weirdness/keyness — reference-dependent
+### Шаг 3: Lemmas
+Проверить ключевые леммы (см. expected_lemmas.csv):
+- См. файл для полного списка
 
-## Что считать багом
-- "חוזק הבטון" отсутствует
-- Generic words dominate
-- Больше candidates чем в balanced
+### Шаг 4: Terms
+Проверить ключевые термины (см. expected_terms.csv):
+- См. файл для полного списка
 
-## Что считать stale gold
-- Frequency ±1
+## Какие расхождения считать багом
+- Неверное число предложений (при корректных точках)
+- Неверное число токенов (при корректных пробелах)
 
-## Что считать допустимой особенностью
-- Разное ранжирование weak candidates
+
+## Какие расхождения — stale gold
+- Конкретная форма леммы глагола (зависит от морфологического анализатора)
+
+## Какие расхождения — допустимые особенности
+- Морфологическая неоднозначность
+- Конкретная форма construct

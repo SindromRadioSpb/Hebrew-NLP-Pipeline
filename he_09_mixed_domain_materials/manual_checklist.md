@@ -1,32 +1,43 @@
-# he_09_mixed_domain_materials — Manual Checklist
+# he_09_mixed_domain_materials — Чеклист ручного прогона
 
-## Цель
-Доменная дифференциация: сильные термы выделяются, generic слова не доминируют.
+## Цель корпуса
 
-## Профиль
+Проверяет domain discrimination, generic words vs strong terms.
+
+## Рекомендуемый профиль
+
 balanced
 
-## Что проверять
-1. Domain terms в top positions
-2. Generic words ("דבר", "מקרה") НЕ в top-5
-3. Noise file produces weak/no candidates
+## Порядок проверки
 
-## Exact expectations
-- "חומר מרוכב" — freq ≥ 3
-- "אנרגיה קינטית" — present
+### Шаг 1: Sentence splitting
+- [ ] domain_general.txt: 5 предложений
+- [ ] domain_noise.txt: 5 предложений
+- [ ] domain_steel.txt: 5 предложений
+- [ ] **Итого: 15 предложений**
 
-## Relational expectations
-- Materials > physics > generic
-- Domain terms >> noise file terms
+### Шаг 2: Tokenization (подсчёт по пробелам)
+- [ ] domain_general.txt: 25 токенов
+- [ ] domain_noise.txt: 18 токенов
+- [ ] domain_steel.txt: 26 токенов
+- [ ] **Итого: 69 токенов**
 
-## Manual review
-- Weirdness/keyness — reference-dependent
+### Шаг 3: Lemmas
+Проверить ключевые леммы (см. expected_lemmas.csv):
+- См. файл для полного списка
 
-## Баги
-- Generic words dominate ranking
+### Шаг 4: Terms
+Проверить ключевые термины (см. expected_terms.csv):
+- См. файл для полного списка
 
-## Stale gold
-- Frequency ±1
+## Какие расхождения считать багом
+- Неверное число предложений (при корректных точках)
+- Неверное число токенов (при корректных пробелах)
 
-## Особенности
-- Разное ранжирование cross-domain
+
+## Какие расхождения — stale gold
+- Конкретная форма леммы глагола (зависит от морфологического анализатора)
+
+## Какие расхождения — допустимые особенности
+- Морфологическая неоднозначность
+- Конкретная форма construct

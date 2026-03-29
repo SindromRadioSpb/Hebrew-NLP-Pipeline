@@ -1,59 +1,55 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-mini_dense,ריתוך,5,1,TBD,False,exact,
-mini_dense,וא,1,1,TBD,False,exact,
-mini_dense,תהליך,1,1,TBD,False,exact,
-mini_dense,חיבור,3,1,TBD,False,exact,
-mini_dense,מתכות,1,1,TBD,False,exact,
-mini_dense,באמצעות,2,1,TBD,False,exact,
-mini_dense,חום.,1,1,TBD,False,exact,
-mini_dense,בחשמל,1,1,TBD,False,exact,
-mini_dense,משתמש,2,1,TBD,False,exact,
-mini_dense,בקשת,1,1,TBD,False,exact,
-mini_dense,חשמלית,1,1,TBD,False,exact,
-mini_dense,להתכת,2,1,TBD,False,exact,
-mini_dense,חומר.,1,1,TBD,False,exact,
-mini_dense,בגז,1,1,TBD,False,exact,
-mini_dense,בלהבה,1,1,TBD,False,exact,
-mini_dense,מתכות.,1,1,TBD,False,exact,
-mini_dense,שני,1,1,TBD,False,exact,
-mini_dense,חלקי,1,1,TBD,False,exact,
-mini_dense,פלדה,1,1,TBD,False,exact,
-mini_dense,דורש,1,1,TBD,False,exact,
-mini_dense,מדויק.,1,1,TBD,False,exact,
-mini_dense,איכות,1,1,TBD,False,exact,
-mini_dense,נבדקת,1,1,TBD,False,exact,
-mini_dense,בדיקה,1,1,TBD,False,exact,
-mini_dense,אולטראסונית.,1,1,TBD,False,exact,
-mini_dense,תכה,1,1,TBD,False,exact,
-mini_dense,מקומית,1,1,TBD,False,exact,
-mini_dense,של,1,1,TBD,False,exact,
-mini_dense,חומר,1,1,TBD,False,exact,
-mini_dense,יוצרת,1,1,TBD,False,exact,
-mini_dense,את,1,1,TBD,False,exact,
-mini_dense,בין,1,1,TBD,False,exact,
-mini_dense,חלקים.,1,1,TBD,False,exact,
-mini_sparse,בדיקת,1,1,TBD,False,exact,
-mini_sparse,איכות,1,1,TBD,False,exact,
-mini_sparse,מוצר,1,1,TBD,False,exact,
-mini_sparse,סופית,1,1,TBD,False,exact,
-mini_sparse,מבוצעת,1,1,TBD,False,exact,
-mini_sparse,במעבדה.,1,1,TBD,False,exact,
-mini_sparse,איתור,1,1,TBD,False,exact,
-mini_sparse,פגמים,2,1,TBD,False,exact,
-mini_sparse,באמצעות,1,1,TBD,False,exact,
-mini_sparse,מכשירי,1,1,TBD,False,exact,
-mini_sparse,מדידה,1,1,TBD,False,exact,
-mini_sparse,מדויקים.,1,1,TBD,False,exact,
-mini_sparse,בדיקה,1,1,TBD,False,exact,
-mini_sparse,יזואלית,1,1,TBD,False,exact,
-mini_sparse,מזהה,1,1,TBD,False,exact,
-mini_sparse,גלויים,1,1,TBD,False,exact,
-mini_sparse,לפני,1,1,TBD,False,exact,
-mini_sparse,בדיקות,1,1,TBD,False,exact,
-mini_sparse,מעבדה.,1,1,TBD,False,exact,
-tiny_01,פלדה.,3,1,TBD,False,exact,
-tiny_01,ברזל.,1,1,TBD,False,exact,
-tiny_02,חוזק,3,1,TBD,False,exact,
-tiny_02,מתיחה.,3,1,TBD,False,exact,
-tiny_02,שחיקה.,1,1,TBD,False,exact,
-tiny_02,קורוזיה.,1,1,TBD,False,exact,
+tiny_01,פלדה,3,1,NOUN,False,exact,פלדה. ×3
+tiny_01,ברזל,1,1,NOUN,False,exact,ברזל.
+tiny_02,חוזק,3,1,NOUN,False,exact,חוזק×3
+tiny_02,מתיחה,3,1,NOUN,False,exact,מתיחה×3
+tiny_02,שחיקה,1,1,NOUN,False,exact,שחיקה.
+tiny_02,קורוזיה,1,1,NOUN,False,exact,קורוזיה.
+mini_dense,ריתוך,4,1,NOUN,False,exact,ריתוך×4
+mini_dense,הוא,1,1,PRON,False,exact,
+mini_dense,תהליך,1,1,NOUN,False,exact,
+mini_dense,חיבור,2,1,NOUN,False,exact,חיבור×2
+mini_dense,מתכת,2,1,NOUN,False,exact,"מתכות, המתכות"
+mini_dense,אמצעות,2,1,ADP,False,exact,באמצעות×2
+mini_dense,חום,1,1,NOUN,False,exact,
+mini_dense,חשמל,1,1,NOUN,False,exact,בחשמל
+mini_dense,שמש,1,1,VERB,False,exact,משמש = participle
+mini_dense,קשת,1,1,NOUN,False,exact,בקשת
+mini_dense,חשמלי,1,1,ADJ,False,exact,חשמלית = fem
+mini_dense,התכה,1,1,NOUN,False,exact,להתכת
+mini_dense,חומר,2,1,NOUN,True,exact,"החומר, DET: החומר"
+mini_dense,גז,1,1,NOUN,False,exact,בגז
+mini_dense,להבה,1,1,NOUN,False,exact,בלהבה
+mini_dense,שניים,1,1,NUM,False,exact,שני
+mini_dense,חלק,2,1,NOUN,False,exact,"חלקי, החלקים"
+mini_dense,פלדה,1,1,NOUN,False,exact,
+mini_dense,דרש,1,1,VERB,False,exact,דורש
+mini_dense,מדויק,1,1,ADJ,False,exact,
+mini_dense,איכות,1,1,NOUN,True,exact,DET: איכות → not DET
+mini_dense,ריתוך,1,1,NOUN,True,exact,DET: הריתוך
+mini_dense,נבדק,1,1,VERB,False,exact,נבדקת = nif'al fem
+mini_dense,בדיקה,1,1,NOUN,False,exact,
+mini_dense,אולטראסוני,1,1,ADJ,False,exact,אולטראסונית = fem
+mini_dense,התכה,1,1,NOUN,False,exact,
+mini_dense,מקומי,1,1,ADJ,False,exact,
+mini_dense,של,1,1,ADP,False,exact,
+mini_dense,יצר,1,1,VERB,False,exact,יוצרת = participle fem
+mini_dense,את,1,1,ADP,False,exact,
+mini_dense,בין,1,1,ADP,False,exact,
+mini_sparse,בדיקה,3,1,NOUN,False,exact,"בדיקת, בדיקה×2"
+mini_sparse,איכות,1,1,NOUN,False,exact,
+mini_sparse,מוצר,1,1,NOUN,True,exact,DET: המוצר
+mini_sparse,סופי,1,1,ADJ,True,exact,DET: הסופית
+mini_sparse,בצע,1,1,VERB,False,exact,מבוצעת = pu'al
+mini_sparse,מעבדה,2,1,NOUN,False,exact,"במעבדה, מעבדה"
+mini_sparse,איתור,1,1,NOUN,False,exact,
+mini_sparse,פגם,2,1,NOUN,False,exact,פגמים×2
+mini_sparse,אמצעות,1,1,ADP,False,exact,
+mini_sparse,מכשיר,1,1,NOUN,False,exact,מכשירי = construct.pl
+mini_sparse,מדידה,1,1,NOUN,False,exact,
+mini_sparse,מדויק,1,1,ADJ,False,exact,מדויקים = pl
+mini_sparse,ויזואלי,1,1,ADJ,False,exact,ויזואלית
+mini_sparse,מצא,1,1,VERB,False,exact,מזהה
+mini_sparse,גלוי,1,1,ADJ,False,exact,גלויים = pl
+mini_sparse,לפני,1,1,ADP,False,exact,
+mini_sparse,בדיקה,1,1,NOUN,False,exact,בדיקות = pl

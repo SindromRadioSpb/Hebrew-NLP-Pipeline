@@ -1,190 +1,184 @@
 ﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
-borderline_terms,בדיקה,2,1,TBD,False,exact,
-borderline_terms,נדסית,1,1,TBD,False,exact,
-borderline_terms,קפדנית.,1,1,TBD,False,exact,
-borderline_terms,רפואית,1,1,TBD,False,exact,
-borderline_terms,שגרתית.,1,1,TBD,False,exact,
-borderline_terms,טיפול,2,1,TBD,False,exact,
-borderline_terms,בחום,2,1,TBD,False,exact,
-borderline_terms,למתכות.,1,1,TBD,False,exact,
-borderline_terms,לפציעות.,1,1,TBD,False,exact,
-borderline_terms,רכב,2,1,TBD,False,exact,
-borderline_terms,כימי,1,1,TBD,False,exact,
-borderline_terms,של,2,1,TBD,False,exact,
-borderline_terms,סגסוגת.,1,1,TBD,False,exact,
-borderline_terms,מכונית.,1,1,TBD,False,exact,
-domain_vs_general,חוזק,2,1,TBD,False,exact,
-domain_vs_general,מתיחה,1,1,TBD,False,exact,
-domain_vs_general,וא,2,1,TBD,False,exact,
-domain_vs_general,תכונה,1,1,TBD,False,exact,
-domain_vs_general,מכנית,1,1,TBD,False,exact,
-domain_vs_general,חשובה.,1,1,TBD,False,exact,
-domain_vs_general,מושג,1,1,TBD,False,exact,
-domain_vs_general,כללי.,1,1,TBD,False,exact,
-domain_vs_general,שחיקה,2,1,TBD,False,exact,
-domain_vs_general,מתרחשת,2,1,TBD,False,exact,
-domain_vs_general,במגעים,1,1,TBD,False,exact,
-domain_vs_general,בין,1,1,TBD,False,exact,
-domain_vs_general,משטחים.,1,1,TBD,False,exact,
-domain_vs_general,פגעה,1,1,TBD,False,exact,
-domain_vs_general,במבנה.,1,1,TBD,False,exact,
-domain_vs_general,קורוזיה,2,1,TBD,False,exact,
-domain_vs_general,בסביבה,1,1,TBD,False,exact,
-domain_vs_general,לחה.,1,1,TBD,False,exact,
-domain_vs_general,נראית,1,1,TBD,False,exact,
-domain_vs_general,בעין.,1,1,TBD,False,exact,
-ref_sensitive_01,מהנדס,1,1,TBD,False,exact,
-ref_sensitive_01,מכונות,1,1,TBD,False,exact,
-ref_sensitive_01,מתכנן,1,1,TBD,False,exact,
-ref_sensitive_01,רכיבים,1,1,TBD,False,exact,
-ref_sensitive_01,מכניים,1,1,TBD,False,exact,
-ref_sensitive_01,למגוון,1,1,TBD,False,exact,
-ref_sensitive_01,יישומים,1,1,TBD,False,exact,
-ref_sensitive_01,תעשייתיים.,1,1,TBD,False,exact,
-ref_sensitive_01,איש,1,1,TBD,False,exact,
-ref_sensitive_01,עבודה,2,1,TBD,False,exact,
-ref_sensitive_01,פשוט,1,1,TBD,False,exact,
-ref_sensitive_01,מבצע,2,1,TBD,False,exact,
-ref_sensitive_01,משימות,1,1,TBD,False,exact,
-ref_sensitive_01,יומיומיות,1,1,TBD,False,exact,
-ref_sensitive_01,באתר,1,1,TBD,False,exact,
-ref_sensitive_01,בנייה.,1,1,TBD,False,exact,
-ref_sensitive_01,תהליך,2,1,TBD,False,exact,
-ref_sensitive_01,יציקה,1,1,TBD,False,exact,
-ref_sensitive_01,מבוקר,1,1,TBD,False,exact,
-ref_sensitive_01,משפר,1,1,TBD,False,exact,
-ref_sensitive_01,את,2,1,TBD,False,exact,
-ref_sensitive_01,איכות,1,1,TBD,False,exact,
-ref_sensitive_01,מוצר,2,1,TBD,False,exact,
-ref_sensitive_01,סופי.,1,1,TBD,False,exact,
-ref_sensitive_01,רגיל,2,1,TBD,False,exact,
-ref_sensitive_01,מבוצע,1,1,TBD,False,exact,
-ref_sensitive_01,מדי,1,1,TBD,False,exact,
-ref_sensitive_01,יום,1,1,TBD,False,exact,
-ref_sensitive_01,במפעל.,1,1,TBD,False,exact,
-ref_sensitive_01,מומחה,1,1,TBD,False,exact,
-ref_sensitive_01,לחומרים,1,1,TBD,False,exact,
-ref_sensitive_01,בוחן,1,1,TBD,False,exact,
-ref_sensitive_01,תכונות,1,1,TBD,False,exact,
-ref_sensitive_01,סגסוגת,1,1,TBD,False,exact,
-ref_sensitive_01,חדשה.,1,1,TBD,False,exact,
-ref_sensitive_01,אדם,1,1,TBD,False,exact,
-ref_sensitive_01,אינו,1,1,TBD,False,exact,
-ref_sensitive_01,מבחין,1,1,TBD,False,exact,
-ref_sensitive_01,בהבדלים,1,1,TBD,False,exact,
-ref_sensitive_01,בין,1,1,TBD,False,exact,
-ref_sensitive_01,סוגי,1,1,TBD,False,exact,
-ref_sensitive_01,פלדה.,1,1,TBD,False,exact,
-ref_sensitive_01,בדיקת,1,1,TBD,False,exact,
-ref_sensitive_01,רס,1,1,TBD,False,exact,
-ref_sensitive_01,לא,1,1,TBD,False,exact,
-ref_sensitive_01,רסנית,1,1,TBD,False,exact,
-ref_sensitive_01,מאפשרת,1,1,TBD,False,exact,
-ref_sensitive_01,איתור,1,1,TBD,False,exact,
-ref_sensitive_01,פגמים,1,1,TBD,False,exact,
-ref_sensitive_01,ללא,1,1,TBD,False,exact,
-ref_sensitive_01,פגיעה,1,1,TBD,False,exact,
-ref_sensitive_01,ברכיב.,1,1,TBD,False,exact,
-ref_sensitive_01,בדיקה,2,1,TBD,False,exact,
-ref_sensitive_01,רגילה,1,1,TBD,False,exact,
-ref_sensitive_01,של,2,1,TBD,False,exact,
-ref_sensitive_01,כוללת,1,1,TBD,False,exact,
-ref_sensitive_01,יזואלית,1,1,TBD,False,exact,
-ref_sensitive_01,בלבד.,1,1,TBD,False,exact,
-ref_sensitive_01,מערכת,2,1,TBD,False,exact,
-ref_sensitive_01,ניטור,1,1,TBD,False,exact,
-ref_sensitive_01,רציפה,1,1,TBD,False,exact,
-ref_sensitive_01,מזהה,1,1,TBD,False,exact,
-ref_sensitive_01,חריגות,1,1,TBD,False,exact,
-ref_sensitive_01,בזמן,1,1,TBD,False,exact,
-ref_sensitive_01,אמת.,1,1,TBD,False,exact,
-ref_sensitive_01,פשוטה,1,1,TBD,False,exact,
-ref_sensitive_01,מספקת,1,1,TBD,False,exact,
-ref_sensitive_01,מידע,1,1,TBD,False,exact,
-ref_sensitive_01,בסיסי,1,1,TBD,False,exact,
-ref_sensitive_01,על,1,1,TBD,False,exact,
-ref_sensitive_01,מצב,1,1,TBD,False,exact,
-ref_sensitive_01,מכונה.,1,1,TBD,False,exact,
-ref_sensitive_01,טכנאי,1,1,TBD,False,exact,
-ref_sensitive_01,מוסמך,1,1,TBD,False,exact,
-ref_sensitive_01,כיול,1,1,TBD,False,exact,
-ref_sensitive_01,מכשירי,1,1,TBD,False,exact,
-ref_sensitive_01,מדידה.,1,1,TBD,False,exact,
-ref_sensitive_01,עובד,1,1,TBD,False,exact,
-ref_sensitive_01,כללי,1,1,TBD,False,exact,
-ref_sensitive_01,מסייע,1,1,TBD,False,exact,
-ref_sensitive_01,לצוות,1,1,TBD,False,exact,
-ref_sensitive_01,טכני,1,1,TBD,False,exact,
-ref_sensitive_01,במשימות,1,1,TBD,False,exact,
-ref_sensitive_01,פשוטות.,1,1,TBD,False,exact,
-ref_sensitive_02,תהליך,2,1,TBD,False,exact,
-ref_sensitive_02,יציקה,2,1,TBD,False,exact,
-ref_sensitive_02,מדויק,1,1,TBD,False,exact,
-ref_sensitive_02,דורש,2,1,TBD,False,exact,
-ref_sensitive_02,שליטה,1,1,TBD,False,exact,
-ref_sensitive_02,בטמפרטורה,1,1,TBD,False,exact,
-ref_sensitive_02,מהירות,1,1,TBD,False,exact,
-ref_sensitive_02,מילוי.,1,1,TBD,False,exact,
-ref_sensitive_02,פשוט,2,1,TBD,False,exact,
-ref_sensitive_02,מתבצע,1,1,TBD,False,exact,
-ref_sensitive_02,ללא,1,1,TBD,False,exact,
-ref_sensitive_02,ציוד,1,1,TBD,False,exact,
-ref_sensitive_02,מיוחד.,1,1,TBD,False,exact,
-ref_sensitive_02,חומר,2,1,TBD,False,exact,
-ref_sensitive_02,מרוכב,1,1,TBD,False,exact,
-ref_sensitive_02,מסיבי,1,1,TBD,False,exact,
-ref_sensitive_02,פחמן,1,1,TBD,False,exact,
-ref_sensitive_02,מציע,1,1,TBD,False,exact,
-ref_sensitive_02,יחס,1,1,TBD,False,exact,
-ref_sensitive_02,חוזק־משקל,1,1,TBD,False,exact,
-ref_sensitive_02,גבוה,1,1,TBD,False,exact,
-ref_sensitive_02,במיוחד.,1,1,TBD,False,exact,
-ref_sensitive_02,רגיל,1,1,TBD,False,exact,
-ref_sensitive_02,כמו,1,1,TBD,False,exact,
-ref_sensitive_02,עץ,1,1,TBD,False,exact,
-ref_sensitive_02,מתאים,1,1,TBD,False,exact,
-ref_sensitive_02,ליישומים,1,1,TBD,False,exact,
-ref_sensitive_02,פשוטים.,1,1,TBD,False,exact,
-ref_sensitive_02,בדיקה,2,1,TBD,False,exact,
-ref_sensitive_02,אולטראסונית,1,1,TBD,False,exact,
-ref_sensitive_02,מזהה,2,1,TBD,False,exact,
-ref_sensitive_02,סדקים,1,1,TBD,False,exact,
-ref_sensitive_02,פנימיים,1,1,TBD,False,exact,
-ref_sensitive_02,ברזולוציה,1,1,TBD,False,exact,
-ref_sensitive_02,גבוהה.,1,1,TBD,False,exact,
-ref_sensitive_02,פשוטה,1,1,TBD,False,exact,
-ref_sensitive_02,באמצעות,1,1,TBD,False,exact,
-ref_sensitive_02,עין,1,1,TBD,False,exact,
-ref_sensitive_02,בלתי,1,1,TBD,False,exact,
-ref_sensitive_02,מזוינת,1,1,TBD,False,exact,
-ref_sensitive_02,רק,1,1,TBD,False,exact,
-ref_sensitive_02,פגמים,1,1,TBD,False,exact,
-ref_sensitive_02,גלויים.,1,1,TBD,False,exact,
-ref_sensitive_02,מגדל,1,1,TBD,False,exact,
-ref_sensitive_02,זיקוק,1,1,TBD,False,exact,
-ref_sensitive_02,חדש,1,1,TBD,False,exact,
-ref_sensitive_02,מאפשר,1,1,TBD,False,exact,
-ref_sensitive_02,יעילות,1,1,TBD,False,exact,
-ref_sensitive_02,אנרגטית,1,1,TBD,False,exact,
-ref_sensitive_02,משופרת.,1,1,TBD,False,exact,
-ref_sensitive_02,מבנה,2,1,TBD,False,exact,
-ref_sensitive_02,פחות,1,1,TBD,False,exact,
-ref_sensitive_02,תכנון,1,1,TBD,False,exact,
-ref_sensitive_02,מאשר,1,1,TBD,False,exact,
-ref_sensitive_02,מורכב.,1,1,TBD,False,exact,
-ref_sensitive_02,מומחה,1,1,TBD,False,exact,
-ref_sensitive_02,לחומרים,1,1,TBD,False,exact,
-ref_sensitive_02,קובע,1,1,TBD,False,exact,
-ref_sensitive_02,את,1,1,TBD,False,exact,
-ref_sensitive_02,רכב,1,1,TBD,False,exact,
-ref_sensitive_02,סגסוגת,1,1,TBD,False,exact,
-ref_sensitive_02,בהתאם,1,1,TBD,False,exact,
-ref_sensitive_02,לדרישות.,1,1,TBD,False,exact,
-ref_sensitive_02,עובד,1,1,TBD,False,exact,
-ref_sensitive_02,כללי,1,1,TBD,False,exact,
-ref_sensitive_02,מבצע,1,1,TBD,False,exact,
-ref_sensitive_02,משימות,1,1,TBD,False,exact,
-ref_sensitive_02,שאינן,1,1,TBD,False,exact,
-ref_sensitive_02,דורשות,1,1,TBD,False,exact,
-ref_sensitive_02,מומחיות,1,1,TBD,False,exact,
-ref_sensitive_02,טכנית.,1,1,TBD,False,exact,
+domain_vs_general,חוזק,1,1,NOUN,False,exact,domain-specific
+domain_vs_general,מתיחה,1,1,NOUN,False,exact,domain-specific
+domain_vs_general,הוא,2,1,PRON,False,exact,הוא×2
+domain_vs_general,תכונה,1,1,NOUN,False,exact,
+domain_vs_general,מכני,1,1,ADJ,False,exact,מכנית = fem
+domain_vs_general,חשוב,1,1,ADJ,False,exact,חשובה = fem
+domain_vs_general,חוזק,1,1,NOUN,True,exact,DET: החוזק — general
+domain_vs_general,מושג,1,1,NOUN,False,exact,
+domain_vs_general,כללי,1,1,ADJ,False,exact,
+domain_vs_general,שחיקה,2,1,NOUN,True,exact,"שחיקה, DET: השחיקה"
+domain_vs_general,התרחש,1,1,VERB,False,exact,מתרחשת
+domain_vs_general,מגע,1,1,NOUN,False,exact,במגעים
+domain_vs_general,בין,1,1,ADP,False,exact,
+domain_vs_general,משטח,1,1,NOUN,False,exact,משטחים
+domain_vs_general,פגע,1,1,VERB,False,exact,פגעה = past
+domain_vs_general,מבנה,1,1,NOUN,True,exact,DET: במבנה
+domain_vs_general,קורוזיה,2,1,NOUN,True,exact,"קורוזיה, DET: הקורוזיה"
+domain_vs_general,התרחש,1,1,VERB,False,exact,מתרחשת
+domain_vs_general,סביבה,1,1,NOUN,False,exact,בסביבה
+domain_vs_general,לחה,1,1,ADJ,False,exact,fem
+domain_vs_general,נראה,1,1,VERB,False,exact,נראית = nif'al
+domain_vs_general,עין,1,1,NOUN,False,exact,בעין
+borderline_terms,בדיקה,4,1,NOUN,False,exact,בדיקה×4
+borderline_terms,הנדסי,1,1,ADJ,False,exact,הנדסית = fem
+borderline_terms,קפדני,1,1,ADJ,False,exact,קפדנית = fem
+borderline_terms,רפואי,1,1,ADJ,False,exact,רפואית = fem
+borderline_terms,שגרתי,1,1,ADJ,False,exact,שגרתית = fem
+borderline_terms,טיפול,2,1,NOUN,False,exact,טיפול×2
+borderline_terms,חום,2,1,NOUN,False,exact,בחום×2
+borderline_terms,מתכת,1,1,NOUN,False,exact,למתכות
+borderline_terms,פציעה,1,1,NOUN,False,exact,לפציעות
+borderline_terms,הרכב,2,1,NOUN,True,exact,הרכב×2 — DET word
+borderline_terms,כימי,1,1,ADJ,False,exact,
+borderline_terms,של,2,1,ADP,False,exact,של×2
+borderline_terms,סגסוגת,1,1,NOUN,True,exact,DET: הסגסוגת
+borderline_terms,מכונית,1,1,NOUN,True,exact,DET: המכונית
+ref_sensitive_01,מהנדס,1,1,NOUN,False,exact,domain term
+ref_sensitive_01,מכונה,1,1,NOUN,False,exact,מכונות = pl
+ref_sensitive_01,תכנן,1,1,VERB,False,exact,מתכנן
+ref_sensitive_01,רכיב,1,1,NOUN,False,exact,רכיבים = pl
+ref_sensitive_01,מכני,1,1,ADJ,False,exact,מכניים = pl
+ref_sensitive_01,מגוון,1,1,ADJ,False,exact,למגוון
+ref_sensitive_01,יישום,1,1,NOUN,False,exact,יישומים = pl
+ref_sensitive_01,תעשייתי,1,1,ADJ,False,exact,תעשייתיים = pl
+ref_sensitive_01,איש,1,1,NOUN,False,exact,general word
+ref_sensitive_01,עבודה,3,1,NOUN,False,exact,עבודה×3
+ref_sensitive_01,פשוט,4,1,ADJ,False,exact,פשוט×4 — appears in domain AND general
+ref_sensitive_01,בצע,2,1,VERB,False,exact,מבצע×2
+ref_sensitive_01,משימה,2,1,NOUN,False,exact,משימות×2
+ref_sensitive_01,יומיומי,1,1,ADJ,False,exact,יומיומיות = pl
+ref_sensitive_01,אתר,1,1,NOUN,False,exact,באתר
+ref_sensitive_01,בנייה,1,1,NOUN,False,exact,
+ref_sensitive_01,תהליך,2,1,NOUN,False,exact,תהליך×2
+ref_sensitive_01,יצירה,1,1,NOUN,False,exact,יציקה
+ref_sensitive_01,מבוקר,1,1,ADJ,False,exact,
+ref_sensitive_01,שיפר,1,1,VERB,False,exact,משפר
+ref_sensitive_01,איכות,2,1,NOUN,False,exact,איכות×2
+ref_sensitive_01,מוצר,2,1,NOUN,True,exact,"מוצר, DET: המוצר"
+ref_sensitive_01,סופי,1,1,ADJ,True,exact,DET: הסופי
+ref_sensitive_01,רגיל,3,1,ADJ,False,exact,רגיל×3 — general
+ref_sensitive_01,התרחש,1,1,VERB,False,exact,מבוצע
+ref_sensitive_01,יום,1,1,NOUN,False,exact,מדי יום
+ref_sensitive_01,מפעל,1,1,NOUN,False,exact,במפעל
+ref_sensitive_01,מומחה,1,1,NOUN,False,exact,
+ref_sensitive_01,חומר,1,1,NOUN,False,exact,לחומרים
+ref_sensitive_01,בחן,1,1,VERB,False,exact,בוחן
+ref_sensitive_01,תכונה,1,1,NOUN,False,exact,תכונות
+ref_sensitive_01,סגסוגת,1,1,NOUN,True,exact,DET: הסגסוגת
+ref_sensitive_01,חדש,1,1,ADJ,True,exact,DET: החדשה
+ref_sensitive_01,אדם,1,1,NOUN,False,exact,general
+ref_sensitive_01,הבחין,1,1,VERB,False,exact,מבחין = hif'il
+ref_sensitive_01,הבדל,1,1,NOUN,False,exact,בהבדלים
+ref_sensitive_01,בין,2,1,ADP,False,exact,בין×2
+ref_sensitive_01,סוג,1,1,NOUN,False,exact,סוגי
+ref_sensitive_01,פלדה,1,1,NOUN,False,exact,
+ref_sensitive_01,הרס,1,1,NOUN,False,exact,
+ref_sensitive_01,הרסני,1,1,ADJ,False,exact,לא הרסנית
+ref_sensitive_01,אפשר,1,1,VERB,False,exact,מאפשרת
+ref_sensitive_01,איתור,1,1,NOUN,False,exact,
+ref_sensitive_01,פגם,1,1,NOUN,False,exact,פגמים
+ref_sensitive_01,ללא,1,1,ADP,False,exact,
+ref_sensitive_01,פגיעה,1,1,NOUN,False,exact,
+ref_sensitive_01,רכיב,1,1,NOUN,False,exact,ברכיב
+ref_sensitive_01,בדיקה,2,1,NOUN,False,exact,בדיקה×2
+ref_sensitive_01,רגיל,1,1,ADJ,False,exact,רגילה
+ref_sensitive_01,של,1,1,ADP,False,exact,
+ref_sensitive_01,כלל,1,1,VERB,False,exact,כוללת
+ref_sensitive_01,ויזואלי,1,1,ADJ,False,exact,ויזואלית
+ref_sensitive_01,מערכת,2,1,NOUN,False,exact,מערכת×2
+ref_sensitive_01,ניטור,1,1,NOUN,False,exact,
+ref_sensitive_01,רציף,1,1,ADJ,False,exact,רציפה = fem
+ref_sensitive_01,מצא,1,1,VERB,False,exact,מזהה
+ref_sensitive_01,חריגה,1,1,NOUN,False,exact,חריגות = pl
+ref_sensitive_01,זמן,1,1,NOUN,False,exact,בזמן
+ref_sensitive_01,אמת,1,1,NOUN,False,exact,
+ref_sensitive_01,ספק,1,1,VERB,False,exact,מספקת = hif'il
+ref_sensitive_01,מידע,1,1,NOUN,False,exact,
+ref_sensitive_01,בסיסי,1,1,ADJ,False,exact,בסיסי
+ref_sensitive_01,על,1,1,ADP,False,exact,
+ref_sensitive_01,מצב,1,1,NOUN,False,exact,
+ref_sensitive_01,מכונה,1,1,NOUN,False,exact,
+ref_sensitive_01,טכנאי,1,1,NOUN,False,exact,
+ref_sensitive_01,מוסמך,1,1,ADJ,False,exact,
+ref_sensitive_01,כיול,1,1,NOUN,False,exact,
+ref_sensitive_01,של,1,1,ADP,False,exact,
+ref_sensitive_01,מכשיר,1,1,NOUN,False,exact,מכשירי
+ref_sensitive_01,מדידה,1,1,NOUN,False,exact,
+ref_sensitive_01,עובד,1,1,NOUN,False,exact,general
+ref_sensitive_01,כללי,1,1,ADJ,False,exact,
+ref_sensitive_01,סייע,1,1,VERB,False,exact,מסייע = hif'il
+ref_sensitive_01,צוות,1,1,NOUN,False,exact,
+ref_sensitive_01,טכני,1,1,ADJ,True,exact,DET: הטכני
+ref_sensitive_02,תהליך,2,1,NOUN,False,exact,תהליך×2
+ref_sensitive_02,יצירה,2,1,NOUN,False,exact,יציקה×2
+ref_sensitive_02,מדויק,1,1,ADJ,False,exact,
+ref_sensitive_02,דרש,2,1,VERB,False,exact,דורש×2
+ref_sensitive_02,שליטה,1,1,NOUN,False,exact,
+ref_sensitive_02,טמפרטורה,1,1,NOUN,False,exact,
+ref_sensitive_02,מהירות,1,1,NOUN,False,exact,
+ref_sensitive_02,מילוי,1,1,NOUN,False,exact,המילוי
+ref_sensitive_02,פשוט,3,1,ADJ,False,exact,פשוט×3
+ref_sensitive_02,התרחש,1,1,VERB,False,exact,מתבצע = hitpa'el
+ref_sensitive_02,ללא,1,1,ADP,False,exact,
+ref_sensitive_02,ציוד,1,1,NOUN,False,exact,
+ref_sensitive_02,מיוחד,1,1,ADJ,False,exact,
+ref_sensitive_02,חומר,2,1,NOUN,False,exact,חומר×2
+ref_sensitive_02,מרוכב,1,1,ADJ,False,exact,
+ref_sensitive_02,סיב,1,1,NOUN,False,exact,מסיבי
+ref_sensitive_02,פחמן,1,1,NOUN,False,exact,
+ref_sensitive_02,ציע,1,1,VERB,False,exact,מציע = hif'il
+ref_sensitive_02,יחס,1,1,NOUN,False,exact,
+ref_sensitive_02,חוזק,1,1,NOUN,False,exact,חוזק־משקל
+ref_sensitive_02,משקל,1,1,NOUN,False,exact,
+ref_sensitive_02,גבוה,1,1,ADJ,False,exact,
+ref_sensitive_02,מיוחד,1,1,ADJ,False,exact,במיוחד
+ref_sensitive_02,רגיל,2,1,ADJ,False,exact,רגיל×2
+ref_sensitive_02,כמו,1,1,ADP,False,exact,
+ref_sensitive_02,עץ,1,1,NOUN,False,exact,general material
+ref_sensitive_02,התאים,1,1,VERB,False,exact,מתאים = pi'el
+ref_sensitive_02,יישום,1,1,NOUN,False,exact,ליישומים
+ref_sensitive_02,בדיקה,4,1,NOUN,False,exact,בדיקה×4
+ref_sensitive_02,אולטראסוני,1,1,ADJ,False,exact,אולטראסונית
+ref_sensitive_02,מצא,2,1,VERB,False,exact,מזהה×2
+ref_sensitive_02,סדק,1,1,NOUN,False,exact,סדקים
+ref_sensitive_02,פנימי,1,1,ADJ,False,exact,פנימיים = pl
+ref_sensitive_02,רזולוציה,1,1,NOUN,False,exact,
+ref_sensitive_02,גבוה,1,1,ADJ,False,exact,גבוהה
+ref_sensitive_02,עין,1,1,NOUN,False,exact,בעין
+ref_sensitive_02,בלתי,1,1,ADV,False,exact,
+ref_sensitive_02,מזוין,1,1,ADJ,False,exact,מזוינת
+ref_sensitive_02,רק,1,1,ADV,False,exact,
+ref_sensitive_02,פגם,1,1,NOUN,False,exact,פגמים
+ref_sensitive_02,גלוי,1,1,ADJ,False,exact,גלויים
+ref_sensitive_02,מגדל,1,1,NOUN,False,exact,
+ref_sensitive_02,זיקוק,1,1,NOUN,False,exact,
+ref_sensitive_02,חדש,1,1,ADJ,False,exact,
+ref_sensitive_02,אפשר,1,1,VERB,False,exact,מאפשר
+ref_sensitive_02,יעילות,1,1,NOUN,False,exact,
+ref_sensitive_02,אנרגטי,1,1,ADJ,False,exact,אנרגטית
+ref_sensitive_02,שופר,1,1,VERB,False,exact,משופרת = pu'al
+ref_sensitive_02,מבנה,2,1,NOUN,False,exact,מבנה×2
+ref_sensitive_02,פשוט,1,1,ADJ,False,exact,
+ref_sensitive_02,דרש,1,1,VERB,False,exact,דורש
+ref_sensitive_02,פחות,1,1,ADV,False,exact,
+ref_sensitive_02,תכנון,1,1,NOUN,False,exact,
+ref_sensitive_02,מאשר,1,1,ADP,False,exact,
+ref_sensitive_02,מורכב,1,1,ADJ,False,exact,
+ref_sensitive_02,מומחה,1,1,NOUN,False,exact,
+ref_sensitive_02,חומר,1,1,NOUN,False,exact,לחומרים
+ref_sensitive_02,קבע,1,1,VERB,False,exact,קובע
+ref_sensitive_02,את,1,1,ADP,False,exact,
+ref_sensitive_02,הרכב,1,1,NOUN,True,exact,DET — ה part of word
+ref_sensitive_02,סגסוגת,1,1,NOUN,True,exact,DET: הסגסוגת
+ref_sensitive_02,בהתאם,1,1,ADP,False,exact,
+ref_sensitive_02,דרישה,1,1,NOUN,False,exact,לדרישות
+ref_sensitive_02,עובד,1,1,NOUN,False,exact,
+ref_sensitive_02,כללי,1,1,ADJ,False,exact,
+ref_sensitive_02,בצע,1,1,VERB,False,exact,מבצע
+ref_sensitive_02,משימה,1,1,NOUN,False,exact,משימות
+ref_sensitive_02,שאין,1,1,SCONJ,False,exact,שאינן
+ref_sensitive_02,דרוש,1,1,VERB,False,exact,דורשות
+ref_sensitive_02,מומחיות,1,1,NOUN,False,exact,
+ref_sensitive_02,טכני,1,1,ADJ,False,exact,טכנית

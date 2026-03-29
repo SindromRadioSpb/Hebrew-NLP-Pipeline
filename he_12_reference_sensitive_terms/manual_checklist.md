@@ -1,41 +1,45 @@
-# he_12_reference_sensitive_terms — Manual Checklist
+# he_12_reference_sensitive_terms — Чеклист ручного прогона
 
-## Цель
-Проверка scoring-sensitive метрик: domain terms vs general phrases. Keyness/termhood зависят от reference corpus.
+## Цель корпуса
 
-## Профиль
+Проверяет термы, зависящие от reference corpus.
+
+## Рекомендуемый профиль
+
 balanced
 
-## Что проверять
-1. "מהנדס מכונות" > "איש עבודה" по ranking
-2. "תהליך יציקה" > "תהליך עבודה"
-3. "מערכת ניטור רציפה" > "מערכת פשוטה"
-4. "חומר רגיל" — absent
+## Порядок проверки
 
-## Exact expectations
-- "מהנדס מכונות" — present
-- "תהליך יציקה" — freq ≥ 2
-- "חומר רגיל" — ABSENT
-- Sentence count: 12/10
+### Шаг 1: Sentence splitting
+- [ ] borderline_terms.txt: 6 предложений
+- [ ] domain_vs_general.txt: 6 предложений
+- [ ] ref_sensitive_01.txt: 12 предложений
+- [ ] ref_sensitive_02.txt: 10 предложений
+- [ ] **Итого: 34 предложений**
 
-## Relational expectations
-- Domain > generic in ALL pairs
-- Domain terms in top-3, generic in present_only
+### Шаг 2: Tokenization (подсчёт по пробелам)
+- [ ] borderline_terms.txt: 19 токенов
+- [ ] domain_vs_general.txt: 25 токенов
+- [ ] ref_sensitive_01.txt: 93 токенов
+- [ ] ref_sensitive_02.txt: 79 токенов
+- [ ] **Итого: 216 токенов**
 
-## Manual review
-- Keyness — reference-dependent, no exact values
-- Termhood — model-dependent, no exact values
-- Weirdness — implementation-sensitive, no exact values
-- EXPLANATION: exact values not claimed because metrics depend on external reference corpus
+### Шаг 3: Lemmas
+Проверить ключевые леммы (см. expected_lemmas.csv):
+- См. файл для полного списка
 
-## Баг
-- Domain term missing
-- Generic term outranks domain term
-- "חומר רגיל" present when it shouldn't be
+### Шаг 4: Terms
+Проверить ключевые термины (см. expected_terms.csv):
+- См. файл для полного списка
 
-## Stale gold
-- Frequency differences ±1
+## Какие расхождения считать багом
+- Неверное число предложений (при корректных точках)
+- Неверное число токенов (при корректных пробелах)
 
-## Особенности
-- Keyness/termhood values intentionally left as manual_review
-- This is CORRECT behavior — not a bug
+
+## Какие расхождения — stale gold
+- Конкретная форма леммы глагола (зависит от морфологического анализатора)
+
+## Какие расхождения — допустимые особенности
+- Морфологическая неоднозначность
+- Конкретная форма construct

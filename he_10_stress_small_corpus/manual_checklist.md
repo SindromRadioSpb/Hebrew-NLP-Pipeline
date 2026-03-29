@@ -1,36 +1,45 @@
-# he_10_stress_small_corpus — Manual Checklist
+# he_10_stress_small_corpus — Чеклист ручного прогона
 
-## Цель
-Стресс-тест на крошечном корпусе: резкие контрасты частоты/doc_freq.
+## Цель корпуса
 
-## Профиль
-balanced
+Проверяет поведение на маленьком насыщенном корпусе.
 
-## Что проверять
-1. ריתוך доминирует в mini_dense (freq ≥ 4)
-2. בדיקה доминирует в mini_sparse (freq ≥ 2)
-3. Sharp contrast between dense and sparse
-4. All terms present despite tiny corpus
+## Рекомендуемый профиль
 
-## Exact expectations
-- ריתוך — freq ≥ 4
-- חיבור — freq ≥ 3
-- בדיקה — freq ≥ 2
-- Sentence count: dense=6, sparse=3
+any
 
-## Relational
-- ריתוך > חיבור > התכה в mini_dense
-- בדיקה > איתור = פגם в mini_sparse
+## Порядок проверки
 
-## Manual review
-- Statistical power with tiny corpus
+### Шаг 1: Sentence splitting
+- [ ] mini_dense.txt: 6 предложений
+- [ ] mini_sparse.txt: 3 предложений
+- [ ] tiny_01.txt: 4 предложений
+- [ ] tiny_02.txt: 5 предложений
+- [ ] **Итого: 18 предложений**
 
-## Баг
-- ריתוך отсутствует в mini_dense
-- בדיקה отсутствует в mini_sparse
+### Шаг 2: Tokenization (подсчёт по пробелам)
+- [ ] mini_dense.txt: 42 токенов
+- [ ] mini_sparse.txt: 20 токенов
+- [ ] tiny_01.txt: 4 токенов
+- [ ] tiny_02.txt: 8 токенов
+- [ ] **Итого: 74 токенов**
 
-## Stale gold
-- Frequency ±1
+### Шаг 3: Lemmas
+Проверить ключевые леммы (см. expected_lemmas.csv):
+- См. файл для полного списка
 
-## Особенности
-- Limited ranking confidence with tiny corpus
+### Шаг 4: Terms
+Проверить ключевые термины (см. expected_terms.csv):
+- См. файл для полного списка
+
+## Какие расхождения считать багом
+- Неверное число предложений (при корректных точках)
+- Неверное число токенов (при корректных пробелах)
+
+
+## Какие расхождения — stale gold
+- Конкретная форма леммы глагола (зависит от морфологического анализатора)
+
+## Какие расхождения — допустимые особенности
+- Морфологическая неоднозначность
+- Конкретная форма construct

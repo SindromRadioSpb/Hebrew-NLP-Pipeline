@@ -1,2 +1,4 @@
 ﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
-he_11_morphology_verbs_and_agreement,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder — заполнить вручную
+he_11,חוזק_מתיחה,,"חוזק,מתיחה",0,0,non_noise,absent,absent,absent,absent,absent,absent,absent,absent,absent,not in this corpus
+he_11,עובד_בדק,,"עובד,בדק",2,2,non_noise,top_5,strong,medium,medium,medium,manual_review,manual_review,manual_review,present_only,verbs_past + verbs_present
+he_11,מתכת_חזקה,,"מתכת,חזק",1,1,non_noise,top_10,medium,medium,medium,medium,manual_review,manual_review,manual_review,present_only,agreement_adj

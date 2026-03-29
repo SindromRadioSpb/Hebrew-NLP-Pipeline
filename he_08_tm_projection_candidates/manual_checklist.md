@@ -1,39 +1,41 @@
-# he_08_tm_projection_candidates — Manual Checklist
+# he_08_tm_projection_candidates — Чеклист ручного прогона
 
 ## Цель корпуса
-Подготовка поверхностей для ручной проверки TM: стабильные surfaces, дедупликация, normalized forms.
+
+Проверяет surfaces suitable for TM review, deduplication sensitivity.
 
 ## Рекомендуемый профиль
+
 balanced
 
-## Что проверять первым
-1. "תהליך זיקוק" — stable surface across both files
-2. "מגדל זיקוק" — cross-document consistency
-3. "זיקוק אטמוספרי" vs "זיקוק תת־וואקום" — dedup candidates
-4. "המוצר הסופי" — normalized form consistency
+## Порядок проверки
 
-## Exact expectations
-- "תהליך זикוק" — freq ≥ 3, doc_freq = 2
-- "מגדל זיקוק" — freq ≥ 3, doc_freq = 2
-- "תהליך פיצוח" — freq ≥ 2, doc_freq = 2
+### Шаг 1: Sentence splitting
+- [ ] tm_dedup_01.txt: 5 предложений
+- [ ] tm_stable_01.txt: 5 предложений
+- [ ] **Итого: 10 предложений**
 
-## Relational expectations
-- TM candidates > generic words
-- Cross-document surfaces consistent
+### Шаг 2: Tokenization (подсчёт по пробелам)
+- [ ] tm_dedup_01.txt: 27 токенов
+- [ ] tm_stable_01.txt: 30 токенов
+- [ ] **Итого: 57 токенов**
 
-## Manual review items
-- Surface stability for TM projection
-- Deduplication: similar but distinct surfaces
-- Normalized forms: consistent spelling
-- ВАЖНО: не утверждать автоматическое создание TM rows
+### Шаг 3: Lemmas
+Проверить ключевые леммы (см. expected_lemmas.csv):
+- См. файл для полного списка
 
-## Что считать багом
-- "תהליך זיקוק" не проиндексирован
-- Surface inconsistency между файлами
+### Шаг 4: Terms
+Проверить ключевые термины (см. expected_terms.csv):
+- См. файл для полного списка
 
-## Что считать stale gold
-- Frequency differences ±1
+## Какие расхождения считать багом
+- Неверное число предложений (при корректных точках)
+- Неверное число токенов (при корректных пробелах)
 
-## Что считать допустимой особенностью
-- Different ranking for rare TM candidates
-- Morphological variants treated differently
+
+## Какие расхождения — stale gold
+- Конкретная форма леммы глагола (зависит от морфологического анализатора)
+
+## Какие расхождения — допустимые особенности
+- Морфологическая неоднозначность
+- Конкретная форма construct
