@@ -11,3 +11,17 @@ he_09_mixed_domain_materials,Mixed domain with noise,3,balanced,mixed
 he_10_stress_small_corpus,Stress test: tiny corpus,4,any,metallurgy
 he_11_morphology_verbs_and_agreement,Morphology: verbs and agreement,3,any,general
 he_12_reference_sensitive_terms,Reference-sensitive terms,4,balanced,metallurgy
+he_13_canonicalization,Canonicalization: surface-to-canonical mapping,3,any,metallurgy
+he_14_association_measures,Association measures: PMI/LLR/Dice,3,balanced,metallurgy
+he_15_sentence_boundary_edge,Sentence boundary edge cases,4,any,general
+he_16_np_boundaries,NP chunk boundaries,3,any,metallurgy
+he_17_named_entities,Named entity recognition,3,any,mixed
+he_18_mwe_detection,Multi-word expressions,2,balanced,mixed
+he_19_prefix_handling,Hebrew prefix handling,2,any,metallurgy
+he_20_numbers_units,Numbers and units,3,any,metallurgy
+he_21_empty_degenerate,Empty and degenerate documents,4,any,general
+he_22_tokenization_edge,Tokenization edge cases,4,any,general
+he_23_determinism,Determinism and reproducibility,3,any,metallurgy
+he_24_stopwords,Stopword filtering,2,any,general
+he_25_construct_chains,Hebrew construct chains,3,any,metallurgy
+he_26_homographs,Homograph disambiguation,3,any,general

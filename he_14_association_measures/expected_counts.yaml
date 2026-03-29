@@ -1,0 +1,33 @@
+# he_14_association_measures
+
+terms_contrast:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 17
+    type: exact
+
+terms_high_pmi:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 22
+    type: exact
+
+terms_low_pmi:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 16
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 13
+    type: exact
+  total_tokens:
+    value: 55
+    type: exact

@@ -1,0 +1,7 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,mwe_idiomatic,4,,,,
+token_count,mwe_idiomatic,20,,,,
+sentence_count,mwe_technical,4,,,,
+token_count,mwe_technical,19,,,,
+sentence_count,CORPUS_TOTAL,8,,,,
+token_count,CORPUS_TOTAL,39,,,,

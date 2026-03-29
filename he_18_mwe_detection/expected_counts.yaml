@@ -1,0 +1,25 @@
+# he_18_mwe_detection
+
+mwe_idiomatic:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 20
+    type: exact
+
+mwe_technical:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 19
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 8
+    type: exact
+  total_tokens:
+    value: 39
+    type: exact

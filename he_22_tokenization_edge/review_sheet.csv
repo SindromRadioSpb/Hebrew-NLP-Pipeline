@@ -1,0 +1,11 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,apostrophe,4,,,,
+token_count,apostrophe,6,,,,
+sentence_count,double_spaces,2,,,,
+token_count,double_spaces,5,,,,
+sentence_count,maqaf,4,,,,
+token_count,maqaf,1,,,,
+sentence_count,mixed_separators,3,,,,
+token_count,mixed_separators,2,,,,
+sentence_count,CORPUS_TOTAL,13,,,,
+token_count,CORPUS_TOTAL,14,,,,

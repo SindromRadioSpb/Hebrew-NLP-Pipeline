@@ -1,0 +1,2 @@
+﻿corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
+he_18_mwe_detection,TBD,TBD,,0,0,TBD,TBD,TBD,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,manual_review,placeholder

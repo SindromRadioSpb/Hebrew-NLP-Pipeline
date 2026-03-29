@@ -1,0 +1,33 @@
+# he_17_named_entities
+
+entities_geo:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 17
+    type: exact
+
+entities_org:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 19
+    type: exact
+
+entities_person:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 20
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 12
+    type: exact
+  total_tokens:
+    value: 56
+    type: exact

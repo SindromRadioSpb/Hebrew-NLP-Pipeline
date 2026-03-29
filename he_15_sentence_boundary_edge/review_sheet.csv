@@ -1,0 +1,11 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,abbr_hebrew,4,,,,
+token_count,abbr_hebrew,18,,,,
+sentence_count,decimals,8,,,,
+token_count,decimals,16,,,,
+sentence_count,multi_punct,4,,,,
+token_count,multi_punct,10,,,,
+sentence_count,no_period,3,,,,
+token_count,no_period,14,,,,
+sentence_count,CORPUS_TOTAL,19,,,,
+token_count,CORPUS_TOTAL,58,,,,

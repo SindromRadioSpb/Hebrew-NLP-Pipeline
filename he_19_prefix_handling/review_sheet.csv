@@ -1,0 +1,7 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,prefix_basic,5,,,,
+token_count,prefix_basic,17,,,,
+sentence_count,prefix_combined,5,,,,
+token_count,prefix_combined,17,,,,
+sentence_count,CORPUS_TOTAL,10,,,,
+token_count,CORPUS_TOTAL,34,,,,

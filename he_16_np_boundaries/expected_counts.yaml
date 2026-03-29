@@ -1,0 +1,33 @@
+# he_16_np_boundaries
+
+coordinated_np:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 16
+    type: exact
+
+nested_np:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 19
+    type: exact
+
+pp_attached:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 20
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 12
+    type: exact
+  total_tokens:
+    value: 55
+    type: exact

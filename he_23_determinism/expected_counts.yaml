@@ -1,0 +1,33 @@
+# he_23_determinism
+
+identical_a:
+  sentence_count:
+    value: 3
+    type: exact
+  token_count:
+    value: 10
+    type: exact
+
+identical_b:
+  sentence_count:
+    value: 3
+    type: exact
+  token_count:
+    value: 10
+    type: exact
+
+ordering_test:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 8
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 10
+    type: exact
+  total_tokens:
+    value: 28
+    type: exact

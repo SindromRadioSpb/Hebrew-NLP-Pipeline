@@ -1,0 +1,9 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,terms_contrast,5,,,,
+token_count,terms_contrast,17,,,,
+sentence_count,terms_high_pmi,4,,,,
+token_count,terms_high_pmi,22,,,,
+sentence_count,terms_low_pmi,4,,,,
+token_count,terms_low_pmi,16,,,,
+sentence_count,CORPUS_TOTAL,13,,,,
+token_count,CORPUS_TOTAL,55,,,,

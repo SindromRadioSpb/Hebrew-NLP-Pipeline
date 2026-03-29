@@ -1,6 +1,6 @@
 # Индекс корпусов
 
-Всего корпусов: 12
+Всего корпусов: 26
 
 | # | Corpus ID | Название | Файлов | Профиль | Домен |
 |---|----------|----------|--------|---------|-------|
@@ -16,3 +16,17 @@
 | 10 | he_10_stress_small_corpus | Stress test: tiny corpus | 4 | any | metallurgy |
 | 11 | he_11_morphology_verbs_and_agreement | Morphology: verbs and agreement | 3 | any | general |
 | 12 | he_12_reference_sensitive_terms | Reference-sensitive terms | 4 | balanced | metallurgy |
+| 13 | he_13_canonicalization | Canonicalization: surface-to-canonical mapping | 3 | any | metallurgy |
+| 14 | he_14_association_measures | Association measures: PMI/LLR/Dice | 3 | balanced | metallurgy |
+| 15 | he_15_sentence_boundary_edge | Sentence boundary edge cases | 4 | any | general |
+| 16 | he_16_np_boundaries | NP chunk boundaries | 3 | any | metallurgy |
+| 17 | he_17_named_entities | Named entity recognition | 3 | any | mixed |
+| 18 | he_18_mwe_detection | Multi-word expressions | 2 | balanced | mixed |
+| 19 | he_19_prefix_handling | Hebrew prefix handling | 2 | any | metallurgy |
+| 20 | he_20_numbers_units | Numbers and units | 3 | any | metallurgy |
+| 21 | he_21_empty_degenerate | Empty and degenerate documents | 4 | any | general |
+| 22 | he_22_tokenization_edge | Tokenization edge cases | 4 | any | general |
+| 23 | he_23_determinism | Determinism and reproducibility | 3 | any | metallurgy |
+| 24 | he_24_stopwords | Stopword filtering | 2 | any | general |
+| 25 | he_25_construct_chains | Hebrew construct chains | 3 | any | metallurgy |
+| 26 | he_26_homographs | Homograph disambiguation | 3 | any | general |

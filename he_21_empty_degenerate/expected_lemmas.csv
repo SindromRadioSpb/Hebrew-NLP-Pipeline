@@ -1,0 +1,7 @@
+﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
+one_sentence_no_dot,פלדה,1,1,TBD,False,exact,
+one_sentence_no_dot,יא,1,1,TBD,False,exact,
+one_sentence_no_dot,סגסוגת,1,1,TBD,False,exact,
+one_sentence_no_dot,ברזל,1,1,TBD,False,exact,
+one_sentence_no_dot,פחמן,1,1,TBD,False,exact,
+single_word,פלדה,1,1,TBD,False,exact,

@@ -1,0 +1,9 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,canon_construct,5,,,,
+token_count,canon_construct,29,,,,
+sentence_count,canon_det_variants,5,,,,
+token_count,canon_det_variants,20,,,,
+sentence_count,canon_variants,6,,,,
+token_count,canon_variants,27,,,,
+sentence_count,CORPUS_TOTAL,16,,,,
+token_count,CORPUS_TOTAL,76,,,,

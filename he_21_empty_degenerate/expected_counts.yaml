@@ -1,0 +1,41 @@
+# he_21_empty_degenerate
+
+one_sentence_no_dot:
+  sentence_count:
+    value: 1
+    type: exact
+  token_count:
+    value: 5
+    type: exact
+
+single_dot:
+  sentence_count:
+    value: 0
+    type: exact
+  token_count:
+    value: 1
+    type: exact
+
+single_word:
+  sentence_count:
+    value: 1
+    type: exact
+  token_count:
+    value: 1
+    type: exact
+
+whitespace_only:
+  sentence_count:
+    value: 0
+    type: exact
+  token_count:
+    value: 0
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 2
+    type: exact
+  total_tokens:
+    value: 7
+    type: exact

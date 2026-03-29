@@ -1,0 +1,33 @@
+# he_25_construct_chains
+
+long_construct:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 16
+    type: exact
+
+nested_construct:
+  sentence_count:
+    value: 3
+    type: exact
+  token_count:
+    value: 13
+    type: exact
+
+short_construct:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 10
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 13
+    type: exact
+  total_tokens:
+    value: 39
+    type: exact

@@ -1,0 +1,25 @@
+# he_24_stopwords
+
+content_heavy:
+  sentence_count:
+    value: 1
+    type: exact
+  token_count:
+    value: 10
+    type: exact
+
+stopword_heavy:
+  sentence_count:
+    value: 1
+    type: exact
+  token_count:
+    value: 17
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 2
+    type: exact
+  total_tokens:
+    value: 27
+    type: exact

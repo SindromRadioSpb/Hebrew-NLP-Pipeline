@@ -1,0 +1,33 @@
+{
+  "corpus_id": "he_18_mwe_detection",
+  "version": "2.0.0",
+  "title": "Multi-word expressions",
+  "purpose": "Проверяет MWE detection: технические термины, идиомы.",
+  "language": "he",
+  "domain": "mixed",
+  "recommended_profile": "balanced",
+  "text_count": 2,
+  "files": [
+    {
+      "filename": "mwe_idiomatic.txt",
+      "sentence_count": 4,
+      "token_count": 20
+    },
+    {
+      "filename": "mwe_technical.txt",
+      "sentence_count": 4,
+      "token_count": 19
+    }
+  ],
+  "expected_primary_checks": [
+    "sentence_count",
+    "token_count"
+  ],
+  "assertion_policy": {
+    "sentence_count": "exact",
+    "token_count": "exact"
+  },
+  "manual_review_focus": [],
+  "known_limitations": [],
+  "notes": "v2 — white spot #: Проверяет MWE detection: технические термины, идиомы."
+}

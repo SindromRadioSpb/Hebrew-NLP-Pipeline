@@ -1,0 +1,33 @@
+# he_26_homographs
+
+homograph_comp:
+  sentence_count:
+    value: 3
+    type: exact
+  token_count:
+    value: 13
+    type: exact
+
+homograph_construct:
+  sentence_count:
+    value: 3
+    type: exact
+  token_count:
+    value: 10
+    type: exact
+
+homograph_verb_noun:
+  sentence_count:
+    value: 3
+    type: exact
+  token_count:
+    value: 12
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 9
+    type: exact
+  total_tokens:
+    value: 35
+    type: exact

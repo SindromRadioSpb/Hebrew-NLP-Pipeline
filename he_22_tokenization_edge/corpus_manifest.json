@@ -1,0 +1,43 @@
+{
+  "corpus_id": "he_22_tokenization_edge",
+  "version": "2.0.0",
+  "title": "Tokenization edge cases",
+  "purpose": "Проверяет tokenization: двойные пробелы, maqaf, апостроф, tab.",
+  "language": "he",
+  "domain": "general",
+  "recommended_profile": "any",
+  "text_count": 4,
+  "files": [
+    {
+      "filename": "apostrophe.txt",
+      "sentence_count": 4,
+      "token_count": 6
+    },
+    {
+      "filename": "double_spaces.txt",
+      "sentence_count": 2,
+      "token_count": 5
+    },
+    {
+      "filename": "maqaf.txt",
+      "sentence_count": 4,
+      "token_count": 1
+    },
+    {
+      "filename": "mixed_separators.txt",
+      "sentence_count": 3,
+      "token_count": 2
+    }
+  ],
+  "expected_primary_checks": [
+    "sentence_count",
+    "token_count"
+  ],
+  "assertion_policy": {
+    "sentence_count": "exact",
+    "token_count": "exact"
+  },
+  "manual_review_focus": [],
+  "known_limitations": [],
+  "notes": "v2 — white spot #: Проверяет tokenization: двойные пробелы, maqaf, апостроф, tab."
+}

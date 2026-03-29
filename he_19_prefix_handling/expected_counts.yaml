@@ -1,0 +1,25 @@
+# he_19_prefix_handling
+
+prefix_basic:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 17
+    type: exact
+
+prefix_combined:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 17
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 10
+    type: exact
+  total_tokens:
+    value: 34
+    type: exact

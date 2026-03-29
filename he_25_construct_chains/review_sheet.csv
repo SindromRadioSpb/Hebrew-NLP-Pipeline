@@ -1,0 +1,9 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,long_construct,5,,,,
+token_count,long_construct,16,,,,
+sentence_count,nested_construct,3,,,,
+token_count,nested_construct,13,,,,
+sentence_count,short_construct,5,,,,
+token_count,short_construct,10,,,,
+sentence_count,CORPUS_TOTAL,13,,,,
+token_count,CORPUS_TOTAL,39,,,,

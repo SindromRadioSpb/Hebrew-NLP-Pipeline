@@ -1,0 +1,33 @@
+# he_13_canonicalization
+
+canon_construct:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 29
+    type: exact
+
+canon_det_variants:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 20
+    type: exact
+
+canon_variants:
+  sentence_count:
+    value: 6
+    type: exact
+  token_count:
+    value: 27
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 16
+    type: exact
+  total_tokens:
+    value: 76
+    type: exact

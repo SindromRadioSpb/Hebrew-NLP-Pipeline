@@ -1,0 +1,9 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,homograph_comp,3,,,,
+token_count,homograph_comp,13,,,,
+sentence_count,homograph_construct,3,,,,
+token_count,homograph_construct,10,,,,
+sentence_count,homograph_verb_noun,3,,,,
+token_count,homograph_verb_noun,12,,,,
+sentence_count,CORPUS_TOTAL,9,,,,
+token_count,CORPUS_TOTAL,35,,,,

@@ -1,0 +1,9 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,coordinated_np,4,,,,
+token_count,coordinated_np,16,,,,
+sentence_count,nested_np,4,,,,
+token_count,nested_np,19,,,,
+sentence_count,pp_attached,4,,,,
+token_count,pp_attached,20,,,,
+sentence_count,CORPUS_TOTAL,12,,,,
+token_count,CORPUS_TOTAL,55,,,,

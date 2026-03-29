@@ -1,0 +1,9 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,identical_a,3,,,,
+token_count,identical_a,10,,,,
+sentence_count,identical_b,3,,,,
+token_count,identical_b,10,,,,
+sentence_count,ordering_test,4,,,,
+token_count,ordering_test,8,,,,
+sentence_count,CORPUS_TOTAL,10,,,,
+token_count,CORPUS_TOTAL,28,,,,
