@@ -1,118 +1,62 @@
-# POWERSHELL_RUN_EXAMPLES — Примеры запуска из PowerShell
+# PowerShell — Примеры использования
 
-## Предварительные условия
+## Обход корпусов
 
 ```powershell
-# Перейдите в директорию проекта
-cd C:\path\to\hebrew-corpus
+# Список всех корпусов
+Get-ChildItem -Directory -Filter "he_*" | Select-Object Name
+
+# Подсчёт raw файлов в каждом корпусе
+Get-ChildItem -Directory -Filter "he_*" | ForEach-Object {
+    $raw = Join-Path $_.FullName "raw"
+    $count = (Get-ChildItem $raw -Filter "*.txt" -ErrorAction SilentlyContinue).Count
+    Write-Host "$($_.Name): $count файлов"
+}
 ```
 
-## 1. Генерация индекса корпусов
+## Чтение текстов
 
 ```powershell
+# Показать все тексты корпуса he_01
+Get-ChildItem "he_01_sentence_token_lemma_basics\raw\*.txt" | ForEach-Object {
+    Write-Host "`n=== $($_.Name) ===" -ForegroundColor Cyan
+    Get-Content $_.FullName -Encoding UTF8
+}
+
+# Подсчёт токенов в файле
+$text = Get-Content "he_01_sentence_token_lemma_basics\raw\doc_01.txt" -Raw -Encoding UTF8
+$tokens = $text -split '\s+' | Where-Object { $_ -ne '' }
+Write-Host "Tokens: $($tokens.Count)"
+```
+
+## Проверка manifest
+
+```powershell
+# Проверить все manifest-файлы
+.\tools\validate_manifests.ps1
+```
+
+## Пересборка индекса
+
+```powershell
+# Пересоздать CORPUS_INDEX.csv и CORPUS_INDEX.md
 .\tools\build_corpus_index.ps1
 ```
 
-Ожидаемый вывод: обновлённый `CORPUS_INDEX.csv` со всеми 12 корпусами.
-
-## 2. Валидация манифестов
+## Экспорт review sheets
 
 ```powershell
-# Валидация всех манифестов
-.\tools\validate_manifests.ps1
-
-# Валидация конкретного корпуса
-.\tools\validate_manifests.ps1 -CorpusId he_01
-
-# Валидация с подробным выводом
-.\tools\validate_manifests.ps1 -Verbose
-```
-
-Ожидаемый вывод: для каждого манифеста — `PASS` или `FAIL` с указанием ошибок.
-
-## 3. Экспорт шаблонов ревью
-
-```powershell
-# Экспорт всех шаблонов
+# Создать review_sheet.csv там, где его нет
 .\tools\export_review_sheets.ps1
 
-# Экспорт для конкретного корпуса
-.\tools\export_review_sheets.ps1 -CorpusId he_05
-
-# Экспорт в конкретную директорию
-.\tools\export_review_sheets.ps1 -OutputDir C:\temp\review
+# Перезаписать все (включая заполненные)
+.\tools\export_review_sheets.ps1 -Force
 ```
 
-## 4. Работа с текстами корпуса
-
-### Чтение текстов (для ручной проверки)
-```powershell
-# Список файлов корпуса
-Get-ChildItem .\he_01_*\raw\*.txt
-
-# Содержимое файла
-Get-Content .\he_01_sentence_token_lemma_basics\raw\doc_01.txt -Encoding UTF8
-```
-
-### Чтение ожиданий
-```powershell
-# Ожидаемые леммы (CSV)
-Import-Csv .\he_01_sentence_token_lemma_basics\expected_lemmas.csv
-
-# Ожидаемые термины (CSV)
-Import-Csv .\he_01_sentence_token_lemma_basics\expected_terms.csv
-
-# Ожидаемые счётчики (YAML — читать как текст)
-Get-Content .\he_01_sentence_token_lemma_basics\expected_counts.yaml -Encoding UTF8
-```
-
-### Заполнение review_sheet
-```powershell
-# Открыть в Excel для ручного заполнения
-Start-Process .\he_01_sentence_token_lemma_basics\review_sheet.csv
-```
-
-## 5. Сводный отчёт
+## Сравнение expected vs actual
 
 ```powershell
-# Собрать все review_sheet в один отчёт
-$allResults = @()
-foreach ($dir in Get-ChildItem -Directory -Filter "he_*") {
-    $csv = Join-Path $dir.FullName "review_sheet.csv"
-    if (Test-Path $csv) {
-        $data = Import-Csv $csv
-        $data | Add-Member -NotePropertyName "corpus" -NotePropertyValue $dir.Name
-        $allResults += $data
-    }
-}
-$allResults | Export-Csv -Path "ALL_REVIEWS.csv" -NoTypeInformation -Encoding UTF8
-
-# Статистика: pass/fail/manual по корпусам
-$allResults | Group-Object corpus | ForEach-Object {
-    $pass = ($_.Group | Where-Object pass -eq "true").Count
-    $fail = ($_.Group | Where-Object pass -eq "false").Count
-    $manual = ($_.Group | Where-Object pass -eq "manual").Count
-    [PSCustomObject]@{
-        Corpus = $_.Name
-        Pass = $pass
-        Fail = $fail
-        Manual = $manual
-        Total = $_.Count
-    }
-} | Format-Table -AutoSize
-```
-
-## 6. Быстрая проверка манифестов без скрипта
-
-```powershell
-# Проверить, что все манифесты существуют и валидны
-foreach ($dir in Get-ChildItem -Directory -Filter "he_*") {
-    $manifest = Join-Path $dir.FullName "corpus_manifest.json"
-    $counts = Join-Path $dir.FullName "expected_counts.yaml"
-    $lemmas = Join-Path $dir.FullName "expected_lemmas.csv"
-    $terms = Join-Path $dir.FullName "expected_terms.csv"
-    
-    $exists = (Test-Path $manifest) -and (Test-Path $counts) -and (Test-Path $lemmas) -and (Test-Path $terms)
-    Write-Host "$($dir.Name): $(if ($exists) {'OK'} else {'MISSING FILES'})"
-}
+# Прочитать review sheet и найти несовпадения
+$csv = Import-Csv "he_01_sentence_token_lemma_basics\review_sheet.csv" -Encoding UTF8
+$csv | Where-Object { $_.pass_fail -eq 'FAIL' } | Format-Table
 ```
