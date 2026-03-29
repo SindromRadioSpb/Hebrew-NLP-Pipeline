@@ -1,87 +1,81 @@
 # Руководство для ручного прогона
 
+## Подготовка
+1. Прочитать `HEURISTICS.md` — соглашения подсчёта
+2. Прочитать `ACCEPTANCE_CRITERIA.md` — критерии PASS/FAIL
+3. Подготовить pipeline к прогону
+
 ## Рекомендуемый порядок
 
-### Фаза 1: Базовые проверки (he_01)
-Начните здесь. Если he_01 не проходит — остальное бессмысленно.
+### Фаза 1: Фундамент (he_01)
+**Если he_01 не проходит — остальное бессмысленно.**
 
-1. Откройте `he_01/manual_checklist.md`
-2. Прогоните каждый raw/*.txt через pipeline
-3. Сверьте sentence count, token count, DET detachment
-4. Заполните `review_sheet.csv`
+1. Прогнать каждый raw/*.txt
+2. Сверить: sentence count, token count, DET detachment
+3. Заполнить review_sheet
+4. Критерий: 100% exact
 
 ### Фаза 2: Шум (he_02)
-Проверьте, что pipeline корректно обрабатывает:
-- Числа, латиницу, пунктуацию
-- Смешанные строки
-- Пустые и near-empty содержимое
+Проверить фильтрацию: числа, латиница, пунктуация, quantity strings.
 
 ### Фаза 3: Частоты (he_03)
-Проверьте:
-- freq vs doc_freq различаются
-- hapax корректно идентифицированы
-- lemmas, встречающиеся во всех документах, помечены
+Проверить: freq vs doc_freq, hapax identification, all-doc lemmas.
 
 ### Фаза 4: N-gram паттерны (he_04)
-Проверьте:
-- NOUN+NOUN bigram extraction
-- NOUN+ADJ, ADJ+NOUN patterns
-- DET non-first rejection (ה не в начале NP)
+Проверить: NOUN+NOUN, NOUN+ADJ, DET blocking.
 
-### Фаза 5: Термины (he_05, he_06, he_07)
-Сравните три профиля на однотипном материале:
-- Какие термины присутствуют в balanced, но отсутствуют в precise?
-- Какие hapax-кандидаты появляются в recall?
+### Фаза 5: Термины — профили (he_05/06/07)
+**Обязательное сравнение трёх профилей:**
+- Какие термины в balanced, но не в precise?
+- Какие hapax добавляет recall?
 - Совпадает ли relative ranking?
 
-### Фаза 6: TM и продвинутое (he_08–he_12)
-Проходить после стабилизации базовых проверок.
+### Фаза 6: TM и смешанный домен (he_08/09)
+После стабилизации терминов.
 
-## Как считать sentence
+### Фаза 7: Stress и morphology (he_10/11)
+Tiny corpus behavior + verb forms.
 
-Разделитель — точка `.`, стоящая после слова (без пробела перед точкой или с пробелом).
-Каждый фрагмент между точками = одно предложение.
-Если в файле нет точек → файл содержит 0 предложений (или 1, если есть текст без точки).
+### Фаза 8: Reference sensitivity (he_12)
+Сравнить с he_05 — как reference влияет на keyness/weirdness.
 
-## Как считать token
+### Фаза 9: White spots — критические (he_13/14/15)
+- **he_13 Canonicalization:** surface → canonical mapping
+- **he_14 Association measures:** PMI/LLR/Dice absolute values
+- **he_15 Sentence boundaries:** abbreviations, decimals, truncation
 
-Разделитель — пробел (` `).
-Каждый фрагмент между пробелами = один токен.
-Знаки препинания, приклеенные к слову — часть токена.
-Пример: `פלדה.` = один токен `פלדה.`
+### Фаза 10: White spots — важные (he_16/17/18)
+- **he_16 NP boundaries:** nested, coordinated, PP-attached
+- **he_17 Named entities:** ORG, LOC, PER detection
+- **he_18 MWE:** technical terms, idioms
 
-## Как проверять lemma
+### Фаза 11: White spots — средние (he_19/20/21/22)
+- **he_19 Prefix handling:** ב/ל/כ/מ stripping
+- **he_20 Numbers/units:** Hebrew numerals, percentages
+- **he_21 Empty/degenerate:** pipeline stability
+- **he_22 Tokenization edge:** double spaces, maqaf, geresh
 
-Лемма = словарная форма:
-- Существительное: ед.ч., м.р. (если есть)
-- Прилагательное: ед.ч., м.р.
-- Глагол: инфинитив (בניין зависит от pipeline)
-- Местоимение: базовая форма (הוא, היא, הם)
+### Фаза 12: White spots — низкие (he_23/24/25/26)
+- **he_23 Determinism:** reproducibility
+- **he_24 Stopwords:** filtering effects
+- **he_25 Construct chains:** long/nested constructs
+- **he_26 Homographs:** disambiguation
 
-## Как проверять DET
+## Как считать
 
-Определённый артикль ה отделяется если:
-- Слово начинается с ה
-- После удаления ה остаётся валидное слово
-- ה — это НЕ часть корня
+См. `HEURISTICS.md` — полные соглашения.
 
-Не отделять если:
-- היתוך (плавление) — ה часть корня
-- הרכב (состав) — ה часть корня
-- הוא (он) — местоимение
+**Кратко:**
+- **Sentence:** фрагмент между точками
+- **Token:** фрагмент между пробелами (пунктуация = часть токена)
+- **Lemma:** словарная форма (ед.ч.м.р. для noun/adj, инфинитив для verb)
+- **DET:** артикль ה отделяется если НЕ часть корня
 
 ## Как отличать баг от stale gold
 
-**Баг:**
-- Число предложений не совпадает (при корректных точках)
-- Число токенов не совпадает (при корректных пробелах)
-- DET отсоединён там, где не нужно (היתוך→יתוך)
-- DET НЕ отсоединён там, где нужно (הפלדה→פלדה)
+**Баг:** counts не совпадают, DET неправильно отсоединён/не отсоединён
+**Stale gold:** конкретная lemma form зависит от версии словаря
+**Pipeline variant:** tokenization при maqaf, sentence split при аббревиатурах
+**Known limitation:** морфологическая неоднозначность
 
-**Stale gold:**
-- Конкретная форма леммы глагола (зависит от морфологического словаря)
-- POS tag для омонимов (取决 от модели)
-
-**Допустимое расхождение:**
-- בעפרת = одно слово или ב+עפרת
-- Конкретная форма construct (טמפרטורת vs טמפרטורה)
+См. `ACCEPTANCE_CRITERIA.md` — полные критерии.
