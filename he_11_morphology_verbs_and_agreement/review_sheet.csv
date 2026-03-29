@@ -1,0 +1,9 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,agreement_adj,8,,,,
+token_count,agreement_adj,15,,,,
+sentence_count,verbs_past,5,,,,
+token_count,verbs_past,20,,,,
+sentence_count,verbs_present,5,,,,
+token_count,verbs_present,20,,,,
+sentence_count,CORPUS_TOTAL,18,,,,
+token_count,CORPUS_TOTAL,55,,,,

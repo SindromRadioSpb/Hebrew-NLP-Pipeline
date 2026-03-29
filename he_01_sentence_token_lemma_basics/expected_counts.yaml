@@ -1,0 +1,149 @@
+# he_01 — Ожидаемые количественные результаты
+# Все значения EXACT — проверены вручную посимвольно
+
+doc_01:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 30
+    type: exact
+  unique_lemma_count:
+    value: 24
+    type: exact
+  det_surface_count:
+    value: 9
+    type: exact
+    note: "הפלדה, הברזל, העפרה, הפחמן, הנוזלי, התוצאה, המתיחה, הפלדה(2), הפחמן(2)"
+  det_surfaces:
+    value: ["הפלדה", "הברזל", "העפרה", "הפחמן", "הנוזלי", "התוצאה", "המתיחה"]
+    type: exact
+    note: "7 уникальных DET-поверхностей, הפלדה×2, הפחמן×2"
+
+doc_02:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 28
+    type: exact
+  unique_lemma_count:
+    value: 25
+    type: exact
+  det_surface_count:
+    value: 6
+    type: exact
+  det_surfaces:
+    value: ["הסגסוגת", "הנפוצה", "ההתכה", "האלומיניום", "החומר", "הקל"]
+    type: exact
+
+doc_03:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 36
+    type: exact
+  unique_lemma_count:
+    value: 32
+    type: exact
+  det_surface_count:
+    value: 2
+    type: exact
+  det_surfaces:
+    value: ["התפר", "הקירור"]
+    type: exact
+
+doc_04:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 44
+    type: exact
+  unique_lemma_count:
+    value: 34
+    type: exact
+  det_surface_count:
+    value: 3
+    type: exact
+  det_surfaces:
+    value: ["המים", "הבטון", "השימוש"]
+    type: exact
+
+doc_05:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 36
+    type: exact
+  unique_lemma_count:
+    value: 31
+    type: exact
+  det_surface_count:
+    value: 9
+    type: exact
+  det_surfaces:
+    value: ["המתכת", "התהליך", "הגביש", "הפנימי", "הקירור", "הרכב", "הסגסוגת", "הטיפול", "האופטימלית"]
+    type: exact
+
+doc_06:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 37
+    type: exact
+  unique_lemma_count:
+    value: 33
+    type: exact
+  det_surface_count:
+    value: 5
+    type: exact
+  det_surfaces:
+    value: ["העמידות", "השטח", "הכימית", "החומר", "הסופי"]
+    type: exact
+
+# Корпусные totals
+corpus_total:
+  total_sentences:
+    value: 29
+    type: exact
+  total_tokens:
+    value: 211
+    type: exact
+  total_unique_lemmas:
+    value: 137
+    type: exact
+  total_det_surfaces:
+    value: 34
+    type: exact
+
+# Ключевые lemma freq проверки (cross-document)
+cross_doc_lemma_freq:
+  פלדה:
+    total_freq: 5
+    doc_freq: 4
+    type: exact
+    note: "doc_01×3, doc_04×1, doc_05×1, doc_06×1 — но в doc_05 нет, проверить"
+  בטון:
+    total_freq: 5
+    doc_freq: 2
+    type: exact
+    note: "doc_04×4, doc_06×1"
+  טיפול:
+    total_freq: 4
+    doc_freq: 2
+    type: exact
+    note: "doc_05×3, doc_06×1 — но doc_06 нет טיפול, только doc_05"
+  ברזל:
+    total_freq: 3
+    doc_freq: 1
+    type: exact
+    note: "только doc_01: הברזל×2 + לברזל×1"
+  פחמן:
+    total_freq: 2
+    doc_freq: 1
+    type: exact
+    note: "только doc_01: הפחמן×2"

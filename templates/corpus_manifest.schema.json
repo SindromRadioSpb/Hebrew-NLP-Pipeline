@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Corpus Manifest",
+  "type": "object",
+  "required": ["corpus_id", "version", "title", "purpose", "language", "text_count", "files"],
+  "properties": {
+    "corpus_id": { "type": "string" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "title": { "type": "string" },
+    "purpose": { "type": "string" },
+    "language": { "type": "string", "enum": ["he"] },
+    "domain": { "type": "string" },
+    "difficulty": { "type": "string", "enum": ["basic", "intermediate", "advanced"] },
+    "recommended_profile": { "type": "string", "enum": ["any", "precise", "balanced", "recall"] },
+    "text_count": { "type": "integer", "minimum": 1 },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["filename"],
+        "properties": {
+          "filename": { "type": "string" },
+          "description": { "type": "string" },
+          "sentence_count": { "type": "integer" },
+          "token_count": { "type": "integer" },
+          "special_content": { "type": "string" }
+        }
+      }
+    },
+    "expected_primary_checks": { "type": "array", "items": { "type": "string" } },
+    "assertion_policy": { "type": "object" },
+    "manual_review_focus": { "type": "array", "items": { "type": "string" } },
+    "known_limitations": { "type": "array", "items": { "type": "string" } },
+    "notes": { "type": "string" }
+  }
+}

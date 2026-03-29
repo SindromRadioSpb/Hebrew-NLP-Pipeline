@@ -1,0 +1,73 @@
+# he_02_noise_and_borderline — Ожидаемые количественные результаты
+
+noise_empty_like:
+  sentence_count:
+    value: 1
+    type: exact
+  token_count:
+    value: 4
+    type: exact
+
+noise_hebrew_with_punct:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 11
+    type: exact
+
+noise_latin:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 5
+    type: exact
+
+noise_math:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 5
+    type: exact
+
+noise_mixed:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 5
+    type: exact
+
+noise_numbers:
+  sentence_count:
+    value: 7
+    type: exact
+  token_count:
+    value: 5
+    type: exact
+
+noise_punct_only:
+  sentence_count:
+    value: 1
+    type: exact
+  token_count:
+    value: 5
+    type: exact
+
+noise_quantity:
+  sentence_count:
+    value: 6
+    type: exact
+  token_count:
+    value: 5
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 35
+    type: exact
+  total_tokens:
+    value: 45
+    type: exact

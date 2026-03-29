@@ -1,0 +1,11 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,borderline_terms,6,,,,
+token_count,borderline_terms,19,,,,
+sentence_count,domain_vs_general,6,,,,
+token_count,domain_vs_general,25,,,,
+sentence_count,ref_sensitive_01,12,,,,
+token_count,ref_sensitive_01,93,,,,
+sentence_count,ref_sensitive_02,10,,,,
+token_count,ref_sensitive_02,79,,,,
+sentence_count,CORPUS_TOTAL,34,,,,
+token_count,CORPUS_TOTAL,216,,,,

@@ -1,0 +1,33 @@
+{
+  "corpus_id": "he_07_terms_precise",
+  "version": "2.0.0",
+  "title": "Precise term extraction",
+  "purpose": "Проверяет precise profile, strong terms, weak candidates filtered.",
+  "language": "he",
+  "domain": "engineering",
+  "recommended_profile": "precise",
+  "text_count": 2,
+  "files": [
+    {
+      "filename": "filtered_01.txt",
+      "sentence_count": 5,
+      "token_count": 18
+    },
+    {
+      "filename": "strong_terms_01.txt",
+      "sentence_count": 5,
+      "token_count": 31
+    }
+  ],
+  "expected_primary_checks": [
+    "sentence_count",
+    "token_count"
+  ],
+  "assertion_policy": {
+    "sentence_count": "exact",
+    "token_count": "exact"
+  },
+  "manual_review_focus": [],
+  "known_limitations": [],
+  "notes": "v2 — Проверяет precise profile, strong terms, weak candidates filtered."
+}

@@ -1,0 +1,33 @@
+# he_11_morphology_verbs_and_agreement — Ожидаемые количественные результаты
+
+agreement_adj:
+  sentence_count:
+    value: 8
+    type: exact
+  token_count:
+    value: 15
+    type: exact
+
+verbs_past:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 20
+    type: exact
+
+verbs_present:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 20
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 18
+    type: exact
+  total_tokens:
+    value: 55
+    type: exact

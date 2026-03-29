@@ -1,0 +1,41 @@
+# he_03_docfreq_crossdoc — Ожидаемые количественные результаты
+
+doc_01:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 22
+    type: exact
+
+doc_02:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 20
+    type: exact
+
+doc_03:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 20
+    type: exact
+
+doc_04:
+  sentence_count:
+    value: 4
+    type: exact
+  token_count:
+    value: 20
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 16
+    type: exact
+  total_tokens:
+    value: 82
+    type: exact

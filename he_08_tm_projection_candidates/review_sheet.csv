@@ -1,0 +1,7 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,tm_dedup_01,5,,,,
+token_count,tm_dedup_01,27,,,,
+sentence_count,tm_stable_01,5,,,,
+token_count,tm_stable_01,30,,,,
+sentence_count,CORPUS_TOTAL,10,,,,
+token_count,CORPUS_TOTAL,57,,,,

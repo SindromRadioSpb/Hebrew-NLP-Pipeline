@@ -1,0 +1,25 @@
+# he_08_tm_projection_candidates — Ожидаемые количественные результаты
+
+tm_dedup_01:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 27
+    type: exact
+
+tm_stable_01:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 30
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 10
+    type: exact
+  total_tokens:
+    value: 57
+    type: exact

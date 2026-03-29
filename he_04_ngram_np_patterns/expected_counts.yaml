@@ -1,0 +1,41 @@
+# he_04_ngram_np_patterns — Ожидаемые количественные результаты
+
+np_adj_noun:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 10
+    type: exact
+
+np_complex:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 25
+    type: exact
+
+np_noun_adj_noun:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 15
+    type: exact
+
+np_noun_noun:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 10
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 20
+    type: exact
+  total_tokens:
+    value: 60
+    type: exact

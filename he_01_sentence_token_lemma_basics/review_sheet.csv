@@ -1,0 +1,64 @@
+item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,doc_01,5,,,,разделены точками
+sentence_count,doc_02,4,,,,
+sentence_count,doc_03,5,,,,
+sentence_count,doc_04,5,,,,
+sentence_count,doc_05,5,,,,
+sentence_count,doc_06,5,,,,
+sentence_count,CORPUS_TOTAL,29,,,,
+token_count,doc_01,30,,,,"split по whitespace"
+token_count,doc_02,28,,,,
+token_count,doc_03,36,,,,
+token_count,doc_04,44,,,,
+token_count,doc_05,36,,,,
+token_count,doc_06,37,,,,
+token_count,CORPUS_TOTAL,211,,,,
+det_surface,doc_01_הפלדה,פלדה,,,,DET отсоединён
+det_surface,doc_01_הברזל,ברזל,,,,
+det_surface,doc_01_העפרה,עפרה,,,,
+det_surface,doc_01_הפחמן,פחמן,,,,
+det_surface,doc_01_הנוזלי,נוזלי,,,,
+det_surface,doc_01_התוצאה,תוצאה,,,,
+det_surface,doc_01_המתיחה,מתיחה,,,,
+det_surface,doc_02_הסגסוגת,סגסוגת,,,,
+det_surface,doc_02_הנפוצה,נפוץ,,,,
+det_surface,doc_02_ההתכה,התכה,,,,
+det_surface,doc_02_האלומיניום,אלומיניום,,,,
+det_surface,doc_02_החומר,חומר,,,,
+det_surface,doc_02_הקל,קל,,,,
+det_surface,doc_03_התפר,תפר,,,,
+det_surface,doc_03_הקירור,קירור,,,,
+det_surface,doc_04_המים,מים,,,,
+det_surface,doc_04_הבטון,בטון,,,,
+det_surface,doc_04_השימוש,שימוש,,,,
+det_surface,doc_05_המתכת,מתכת,,,,
+det_surface,doc_05_התהליך,תהליך,,,,
+det_surface,doc_05_הגביש,גביש,,,,
+det_surface,doc_05_הפנימי,פנימי,,,,
+det_surface,doc_05_הקירור,קירור,,,,
+det_surface,doc_05_הרכב,רכב,"⚠️ הרכב — ה часть слова",,,manual_verify
+det_surface,doc_05_הסגסוגת,סגסוגת,,,,
+det_surface,doc_05_הטיפול,טיפול,,,,
+det_surface,doc_05_האופטימלית,אופטימלי,,,,
+det_surface,doc_06_העמידות,עמידות,,,,
+det_surface,doc_06_השטח,שטח,,,,
+det_surface,doc_06_הכימית,כימי,,,,
+det_surface,doc_06_החומר,חומר,,,,
+det_surface,doc_06_הסופי,סופי,,,,
+det_not_article,doc_02_הוא,he_is,"⚠️ НЕ DET",,,הוא=pronoun, не артикль
+det_not_article,doc_01_היתוך,smelting,"⚠️ ה часть слова",,,не отсоединять
+det_not_article,doc_05_הרכב,composition,"⚠️ ה часть слова",,,не отсоединять
+det_not_article,doc_06_הוספת,adding,"⚠️ ה часть слова",,,не отсоединять
+lemma_freq,פלדה,6,,,"cross-doc: doc_01×3+doc_04+doc_05+doc_06",exact
+lemma_freq,גבוה,5,,,"doc_01×2+doc_03+doc_04+doc_05",exact
+lemma_freq,הוא,5,,,"PRON: doc_01+doc_02×2+doc_03+doc_04",exact
+lemma_freq,טמפרטורה,4,,,"doc_01+doc_02+doc_03+doc_05",exact
+lemma_freq,חומר,4,,,"doc_02+doc_04×2+doc_06",exact
+lemma_freq,בטון,4,,,"только doc_04",exact
+lemma_unique,doc_01,24,,,,exact
+lemma_unique,doc_02,25,,,,exact
+lemma_unique,doc_03,32,,,,exact
+lemma_unique,doc_04,34,,,,exact
+lemma_unique,doc_05,31,,,,exact
+lemma_unique,doc_06,33,,,,exact
+lemma_unique,CORPUS_TOTAL,136,,,,exact

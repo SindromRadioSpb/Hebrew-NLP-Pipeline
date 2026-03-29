@@ -1,0 +1,13 @@
+﻿corpus_id,title,file_count,recommended_profile,domain
+he_01_sentence_token_lemma_basics,"Базовое разбиение предложений, токенизация и лемматизация",6,any,metallurgy / materials engineering
+he_02_noise_and_borderline,Noise and borderline cases,8,any,noise filtering
+he_03_docfreq_crossdoc,Document frequency across documents,4,any,metallurgy
+he_04_ngram_np_patterns,N-gram and NP patterns,4,any,metallurgy
+he_05_terms_balanced,Balanced term extraction,3,balanced,engineering
+he_06_terms_recall_hapax,Recall-oriented with hapax,2,recall,engineering
+he_07_terms_precise,Precise term extraction,2,precise,engineering
+he_08_tm_projection_candidates,TM projection candidates,2,balanced,engineering
+he_09_mixed_domain_materials,Mixed domain with noise,3,balanced,mixed
+he_10_stress_small_corpus,Stress test: tiny corpus,4,any,metallurgy
+he_11_morphology_verbs_and_agreement,Morphology: verbs and agreement,3,any,general
+he_12_reference_sensitive_terms,Reference-sensitive terms,4,balanced,metallurgy

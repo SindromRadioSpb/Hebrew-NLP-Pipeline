@@ -1,0 +1,11 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,doc_01,4,,,,
+token_count,doc_01,22,,,,
+sentence_count,doc_02,4,,,,
+token_count,doc_02,20,,,,
+sentence_count,doc_03,4,,,,
+token_count,doc_03,20,,,,
+sentence_count,doc_04,4,,,,
+token_count,doc_04,20,,,,
+sentence_count,CORPUS_TOTAL,16,,,,
+token_count,CORPUS_TOTAL,82,,,,

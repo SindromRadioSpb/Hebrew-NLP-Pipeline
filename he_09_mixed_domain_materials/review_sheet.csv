@@ -1,0 +1,9 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,domain_general,5,,,,
+token_count,domain_general,25,,,,
+sentence_count,domain_noise,5,,,,
+token_count,domain_noise,18,,,,
+sentence_count,domain_steel,5,,,,
+token_count,domain_steel,26,,,,
+sentence_count,CORPUS_TOTAL,15,,,,
+token_count,CORPUS_TOTAL,69,,,,

@@ -1,0 +1,43 @@
+{
+  "corpus_id": "he_03_docfreq_crossdoc",
+  "version": "2.0.0",
+  "title": "Document frequency across documents",
+  "purpose": "Проверяет freq vs doc_freq, hapax, all-doc lemmas, overlapping lemmas.",
+  "language": "he",
+  "domain": "metallurgy",
+  "recommended_profile": "any",
+  "text_count": 4,
+  "files": [
+    {
+      "filename": "doc_01.txt",
+      "sentence_count": 4,
+      "token_count": 22
+    },
+    {
+      "filename": "doc_02.txt",
+      "sentence_count": 4,
+      "token_count": 20
+    },
+    {
+      "filename": "doc_03.txt",
+      "sentence_count": 4,
+      "token_count": 20
+    },
+    {
+      "filename": "doc_04.txt",
+      "sentence_count": 4,
+      "token_count": 20
+    }
+  ],
+  "expected_primary_checks": [
+    "sentence_count",
+    "token_count"
+  ],
+  "assertion_policy": {
+    "sentence_count": "exact",
+    "token_count": "exact"
+  },
+  "manual_review_focus": [],
+  "known_limitations": [],
+  "notes": "v2 — Проверяет freq vs doc_freq, hapax, all-doc lemmas, overlapping lemmas."
+}

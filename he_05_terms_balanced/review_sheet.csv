@@ -1,0 +1,9 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,engineering_01,5,,,,
+token_count,engineering_01,30,,,,
+sentence_count,materials_01,5,,,,
+token_count,materials_01,32,,,,
+sentence_count,mechanics_01,5,,,,
+token_count,mechanics_01,29,,,,
+sentence_count,CORPUS_TOTAL,15,,,,
+token_count,CORPUS_TOTAL,91,,,,

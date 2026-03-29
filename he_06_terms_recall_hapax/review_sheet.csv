@@ -1,0 +1,7 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,mixed_freq_01,6,,,,
+token_count,mixed_freq_01,24,,,,
+sentence_count,rare_terms_01,5,,,,
+token_count,rare_terms_01,23,,,,
+sentence_count,CORPUS_TOTAL,11,,,,
+token_count,CORPUS_TOTAL,47,,,,

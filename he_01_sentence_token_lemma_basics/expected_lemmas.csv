@@ -1,0 +1,177 @@
+﻿file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
+doc_01,תהליך,1,1,NOUN,False,exact,
+doc_01,ייצור,1,1,NOUN,False,exact,
+doc_01,פלדה,3,1,NOUN,True,exact,"DET: הפלדה×2, פלדה×1"
+doc_01,מתחיל,1,1,VERB,False,exact,participle form
+doc_01,עפרה,2,1,NOUN,False,exact,"בעפרת=construct, העפרה=DET"
+doc_01,ברזל,3,1,NOUN,True,exact,"DET: הברזל×2, לברזל×1"
+doc_01,מוכנס,1,1,VERB,False,exact,participle (pu'al)
+doc_01,תנור,1,1,NOUN,False,exact,
+doc_01,היתוך,1,1,NOUN,False,exact,NOT a DET — ה is part of root
+doc_01,טמפרטורה,1,1,NOUN,False,exact,
+doc_01,גבוה,2,1,ADJ,False,exact,גבוהה×2
+doc_01,פחמן,2,1,NOUN,True,exact,DET: הפחמן×2
+doc_01,הוסיף,1,1,VERB,False,exact,מוסף = huf'al participle
+doc_01,נוזלי,1,1,ADJ,True,exact,DET: הנוזלי
+doc_01,שליטה,1,1,NOUN,False,exact,
+doc_01,מדויק,1,1,ADJ,False,exact,מדויקת = fem.sg
+doc_01,תוצאה,1,1,NOUN,True,exact,DET: התוצאה
+doc_01,הוא,1,1,PRON,False,exact,היא = fem form of הוא
+doc_01,איכות,1,1,NOUN,False,exact,
+doc_01,חוזק,1,1,NOUN,False,exact,
+doc_01,מתיחה,1,1,NOUN,True,exact,DET: המתיחה
+doc_01,של,1,1,ADP,False,exact,
+doc_01,תלוי,1,1,VERB,False,exact,participle of תלה
+doc_01,אחוז,1,1,NOUN,False,exact,
+doc_02,אלומיניום,2,1,NOUN,False,exact,
+doc_02,הוא,2,1,PRON,False,exact,הוא×2
+doc_02,מתכת,1,1,NOUN,False,exact,
+doc_02,קל,2,1,ADJ,True,exact,"קלה, הקל"
+doc_02,עמיד,1,1,ADJ,False,exact,ועמידה
+doc_02,פני,1,1,NOUN,False,exact,בפני
+doc_02,קורוזיה,1,1,NOUN,False,exact,
+doc_02,סגסוגת,1,1,NOUN,True,exact,DET: הסגסוגת
+doc_02,נפוץ,1,1,ADJ,True,exact,DET: הנפוצה
+doc_02,הכיל,1,1,VERB,False,exact,מכילה = participle
+doc_02,מגנזיום,1,1,NOUN,False,exact,
+doc_02,צורן,1,1,NOUN,False,exact,
+doc_02,טמפרטורה,1,1,NOUN,False,exact,טמפרטורת = construct
+doc_02,התכה,1,1,NOUN,True,exact,DET: ההתכה
+doc_02,שש,1,1,NUM,False,exact,
+doc_02,מאה,1,1,NUM,False,exact,מאות = plural
+doc_02,שישים,1,1,NUM,False,exact,
+doc_02,מעלה,1,1,NOUN,False,exact,מעלות = plural
+doc_02,חומר,1,1,NOUN,True,exact,DET: החומר
+doc_02,שימש,1,1,VERB,False,exact,משמש = participle
+doc_02,תעשייה,1,1,NOUN,False,exact,בתעשיות
+doc_02,רב,1,1,ADJ,False,exact,רבות = fem.pl
+doc_02,גלל,1,1,ADP,False,exact,בגלל
+doc_02,משקל,1,1,NOUN,False,exact,משקלו = possessive
+doc_03,ריתוך,3,1,NOUN,False,exact,ריתוך×3
+doc_03,הוא,1,1,PRON,False,exact,
+doc_03,תהליך,1,1,NOUN,False,exact,
+doc_03,חיבור,2,1,NOUN,False,exact,חיבור×2
+doc_03,בין,1,1,ADP,False,exact,
+doc_03,שניים,1,1,NUM,False,exact,שני = construct
+doc_03,רכיב,1,1,NOUN,False,exact,רכיבי = construct.pl
+doc_03,מתכת,1,1,NOUN,False,exact,
+doc_03,תפר,2,1,NOUN,True,exact,"DET: התפר, בתפר"
+doc_03,נוצר,1,1,VERB,False,exact,
+doc_03,אמצעות,1,1,ADP,False,exact,באמצעות
+doc_03,חימום,1,1,NOUN,False,exact,
+doc_03,מקומי,1,1,ADJ,False,exact,
+doc_03,טמפרטורה,1,1,NOUN,False,exact,לטמפרטורה
+doc_03,גבוה,1,1,ADJ,False,exact,גבוהה
+doc_03,לאחר,1,1,ADP,False,exact,
+doc_03,קירור,1,1,NOUN,True,exact,DET: הקירור
+doc_03,התקבל,1,1,VERB,False,exact,מתקבל = huf'al
+doc_03,חזק,1,1,ADJ,False,exact,
+doc_03,יציב,1,1,ADJ,False,exact,ויציב
+doc_03,קיים,1,1,VERB,False,exact,קיימים = participle
+doc_03,סוג,1,1,NOUN,False,exact,סוגים = plural
+doc_03,שונה,1,1,ADJ,False,exact,שונים = masc.pl
+doc_03,כולל,1,1,ADP,False,exact,
+doc_03,קשת,1,1,NOUN,False,exact,
+doc_03,חשמל,1,1,NOUN,False,exact,וחשמל
+doc_03,בדיקה,1,1,NOUN,False,exact,בדיקת = construct
+doc_03,אולטרסאונד,1,1,NOUN,False,exact,
+doc_03,שימש,1,1,VERB,False,exact,משמשת = participle fem
+doc_03,איתור,1,1,NOUN,False,exact,לאיתור
+doc_03,פגם,1,1,NOUN,False,exact,פגמים = plural
+doc_04,בטון,4,1,NOUN,False,exact,"בטון×2, הבטון, בבטון"
+doc_04,הוא,1,1,PRON,False,exact,
+doc_04,חומר,2,1,NOUN,False,exact,"חומר, חומרים"
+doc_04,בנייה,2,1,NOUN,False,exact,"בנייה, בניית"
+doc_04,מוכרך,1,1,ADJ,False,exact,
+doc_04,צמנט,2,1,NOUN,False,exact,"מצמנט, לצמנט"
+doc_04,מים,2,1,NOUN,True,exact,"מים, DET: המים"
+doc_04,חול,1,1,NOUN,False,exact,וחול
+doc_04,יחס,2,1,NOUN,False,exact,יחס×2
+doc_04,השפיע,1,1,VERB,False,exact,משפיע = hif'il
+doc_04,ישירות,1,1,ADV,False,exact,
+doc_04,על,1,1,ADP,False,exact,
+doc_04,חוזק,1,1,NOUN,False,exact,
+doc_04,נמוך,1,1,ADJ,False,exact,
+doc_04,היה,1,1,VERB,False,exact,יהיה = future
+doc_04,חזק,2,1,ADJ,False,exact,"חזק, וחזקים"
+doc_04,יותר,2,1,ADV,False,exact,יותר×2
+doc_04,אך,1,1,CCONJ,False,exact,
+doc_04,קשה,1,1,ADJ,False,exact,
+doc_04,עיבוד,1,1,NOUN,False,exact,לעיבוד
+doc_04,ניתן,1,1,VERB,False,exact,
+doc_04,הוסיף,1,1,VERB,False,exact,להוסיף = infinitive
+doc_04,משפר,1,1,ADJ,False,exact,משפרים = pl
+doc_04,כמו,1,1,ADP,False,exact,
+doc_04,סיב,1,1,NOUN,False,exact,סיבי = construct
+doc_04,פלדה,1,1,NOUN,False,exact,
+doc_04,או,1,1,CCONJ,False,exact,
+doc_04,סיליקה,1,1,NOUN,False,exact,
+doc_04,שימוש,1,1,NOUN,True,exact,DET: השימוש
+doc_04,מזוין,1,1,ADJ,False,exact,
+doc_04,אפשר,1,1,VERB,False,exact,מאפשר = participle
+doc_04,מבנה,1,1,NOUN,False,exact,מבנים = pl
+doc_04,גבוה,1,1,ADJ,False,exact,גבוהים = pl
+doc_05,טיפול,3,1,NOUN,False,exact,טיפול×2 + הטיפול
+doc_05,חום,2,1,NOUN,False,exact,בחום×2
+doc_05,שיפר,1,1,VERB,False,exact,משפר = piel participle
+doc_05,את,2,1,ADP,False,exact,את×2
+doc_05,תכונה,1,1,NOUN,False,exact,תכונות = pl
+doc_05,מתכת,1,1,NOUN,True,exact,DET: המתכת
+doc_05,תהליך,1,1,NOUN,True,exact,DET: התהליך
+doc_05,כלל,1,1,VERB,False,exact,כולל = piel participle
+doc_05,חימום,1,1,NOUN,False,exact,
+doc_05,מבוקר,1,1,ADJ,False,exact,
+doc_05,קירור,2,1,NOUN,True,exact,"וקירור, DET: הקירור"
+doc_05,מהיר,1,1,ADJ,False,exact,
+doc_05,מבנה,1,1,NOUN,False,exact,
+doc_05,גביש,1,1,NOUN,True,exact,DET: הגביש
+doc_05,פנימי,1,1,ADJ,True,exact,DET: הפנימי
+doc_05,השתנה,1,1,VERB,False,exact,משתנה = hitpa'el
+doc_05,התאמה,1,1,NOUN,False,exact,בהתאם
+doc_05,קצב,1,1,NOUN,False,exact,
+doc_05,פלדה,1,1,NOUN,False,exact,
+doc_05,הקשיח,1,1,VERB,False,exact,מוקשחת = huf'al
+doc_05,לאחר,1,1,ADP,False,exact,
+doc_05,הציג,1,1,VERB,False,exact,מציגה = hif'il
+doc_05,חוזק,1,1,NOUN,False,exact,
+doc_05,מתיחה,1,1,NOUN,False,exact,
+doc_05,גבוה,1,1,ADJ,False,exact,
+doc_05,מיוחד,1,1,ADJ,False,exact,במיוחד
+doc_05,הרכב,1,1,NOUN,True,exact,DET: הרכב — ה is part of word
+doc_05,סגסוגת,1,1,NOUN,True,exact,DET: הסגסוגת
+doc_05,קבע,1,1,VERB,False,exact,קובע = participle
+doc_05,טמפרטורה,1,1,NOUN,False,exact,טמפרטורת = construct
+doc_05,אופטימלי,1,1,ADJ,True,exact,DET: האופטימלית
+doc_06,ניקל,2,1,NOUN,False,exact,ניקל×2
+doc_06,כרום,2,1,NOUN,False,exact,"וכרום, כרום"
+doc_06,הם,1,1,PRON,False,exact,
+doc_06,יסוד,1,1,NOUN,False,exact,יסודות = pl
+doc_06,חיוני,1,1,ADJ,False,exact,חיוניים = pl
+doc_06,ייצור,1,1,NOUN,False,exact,בייצור
+doc_06,סגסוגת,2,1,NOUN,False,exact,"סגסוגות, סגסוגת"
+doc_06,עמיד,1,1,ADJ,False,exact,עמידות = nounalized
+doc_06,הוסיף,1,1,VERB,False,exact,הוספת = infinitive construct
+doc_06,פלדה,1,1,NOUN,False,exact,לפלדה
+doc_06,הגביר,1,1,VERB,False,exact,מגבירה = hif'il
+doc_06,את,1,1,ADP,False,exact,
+doc_06,עמידות,1,1,NOUN,True,exact,DET: העמידות
+doc_06,פני,2,1,NOUN,False,exact,"בפני, פני"
+doc_06,חום,1,1,NOUN,False,exact,
+doc_06,יצר,1,1,VERB,False,exact,יוצר = participle
+doc_06,שכבה,1,1,NOUN,False,exact,שכבת = construct
+doc_06,הגנה,1,1,NOUN,False,exact,
+doc_06,דק,1,1,ADJ,False,exact,דקה = fem
+doc_06,על,1,1,ADP,False,exact,
+doc_06,שטח,1,1,NOUN,True,exact,DET: השטח
+doc_06,הכיל,1,1,VERB,False,exact,המכילה = hif'il participle
+doc_06,שניהם,1,1,PRON,False,exact,
+doc_06,שימש,1,1,VERB,False,exact,משמשת
+doc_06,תעשייה,1,1,NOUN,False,exact,בתעשייה
+doc_06,כימי,1,1,ADJ,True,exact,DET: הכימית
+doc_06,מזון,1,1,NOUN,False,exact,והמזון
+doc_06,חומר,1,1,NOUN,True,exact,DET: החומר
+doc_06,סופי,1,1,ADJ,True,exact,DET: הסופי
+doc_06,חייב,1,1,VERB,False,exact,
+doc_06,עמד,1,1,VERB,False,exact,לעמוד = infinitive
+doc_06,תקן,1,1,NOUN,False,exact,בתקנים = pl
+doc_06,מחמיר,1,1,ADJ,False,exact,מחמירים = pl

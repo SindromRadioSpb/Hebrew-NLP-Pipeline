@@ -1,0 +1,11 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,np_adj_noun,5,,,,
+token_count,np_adj_noun,10,,,,
+sentence_count,np_complex,5,,,,
+token_count,np_complex,25,,,,
+sentence_count,np_noun_adj_noun,5,,,,
+token_count,np_noun_adj_noun,15,,,,
+sentence_count,np_noun_noun,5,,,,
+token_count,np_noun_noun,10,,,,
+sentence_count,CORPUS_TOTAL,20,,,,
+token_count,CORPUS_TOTAL,60,,,,

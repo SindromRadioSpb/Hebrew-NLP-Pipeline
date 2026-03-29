@@ -1,0 +1,25 @@
+# he_06_terms_recall_hapax — Ожидаемые количественные результаты
+
+mixed_freq_01:
+  sentence_count:
+    value: 6
+    type: exact
+  token_count:
+    value: 24
+    type: exact
+
+rare_terms_01:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 23
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 11
+    type: exact
+  total_tokens:
+    value: 47
+    type: exact

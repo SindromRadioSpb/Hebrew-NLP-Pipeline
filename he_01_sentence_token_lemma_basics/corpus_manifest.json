@@ -1,0 +1,82 @@
+{
+  "corpus_id": "he_01_sentence_token_lemma_basics",
+  "version": "2.0.0",
+  "title": "Базовое разбиение предложений, токенизация и лемматизация",
+  "purpose": "Точечная проверка: разбиение на предложения, подсчёт токенов по пробелам, лемматизация, отсоединение артикля ה (DET detachment). Корпус спроектирован для ручной верификации — каждый токен можно пересчитать вручную.",
+  "language": "he",
+  "domain": "metallurgy / materials engineering",
+  "difficulty": "basic",
+  "recommended_profile": "any",
+  "text_count": 6,
+  "files": [
+    {
+      "filename": "doc_01.txt",
+      "description": "Процесс производства стали: выплавка, добавление углерода, контроль температуры",
+      "sentence_count": 5,
+      "token_count": 30,
+      "special_content": "normal"
+    },
+    {
+      "filename": "doc_02.txt",
+      "description": "Алюминий: свойства, сплавы, температура плавления, применение",
+      "sentence_count": 4,
+      "token_count": 28,
+      "special_content": "numbers_in_words"
+    },
+    {
+      "filename": "doc_03.txt",
+      "description": "Сварка: типы, постобработка, неразрушающий контроль",
+      "sentence_count": 5,
+      "token_count": 36,
+      "special_content": "normal"
+    },
+    {
+      "filename": "doc_04.txt",
+      "description": "Бетон: состав, соотношение компонентов, армирование",
+      "sentence_count": 5,
+      "token_count": 44,
+      "special_content": "normal"
+    },
+    {
+      "filename": "doc_05.txt",
+      "description": "Термообработка: процессы, изменение кристаллической структуры",
+      "sentence_count": 5,
+      "token_count": 36,
+      "special_content": "normal"
+    },
+    {
+      "filename": "doc_06.txt",
+      "description": "Никель и хром: роль в производстве сплавов, защитные покрытия",
+      "sentence_count": 5,
+      "token_count": 37,
+      "special_content": "normal"
+    }
+  ],
+  "expected_primary_checks": [
+    "sentence_count_exact",
+    "token_count_exact",
+    "det_surfaces_exact",
+    "unique_lemma_count_exact",
+    "lemma_freq_exact",
+    "lemma_presense_absence"
+  ],
+  "assertion_policy": {
+    "sentence_count": "exact",
+    "token_count": "exact",
+    "det_surfaces": "exact",
+    "unique_lemma_count": "exact",
+    "lemma_freq": "exact",
+    "lemma_doc_freq": "exact"
+  },
+  "manual_review_focus": [
+    "Корректность разбиения на предложения по точкам",
+    "Отделяется ли артикль ה от существительного/прилагательного",
+    "Какие формы с ה являются частью слова, а не артиклем (היתוך, הרכב, הוספת)"
+  ],
+  "known_limitations": [
+    "Леммы глаголов даны в форме инфинитива — конкретная форма зависит от морфологического анализатора",
+    "Слово 'בעפרת' может токенизироваться как одно слово или как ב+עפרת в зависимости от pipeline",
+    "היתוך, הרכב, הוספת — ה является частью слова, НЕ артиклем"
+  ],
+  "notes": "Все ожидания типа EXACT. Каждый токен проверен вручную. DET surfaces идентифицированы вручную — артикль ה отделяется только когда это определённый артикль, а не часть корня."
+}

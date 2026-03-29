@@ -1,0 +1,33 @@
+# he_09_mixed_domain_materials — Ожидаемые количественные результаты
+
+domain_general:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 25
+    type: exact
+
+domain_noise:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 18
+    type: exact
+
+domain_steel:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 26
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 15
+    type: exact
+  total_tokens:
+    value: 69
+    type: exact

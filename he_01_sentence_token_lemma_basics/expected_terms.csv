@@ -1,0 +1,13 @@
+corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
+he_01,חוזק_מתיחה,NOUN_NOUN,"חוזק,מתיחה",2,2,non_noise,top_10,strong,high,high,high,manual_review,manual_review,manual_review,present_only,"устойчивый инженерный термин, NOUN+NOUN"
+he_01,סגסוגת_פלדה,NOUN_NOUN,"סגסוגת,פלדה",0,0,non_noise,absent,absent,absent,absent,absent,absent,absent,absent,absent,"не встречается как биграмма — разные предложения"
+he_01,טמפרטורה_גבוהה,NOUN_ADJ,"טמפרטורה,גבוה",2,2,non_noise,top_20,medium,medium,medium,medium,manual_review,manual_review,manual_review,present_only,"встречается в doc_01 и doc_03"
+he_01,ברזל_נוזלי,NOUN_ADJ,"ברזל,נוזלי",1,1,non_noise,top_30,weak,low,low,low,manual_review,manual_review,manual_review,present_only,"один раз в doc_01"
+he_01,שכבת_הגנה,NOUN_NOUN,"שכבה,הגנה",1,1,non_noise,top_20,medium,medium,medium,medium,manual_review,manual_review,manual_review,present_only,"в doc_06"
+he_01,מבנה_גביש,NOUN_NOUN,"מבנה,גביש",1,1,non_noise,top_20,medium,medium,medium,medium,manual_review,manual_review,manual_review,present_only,"в doc_05"
+he_01,טיפול_חום,NOUN_NOUN,"טיפול,חום",2,1,non_noise,top_10,strong,high,high,high,manual_review,manual_review,manual_review,present_only,"в doc_05, устойчивый термин"
+he_01,איכות_גבוהה,NOUN_ADJ,"איכות,גבוה",1,1,non_noise,top_30,medium,medium,medium,medium,manual_review,manual_review,manual_review,present_only,"в doc_01"
+he_01,אלקטרודת_ריתוך,NOUN_NOUN,"אלקטרודה,ריתוך",0,0,non_noise,absent,absent,absent,absent,absent,absent,absent,absent,absent,"absent — не встречается"
+he_01,מגנזיום_אלומיניום,NOUN_NOUN,"מגנזיום,אלומיניום",0,0,non_noise,absent,absent,absent,absent,absent,absent,absent,absent,absent,"absent — в одном предложении но не как биграмма"
+he_01,שחיקה_קורוזיה,NOUN_NOUN,"שחיקה,קורוזיה",0,0,non_noise,absent,absent,absent,absent,absent,absent,absent,absent,absent,"absent — нет в корпусе"
+he_01,טמפרטורת_התכה,NOUN_NOUN,"טמפרטורה,התכה",0,0,non_noise,absent,absent,absent,absent,absent,absent,absent,absent,absent,"absent — в разных предложениях"

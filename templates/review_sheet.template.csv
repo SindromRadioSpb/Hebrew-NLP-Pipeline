@@ -1,0 +1,3 @@
+item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,doc_01,TBD,,,,заполнить из manifest
+token_count,doc_01,TBD,,,,

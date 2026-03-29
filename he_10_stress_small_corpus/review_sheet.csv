@@ -1,0 +1,11 @@
+﻿item_type,item_text,expected,actual,pass_fail,discrepancy_type,notes
+sentence_count,mini_dense,6,,,,
+token_count,mini_dense,42,,,,
+sentence_count,mini_sparse,3,,,,
+token_count,mini_sparse,20,,,,
+sentence_count,tiny_01,4,,,,
+token_count,tiny_01,4,,,,
+sentence_count,tiny_02,5,,,,
+token_count,tiny_02,8,,,,
+sentence_count,CORPUS_TOTAL,18,,,,
+token_count,CORPUS_TOTAL,74,,,,

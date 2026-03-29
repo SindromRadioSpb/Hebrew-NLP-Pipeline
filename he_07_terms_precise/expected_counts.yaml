@@ -1,0 +1,25 @@
+# he_07_terms_precise — Ожидаемые количественные результаты
+
+filtered_01:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 18
+    type: exact
+
+strong_terms_01:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 31
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 10
+    type: exact
+  total_tokens:
+    value: 49
+    type: exact

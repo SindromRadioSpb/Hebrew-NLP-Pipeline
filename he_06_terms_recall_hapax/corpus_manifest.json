@@ -1,0 +1,33 @@
+{
+  "corpus_id": "he_06_terms_recall_hapax",
+  "version": "2.0.0",
+  "title": "Recall-oriented with hapax",
+  "purpose": "Проверяет recall profile, store_hapax, rare candidates.",
+  "language": "he",
+  "domain": "engineering",
+  "recommended_profile": "recall",
+  "text_count": 2,
+  "files": [
+    {
+      "filename": "mixed_freq_01.txt",
+      "sentence_count": 6,
+      "token_count": 24
+    },
+    {
+      "filename": "rare_terms_01.txt",
+      "sentence_count": 5,
+      "token_count": 23
+    }
+  ],
+  "expected_primary_checks": [
+    "sentence_count",
+    "token_count"
+  ],
+  "assertion_policy": {
+    "sentence_count": "exact",
+    "token_count": "exact"
+  },
+  "manual_review_focus": [],
+  "known_limitations": [],
+  "notes": "v2 — Проверяет recall profile, store_hapax, rare candidates."
+}

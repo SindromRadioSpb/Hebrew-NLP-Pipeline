@@ -1,0 +1,41 @@
+# he_12_reference_sensitive_terms — Ожидаемые количественные результаты
+
+borderline_terms:
+  sentence_count:
+    value: 6
+    type: exact
+  token_count:
+    value: 19
+    type: exact
+
+domain_vs_general:
+  sentence_count:
+    value: 6
+    type: exact
+  token_count:
+    value: 25
+    type: exact
+
+ref_sensitive_01:
+  sentence_count:
+    value: 12
+    type: exact
+  token_count:
+    value: 93
+    type: exact
+
+ref_sensitive_02:
+  sentence_count:
+    value: 10
+    type: exact
+  token_count:
+    value: 79
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 34
+    type: exact
+  total_tokens:
+    value: 216
+    type: exact

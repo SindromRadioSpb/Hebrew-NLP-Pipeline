@@ -1,0 +1,33 @@
+# he_05_terms_balanced — Ожидаемые количественные результаты
+
+engineering_01:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 30
+    type: exact
+
+materials_01:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 32
+    type: exact
+
+mechanics_01:
+  sentence_count:
+    value: 5
+    type: exact
+  token_count:
+    value: 29
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 15
+    type: exact
+  total_tokens:
+    value: 91
+    type: exact
