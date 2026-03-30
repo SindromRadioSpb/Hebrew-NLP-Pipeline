@@ -1,5 +1,14 @@
 # kadima/corpus/importer.py
-"""M14: Import TXT, CSV, CoNLL-U, JSON."""
+"""M14: Import TXT, CSV, CoNLL-U, JSON.
+
+Example:
+    >>> from kadima.corpus.importer import import_files
+    >>> docs = import_files(["tests/data/he_01_*/raw/doc_01.txt"])
+    >>> docs[0]["format"]
+    'txt'
+    >>> len(docs[0]["raw_text"]) > 0
+    True
+"""
 
 import os
 import csv

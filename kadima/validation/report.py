@@ -1,5 +1,19 @@
 # kadima/validation/report.py
-"""M11: PASS/WARN/FAIL report generation."""
+"""M11: PASS/WARN/FAIL report generation.
+
+Example:
+    >>> from kadima.validation.check_engine import CheckResult
+    >>> from kadima.validation.report import generate_report
+    >>> checks = [
+    ...     CheckResult("sent_count", "doc1", "s", "2", "2", "PASS", "exact"),
+    ...     CheckResult("sent_count", "doc2", "s", "3", "1", "FAIL", "exact"),
+    ... ]
+    >>> report = generate_report(1, checks)
+    >>> report.status
+    'FAIL'
+    >>> report.summary
+    {'pass': 1, 'warn': 0, 'fail': 1}
+"""
 
 import json
 import csv

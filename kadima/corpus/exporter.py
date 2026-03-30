@@ -1,5 +1,16 @@
 # kadima/corpus/exporter.py
-"""M14: Export CSV, JSON, TBX, TMX, CoNLL-U."""
+"""M14: Export CSV, JSON, TBX, TMX, CoNLL-U.
+
+Example:
+    >>> from kadima.corpus.exporter import export_csv, export_json
+    >>> terms = [{"surface": "חוזק מתיחה", "freq": 8, "rank": 1}]
+    >>> csv_str = export_csv(terms)
+    >>> "חוזק מתיחה" in csv_str
+    True
+    >>> json_str = export_json(terms)
+    >>> import json; json.loads(json_str)["count"]
+    1
+"""
 
 import csv
 import json

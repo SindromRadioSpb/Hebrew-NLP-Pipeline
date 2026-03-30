@@ -1,5 +1,15 @@
 # kadima/kb/search.py
-"""M19: Full-text + embedding similarity search."""
+"""M19: Full-text + embedding similarity search.
+
+Example:
+    >>> from kadima.kb.repository import KBRepository
+    >>> from kadima.kb.search import KBSearch
+    >>> repo = KBRepository("/tmp/test_kb.db")
+    >>> search = KBSearch(repo)
+    >>> results = search.search_text("חוזק", limit=10)
+    >>> isinstance(results, list)
+    True
+"""
 
 import logging
 from typing import List

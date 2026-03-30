@@ -5,6 +5,27 @@ Data flow:
   M1 HebPipeSentSplitter:  str → SentenceSplitResult
   M2 HebPipeTokenizer:     str → TokenizeResult
   M3 HebPipeMorphAnalyzer: List[Token] → MorphResult
+
+Example (full M1→M2→M3 chain):
+    >>> from kadima.engine.hebpipe_wrappers import (
+    ...     HebPipeSentSplitter, HebPipeTokenizer, HebPipeMorphAnalyzer,
+    ... )
+    >>> text = "פלדה חזקה משמשת בבניין. חוזק מתיחה גבוה."
+    >>> # M1: sentence split
+    >>> m1 = HebPipeSentSplitter()
+    >>> r1 = m1.process(text, {})
+    >>> sentences = [s.text for s in r1.data.sentences]
+    >>> # M2: tokenize each sentence
+    >>> m2 = HebPipeTokenizer()
+    >>> tokens_per_sent = []
+    >>> for sent in r1.data.sentences:
+    ...     r2 = m2.process(sent.text, {})
+    ...     tokens_per_sent.append(r2.data.tokens)
+    >>> # M3: morphological analysis
+    >>> m3 = HebPipeMorphAnalyzer()
+    >>> r3 = m3.process(tokens_per_sent[0], {})
+    >>> r3.data.analyses[0].lemma  # "פלדה"
+    'פלדה'
 """
 
 import time
@@ -71,7 +92,16 @@ class MorphResult:
 
 
 class HebPipeSentSplitter(Processor):
-    """M1: Разбиение текста на предложения."""
+    """M1: Разбиение текста на предложения.
+
+    Example:
+        >>> splitter = HebPipeSentSplitter()
+        >>> result = splitter.process("פלדה חזקה. בטון קל.", {})
+        >>> result.data.count
+        2
+        >>> result.data.sentences[0].text
+        'פלדה חזקה'
+    """
 
     @property
     def name(self) -> str:
@@ -121,7 +151,16 @@ class HebPipeSentSplitter(Processor):
 
 
 class HebPipeTokenizer(Processor):
-    """M2: Токенизация предложения по пробелам."""
+    """M2: Токенизация предложения по пробелам.
+
+    Example:
+        >>> tok = HebPipeTokenizer()
+        >>> result = tok.process("חוזק מתיחה של הפלדה", {})
+        >>> result.data.count
+        4
+        >>> result.data.tokens[0].surface
+        'חוזק'
+    """
 
     @property
     def name(self) -> str:
@@ -166,7 +205,19 @@ class HebPipeTokenizer(Processor):
 
 
 class HebPipeMorphAnalyzer(Processor):
-    """M3: Морфологический анализ токенов."""
+    """M3: Морфологический анализ токенов.
+
+    Example:
+        >>> from kadima.engine.hebpipe_wrappers import Token
+        >>> m3 = HebPipeMorphAnalyzer()
+        >>> tokens = [Token(0, "הפלדה", 0, 5)]
+        >>> result = m3.process(tokens, {})
+        >>> a = result.data.analyses[0]
+        >>> a.is_det
+        True
+        >>> a.prefix_chain
+        ['ה']
+    """
 
     @property
     def name(self) -> str:

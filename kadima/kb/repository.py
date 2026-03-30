@@ -1,5 +1,16 @@
 # kadima/kb/repository.py
-"""SQLite repository для Knowledge Base."""
+"""SQLite repository для Knowledge Base.
+
+Example:
+    >>> from kadima.kb.repository import KBRepository, KBTerm
+    >>> repo = KBRepository("/tmp/test_kb.db")  # в реальности ~/.kadima/kadima.db
+    >>> term = KBTerm(id=None, surface="חוזק", canonical="חוזק",
+    ...               lemma="חוזק", pos="NOUN", freq=10)
+    >>> term_id = repo.create_term(term)
+    >>> results = repo.search("חוזק")
+    >>> results[0].surface
+    'חוזק'
+"""
 
 import sqlite3
 import json

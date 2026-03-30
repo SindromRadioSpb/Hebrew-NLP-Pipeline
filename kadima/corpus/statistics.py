@@ -1,5 +1,15 @@
 # kadima/corpus/statistics.py
-"""M14: Token/lemma/freq statistics."""
+"""M14: Token/lemma/freq statistics.
+
+Example:
+    >>> from kadima.corpus.statistics import compute_statistics
+    >>> docs = [{"filename": "a.txt", "raw_text": "חוזק מתיחה של הפלדה."}]
+    >>> stats = compute_statistics(docs)
+    >>> stats["document_count"]
+    1
+    >>> stats["total_words"]
+    4
+"""
 
 import logging
 from typing import Dict, Any, List

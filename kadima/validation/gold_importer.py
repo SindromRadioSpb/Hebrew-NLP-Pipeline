@@ -1,5 +1,16 @@
 # kadima/validation/gold_importer.py
-"""M11: Импорт gold corpus (manifest + expected CSV)."""
+"""M11: Импорт gold corpus (manifest + expected CSV).
+
+Example:
+    >>> from kadima.validation.gold_importer import load_gold_corpus
+    >>> corpus = load_gold_corpus("tests/data/he_01_sentence_token_lemma_basics")
+    >>> corpus.version
+    '2.1'
+    >>> len(corpus.checks) > 0
+    True
+    >>> corpus.checks[0].check_type
+    'sentence_count'
+"""
 
 import os
 import csv

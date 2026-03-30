@@ -1,5 +1,15 @@
 # kadima/validation/check_engine.py
-"""M11: ExpectedCheck → actual → comparison."""
+"""M11: ExpectedCheck → actual → comparison.
+
+Example:
+    >>> from kadima.validation.gold_importer import ExpectedCheck
+    >>> from kadima.validation.check_engine import run_checks
+    >>> checks = [ExpectedCheck("sentence_count", "doc1", "sentences", "2", "exact")]
+    >>> actuals = {"sentence_count:doc1:sentences": "2"}
+    >>> results = run_checks(checks, actuals)
+    >>> results[0].result
+    'PASS'
+"""
 
 import logging
 from typing import List, Dict, Optional
