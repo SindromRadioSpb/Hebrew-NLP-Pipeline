@@ -1,13 +1,17 @@
 # 4.1. Software Architecture — KADIMA
 
-> Связанные документы: [NLP_STACK_INTEGRATION.md](./NLP_STACK_INTEGRATION.md) — детальная интеграция spaCy + HebPipe + NeoDictaBERT
+> Связанные документы:
+> - [NLP_STACK_INTEGRATION.md](./NLP_STACK_INTEGRATION.md) — spaCy + HebPipe + NeoDictaBERT
+> - [LABEL_STUDIO_INTEGRATION.md](./LABEL_STUDIO_INTEGRATION.md) — Annotation platform
+> - [GENERATIVE_LLM_INTEGRATION.md](./GENERATIVE_LLM_INTEGRATION.md) — Dicta-LM 3.0 (v1.x)
+> - [SEMANTIC_ANNOTATION_GAP.md](./SEMANTIC_ANNOTATION_GAP.md) — INCEpTION analysis, KB, active learning
 
 ## Общая схема
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  UI Layer (PyQt)                         │
-│  Dashboard │ Pipeline │ Results │ Validation             │
+│               UI Layer                                  │
+│  PyQt Dashboard │ Label Studio (annotation, P1)         │
 ├─────────────────────────────────────────────────────────┤
 │                  Service Layer                           │
 │  PipelineService │ ValidationService │ ExportService     │
@@ -28,6 +32,12 @@
 │  ┌── Outside spaCy ──────────────────────────────────┐  │
 │  │  Canonicalizer (M6) │ AM Engine (M7) │ TermExt(M8)│  │
 │  │  Validation (M11)   │ CorpusManager (M14)          │  │
+│  └───────────────────────────────────────────────────┘  │
+│                                                         │
+│  ┌── LLM Service (v1.x, архитектурный шов) ──────────┐  │
+│  │  Dicta-LM 3.0 via llama.cpp                        │  │
+│  │  Term definitions │ QA │ Grammar │ Explanations     │  │
+│  │  Подробнее: GENERATIVE_LLM_INTEGRATION.md           │  │
 │  └───────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────┤
 │                  Data Layer                              │
@@ -79,6 +89,9 @@ NLP-стек основан на трёх open-source компонентах:
 | torch | ≥2.1 | Transformer backend | BSD |
 | HebPipe | latest | M1–M3 modules | Apache 2.0 |
 | NeoDictaBERT | latest | Transformer backbone | CC BY 4.0 |
+| Label Studio | Community | Annotation platform (M15) | Apache 2.0 |
+| Dicta-LM 3.0 | v1.x | Generative LLM (definitions, QA) | Apache 2.0 |
+| llama.cpp | — | LLM inference server | MIT |
 | PyQt6 | — | UI | GPL/Commercial |
 | SQLite | 3.x | Storage | Public domain |
 | pandas | — | Data processing | BSD |

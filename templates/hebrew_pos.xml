@@ -1,0 +1,19 @@
+<!-- templates/hebrew_pos.xml -->
+<!-- Hebrew POS Annotation Template for Label Studio -->
+<View>
+  <Header value="Hebrew POS Annotation"/>
+  <Labels name="pos" toName="text" choice="multiple">
+    <Label value="NOUN" background="#FFA39E" hotkey="1"/>
+    <Label value="VERB" background="#D4380D" hotkey="2"/>
+    <Label value="ADJ" background="#FFC069" hotkey="3"/>
+    <Label value="ADV" background="#AD8B00" hotkey="4"/>
+    <Label value="PREP" background="#D3F261" hotkey="5"/>
+    <Label value="DET" background="#389E0D" hotkey="6"/>
+    <Label value="CONJ" background="#5CDBD3" hotkey="7"/>
+    <Label value="PRON" background="#096DD9" hotkey="8"/>
+    <Label value="NUM" background="#ADC6FF" hotkey="9"/>
+    <Label value="PUNCT" background="#9254DE" hotkey="0"/>
+  </Labels>
+  <Text name="text" value="$text"
+        style="direction: rtl; text-align: right; font-size: 18px; line-height: 1.8; font-family: 'Noto Sans Hebrew', Arial, sans-serif;"/>
+</View>

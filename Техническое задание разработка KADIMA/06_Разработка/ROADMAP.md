@@ -1,6 +1,14 @@
 # 6.2. Delivery Plan / Roadmap — KADIMA
 
 > NLP-стек: spaCy + HebPipe + NeoDictaBERT. Детали см. [04_Система/NLP_STACK_INTEGRATION.md](../04_Система/NLP_STACK_INTEGRATION.md)
+> Annotation: Label Studio Community (Apache 2.0). Детали см. [04_Система/LABEL_STUDIO_INTEGRATION.md](../04_Система/LABEL_STUDIO_INTEGRATION.md)
+
+## Phase 0: Label Studio Setup (Week 0–1) ← NEW
+- Установить Label Studio (Docker или pip)
+- Настроить Hebrew NER template (RTL, custom labels: PERSON, LOCATION, ORG, MATERIAL, TERM)
+- Настроить Hebrew Term Review template (valid/invalid/canonical/uncertain)
+- Smoke test: создать задачу → аннотировать → экспортировать
+- Документация: как аннотатор создаёт gold corpus
 
 ## Phase 1: NLP Infrastructure + MVP (Months 1–3)
 

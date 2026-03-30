@@ -1,0 +1,14 @@
+# requirements.txt — pinned production deps
+# Source of truth: pyproject.toml (version ranges)
+# This file: exact pins for reproducible Docker builds
+#
+# Generate:  pip freeze | grep -iE "pyyaml|pydantic|httpx|fastapi|uvicorn"
+# Update:    1) edit pyproject.toml ranges
+#            2) pip install <pkg>==<ver> && pip freeze | grep <pkg>
+#            3) update this file
+
+PyYAML==6.0.1
+pydantic==2.10.6
+httpx==0.28.1
+fastapi==0.115.8
+uvicorn==0.34.0

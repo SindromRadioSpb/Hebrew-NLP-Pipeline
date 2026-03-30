@@ -1,0 +1,50 @@
+# .dockerignore — exclude from Docker build context
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Tests & validation data (not needed in image)
+tests/
+validation_text_test/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large data
+hebrew-nlp-resources/
+*.db
+*.sqlite
+*.gguf
+*.bin
+
+# Docker
+docker-compose*.yml
+.dockerignore
+
+# Docs (not needed in runtime)
+*.md
+LICENSE

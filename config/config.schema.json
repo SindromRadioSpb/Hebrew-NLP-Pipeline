@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "KADIMA Config",
+  "type": "object",
+  "properties": {
+    "pipeline": {
+      "type": "object",
+      "properties": {
+        "language": {"type": "string", "enum": ["he"], "default": "he"},
+        "profile": {"type": "string", "enum": ["precise", "balanced", "recall"], "default": "balanced"},
+        "modules": {
+          "type": "array",
+          "items": {"type": "string", "enum": ["sent_split", "morph_analyzer", "ngram", "np_chunk", "canonicalize", "am", "term_extract", "noise"]},
+          "default": ["sent_split", "morph_analyzer", "ngram", "np_chunk", "canonicalize", "am", "term_extract", "noise"]
+        },
+        "thresholds": {
+          "type": "object",
+          "properties": {
+            "min_freq": {"type": "integer", "minimum": 1, "default": 2},
+            "pmi_threshold": {"type": "number", "minimum": 0, "default": 3.0},
+            "hapax_filter": {"type": "boolean", "default": true}
+          }
+        }
+      }
+    },
+    "annotation": {
+      "type": "object",
+      "properties": {
+        "label_studio_url": {"type": "string", "default": "http://localhost:8080"},
+        "label_studio_api_key": {"type": ["string", "null"]},
+        "ml_backend_url": {"type": "string", "default": "http://localhost:9090"}
+      }
+    },
+    "llm": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "default": false},
+        "server_url": {"type": "string", "default": "http://localhost:8081"},
+        "model": {"type": "string", "default": "dictalm-3.0-1.7b-instruct"},
+        "max_tokens": {"type": "integer", "default": 512},
+        "temperature": {"type": "number", "default": 0.7}
+      }
+    },
+    "kb": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "default": false},
+        "embedding_model": {"type": "string", "default": "neodictabert"},
+        "auto_generate_definitions": {"type": "boolean", "default": false}
+      }
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "level": {"type": "string", "enum": ["DEBUG", "INFO", "WARNING", "ERROR"], "default": "INFO"},
+        "file": {"type": "string", "default": "~/.kadima/logs/kadima.log"}
+      }
+    },
+    "storage": {
+      "type": "object",
+      "properties": {
+        "db_path": {"type": "string", "default": "~/.kadima/kadima.db"},
+        "auto_backup": {"type": "boolean", "default": true}
+      }
+    }
+  }
+}

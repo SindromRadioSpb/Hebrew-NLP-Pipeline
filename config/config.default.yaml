@@ -1,0 +1,59 @@
+# config/config.default.yaml
+# Дефолтная конфигурация KADIMA
+# Скопируйте в ~/.kadima/config.yaml и настройте
+
+pipeline:
+  language: he
+  profile: balanced  # precise | balanced | recall
+  modules:
+    - sent_split
+    - tokenizer
+    - morph_analyzer
+    - ngram
+    - np_chunk
+    - canonicalize
+    - am
+    - term_extract
+    - noise
+  thresholds:
+    min_freq: 2
+    pmi_threshold: 3.0
+    hapax_filter: true
+    # Профиль-specific overrides
+    precise:
+      min_freq: 3
+      pmi_threshold: 5.0
+      hapax_filter: true
+    balanced:
+      min_freq: 2
+      pmi_threshold: 3.0
+      hapax_filter: true
+    recall:
+      min_freq: 1
+      pmi_threshold: 1.0
+      hapax_filter: false
+
+annotation:
+  label_studio_url: http://localhost:8080
+  label_studio_api_key: null  # или ${LS_API_KEY}
+  ml_backend_url: http://localhost:9090
+
+llm:  # v1.x
+  enabled: false
+  server_url: http://localhost:8081
+  model: dictalm-3.0-1.7b-instruct
+  max_tokens: 512
+  temperature: 0.7
+
+kb:  # v1.x
+  enabled: false
+  embedding_model: neodictabert
+  auto_generate_definitions: false
+
+logging:
+  level: INFO  # DEBUG | INFO | WARNING | ERROR
+  file: ~/.kadima/logs/kadima.log
+
+storage:
+  db_path: ~/.kadima/kadima.db
+  auto_backup: true

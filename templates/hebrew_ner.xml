@@ -1,0 +1,17 @@
+<!-- templates/hebrew_ner.xml -->
+<!-- Hebrew NER Annotation Template for Label Studio -->
+<!-- Labels: PERSON, LOCATION, ORG, DATE, QUANTITY, MATERIAL, TERM -->
+<View>
+  <Header value="Hebrew NER Annotation"/>
+  <Labels name="label" toName="text" choice="multiple">
+    <Label value="PERSON" background="#9254DE" hotkey="1"/>
+    <Label value="LOCATION" background="#D3F261" hotkey="2"/>
+    <Label value="ORG" background="#ADC6FF" hotkey="3"/>
+    <Label value="DATE" background="#D4380D" hotkey="4"/>
+    <Label value="QUANTITY" background="#FFC069" hotkey="5"/>
+    <Label value="MATERIAL" background="#5CDBD3" hotkey="6"/>
+    <Label value="TERM" background="#389E0D" hotkey="7"/>
+  </Labels>
+  <Text name="text" value="$text"
+        style="direction: rtl; text-align: right; font-size: 18px; line-height: 1.8; font-family: 'Noto Sans Hebrew', Arial, sans-serif;"/>
+</View>

@@ -1,0 +1,106 @@
+# docker-compose.yml — KADIMA stack
+# Usage:
+#   docker compose up -d                  — API + Label Studio
+#   docker compose --profile llm up -d    — + llama.cpp LLM server
+#   docker compose down                   — stop all
+#   docker compose down -v                — stop + delete volumes
+
+services:
+  # ── KADIMA API ─────────────────────────────────────────────────────────────
+  api:
+    build: .
+    container_name: kadima-api
+    ports:
+      - "8501:8501"
+    volumes:
+      - kadima-data:/data
+    environment:
+      - KADIMA_HOME=/data
+      - KADIMA_LOG_LEVEL=INFO
+      - LS_URL=http://label-studio:8080
+      - LS_API_KEY=${LS_API_KEY:-}
+    restart: unless-stopped
+    depends_on:
+      label-studio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Label Studio (annotation) ──────────────────────────────────────────────
+  label-studio:
+    image: heartexlabs/label-studio:latest
+    container_name: kadima-label-studio
+    ports:
+      - "8080:8080"
+    volumes:
+      - label-studio-data:/label-studio/data
+    environment:
+      - LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=false
+      - LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK=true
+      - LABEL_STUDIO_USERNAME=admin
+      - LABEL_STUDIO_PASSWORD=kadima2024
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── ML Backend (pre-annotation) ────────────────────────────────────────────
+  ml-backend:
+    build: .
+    container_name: kadima-ml-backend
+    command: ["python", "-m", "kadima.annotation.ml_backend", "--host", "0.0.0.0", "--port", "9090"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - kadima-data:/data
+    environment:
+      - KADIMA_HOME=/data
+      - KADIMA_LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── llama.cpp LLM server (optional — requires GPU) ─────────────────────────
+  #   docker compose --profile llm up -d
+  llm:
+    image: ghcr.io/ggerganov/llama.cpp:server
+    container_name: kadima-llm
+    profiles: ["llm"]
+    ports:
+      - "8081:8081"
+    volumes:
+      - llm-models:/models
+    environment:
+      - MODEL_PATH=/models/dictalm-3.0-1.7b-instruct.gguf
+      - N_CTX=4096
+      - N_GPU_LAYERS=35
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    # NOTE: Download model manually:
+    #   docker compose run --rm llm-download
+    # Or mount your local models:
+    #   volumes:
+    #     - /mnt/c/models:/models:ro
+
+volumes:
+  kadima-data:
+    driver: local
+  label-studio-data:
+    driver: local
+  llm-models:
+    driver: local

@@ -1,0 +1,37 @@
+<!-- templates/hebrew_term_review.xml -->
+<!-- Hebrew Term Review Template for Label Studio -->
+<!-- Annotator validates/corrects extracted terms -->
+<View>
+  <Header value="Term Review — בדיקת מונחים"/>
+
+  <View style="direction: rtl; text-align: right; margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+    <Header value="מונח:" size="14"/>
+    <Text name="term_surface" value="$term_surface"
+          style="font-size: 24px; font-weight: bold; color: #1a1a1a;"/>
+    <View style="margin-top: 10px;">
+      <Header value="סוג:" size="12"/>
+      <Text name="term_kind" value="$term_kind" style="font-size: 14px; color: #666;"/>
+    </View>
+  </View>
+
+  <View style="direction: rtl; text-align: right; margin-bottom: 20px; padding: 15px; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 8px;">
+    <Header value="הקשר:" size="14"/>
+    <Text name="context" value="$context"
+          style="font-size: 16px; line-height: 1.8; direction: rtl;"/>
+  </View>
+
+  <Choices name="decision" toName="term_surface" choice="single" showInline="true"
+           layout="vertical">
+    <Choice value="valid_term" background="#d4edda" hint="מונח תקין — ניתן להשתמש"/>
+    <Choice value="invalid_term" background="#f8d7da" hint="אינו מונח — יש לסנן"/>
+    <Choice value="needs_canonical" background="#fff3cd" hint="מונח תקין אך דורש צורה קנונית"/>
+    <Choice value="uncertain" background="#d1ecf1" hint="דורש בדיקה נוספת"/>
+  </Choices>
+
+  <View style="margin-top: 15px;">
+    <TextArea name="review_notes" toName="term_surface"
+              placeholder="הערות (אופציונלי)..."
+              rows="2"
+              style="direction: rtl;"/>
+  </View>
+</View>

@@ -1,0 +1,8 @@
+# requirements-dev.txt — development / testing deps
+# Install: pip install -r requirements.txt -r requirements-dev.txt
+
+-r requirements.txt
+pytest==9.0.2
+pytest-cov==6.1.1
+ruff==0.11.2
+mypy==1.15.0
