@@ -8,7 +8,7 @@ This module converts local DB annotation_results into output files.
 import csv
 import json
 import logging
-from typing import List, Dict
+from typing import Any, List, Dict
 
 from kadima.data.db import get_connection
 
@@ -50,8 +50,8 @@ def export_to_csv(db_path: str, project_id: int, output_path: str) -> int:
 
 
 def _assign_iob2_tags(
-    tokens: List[Dict],
-    spans: List[Dict],
+    tokens: List[Dict[str, Any]],
+    spans: List[Dict[str, Any]],
 ) -> List[str]:
     """Assign IOB2 NER tags to tokens based on character spans.
 
@@ -85,7 +85,7 @@ def _assign_iob2_tags(
     return tags
 
 
-def _tokenize_for_conllu(text: str) -> List[Dict]:
+def _tokenize_for_conllu(text: str) -> List[Dict[str, Any]]:
     """Simple whitespace tokenizer for CoNLL-U export.
 
     Returns list of {"text": str, "start": int, "end": int}.
@@ -136,7 +136,11 @@ def export_to_conllu(db_path: str, project_id: int, output_path: str) -> int:
             for task_row in tasks:
                 task_id = task_row["id"]
                 doc_id = task_row["document_id"]
-                task_data = json.loads(task_row["data"])
+                try:
+                    task_data = json.loads(task_row["data"])
+                except json.JSONDecodeError:
+                    logger.error("Invalid JSON in task %d data, skipping", task_id)
+                    continue
                 text = task_data.get("text", "")
 
                 if not text.strip():
@@ -221,7 +225,11 @@ def export_to_training_json(db_path: str, project_id: int, output_path: str) -> 
         examples = []
         for task_row in tasks:
             task_id = task_row["id"]
-            task_data = json.loads(task_row["data"])
+            try:
+                task_data = json.loads(task_row["data"])
+            except json.JSONDecodeError:
+                logger.error("Invalid JSON in task %d data, skipping", task_id)
+                continue
             text = task_data.get("text", "")
 
             if not text.strip():

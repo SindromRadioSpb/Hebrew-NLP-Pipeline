@@ -5,11 +5,15 @@ Wraps kadima.engine.hebpipe_wrappers.HebPipeSentSplitter into a
 spaCy pipeline component for integration with spaCy workflows.
 """
 
+import logging
+
 import spacy
 from spacy.language import Language
 from spacy.tokens import Doc
 
 from kadima.engine.hebpipe_wrappers import HebPipeSentSplitter
+
+logger = logging.getLogger(__name__)
 
 
 @Language.factory("kadima_sent_split")
@@ -35,4 +39,7 @@ class KadimaSentSplitter:
                     if token.idx == sent.start:
                         token.is_sent_start = True
                         break
+            logger.debug("Split into %d sentences", len(result.data.sentences))
+        else:
+            logger.warning("Sentence splitting returned no data")
         return doc

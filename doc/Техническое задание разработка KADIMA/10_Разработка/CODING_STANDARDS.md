@@ -1,5 +1,9 @@
 # 10.3. Coding Standards — KADIMA
 
+> ⚠️ **Частично устарело** — Config описан как @dataclass, реально pydantic.BaseModel.
+> Форматирование: ruff (line-length 120), не Black (100).
+> Актуальные конвенции см. в `CLAUDE.md`.
+>
 > Версия: 1.0 (2026-03-30)
 > Связанные: PROJECT_STRUCTURE.md, INTERFACE_CONTRACTS.md
 

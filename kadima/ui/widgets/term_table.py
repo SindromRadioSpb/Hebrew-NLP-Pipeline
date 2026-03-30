@@ -15,6 +15,8 @@ except ImportError:
 
 @dataclass
 class TermRow:
+    """Строка таблицы терминов для UI."""
+
     surface: str
     canonical: str
     kind: str

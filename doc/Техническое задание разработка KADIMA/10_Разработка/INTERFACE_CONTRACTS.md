@@ -1,5 +1,9 @@
 # 10.2. Interface Contracts — KADIMA
 
+> ⚠️ **Частично устарело** — Кастомные исключения (KadimaError, PipelineError...)
+> описаны здесь, но в коде не реализованы. Текущий паттерн: `ProcessorResult(status=FAILED)`.
+> Processor ABC и dataclass'ы актуальны.
+>
 > Версия: 1.0 (2026-03-30)
 > Связанные: PROJECT_STRUCTURE.md (kadima/engine/base.py), DATA_MODEL.md, ARCHITECTURE.md
 

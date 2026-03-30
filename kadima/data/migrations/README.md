@@ -65,11 +65,18 @@ CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 ```sql
 -- 006_add_embedding_version.sql
 -- Add version tracking for embeddings
+-- ⚠️ Rule: ONE ALTER TABLE per migration file (SQLite executescript commits each DDL)
 
 -- SQLite: no ALTER COLUMN, only ADD COLUMN
 ALTER TABLE kb_terms ADD COLUMN embedding_model TEXT DEFAULT 'neodictabert';
-ALTER TABLE kb_terms ADD COLUMN embedding_dim INTEGER DEFAULT 768;
 ```
+
+**⚠️ Important:** SQLite's `executescript()` implicitly commits each DDL statement.
+If a multi-statement migration fails mid-way, earlier statements ARE committed.
+This is safe for `CREATE TABLE IF NOT EXISTS` (idempotent) but risky for `ALTER TABLE ADD COLUMN`.
+
+**Rule: One ALTER TABLE per migration file.** If you need 3 columns, create 3 migration files.
+This ensures partial failures don't leave the schema in a confusing state.
 
 ### Adding an Index
 

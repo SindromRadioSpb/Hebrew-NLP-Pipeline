@@ -1,10 +1,13 @@
 # kadima/api/app.py
 """FastAPI application factory для KADIMA REST API."""
 
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from kadima.api.routers import corpora, pipeline, validation
+
+logger = logging.getLogger(__name__)
 
 # v1.x routers (conditionally imported)
 try:
@@ -37,17 +40,23 @@ def create_app() -> FastAPI:
     app.include_router(corpora.router, prefix="/api/v1", tags=["corpora"])
     app.include_router(pipeline.router, prefix="/api/v1", tags=["pipeline"])
     app.include_router(validation.router, prefix="/api/v1", tags=["validation"])
+    logger.info("Core routers registered (corpora, pipeline, validation)")
 
     # Extended routers (v1.x)
     if HAS_EXTENDED:
         app.include_router(annotation.router, prefix="/api/v1", tags=["annotation"])
         app.include_router(kb.router, prefix="/api/v1", tags=["kb"])
         app.include_router(llm.router, prefix="/api/v1", tags=["llm"])
+        logger.info("Extended routers registered (annotation, kb, llm)")
+    else:
+        logger.warning("Extended routers not available (annotation, kb, llm)")
 
     @app.get("/health")
     async def health():
+        """Health check endpoint returning service status and version."""
         return {"status": "ok", "version": __import__("kadima").__version__}
 
+    logger.info("KADIMA API app created successfully")
     return app
 
 

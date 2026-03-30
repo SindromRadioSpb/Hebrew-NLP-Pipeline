@@ -30,6 +30,7 @@ class LlamaCppClient:
         try:
             return self.client.get("/health").status_code == 200
         except Exception:
+            logger.debug("LLM health check failed (server unreachable)")
             return False
 
     def generate(self, prompt: str, max_tokens: int = 512, temperature: float = 0.7, stop: Optional[List[str]] = None) -> str:

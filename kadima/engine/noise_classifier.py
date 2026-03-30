@@ -1,10 +1,13 @@
 # kadima/engine/noise_classifier.py
 """M12: Noise Classifier — punct, number, latin, etc."""
 
+import logging
 import time
 import re
 from typing import Any, Dict, List
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 from kadima.engine.base import Processor, ProcessorResult, ProcessorStatus
 from kadima.engine.hebpipe_wrappers import Token
@@ -12,12 +15,16 @@ from kadima.engine.hebpipe_wrappers import Token
 
 @dataclass
 class NoiseLabel:
+    """Метка шума для одного токена."""
+
     surface: str
     noise_type: str  # punct | number | latin | chemical | quantity | math | non_noise
 
 
 @dataclass
 class NoiseResult:
+    """Результат классификации шума: список меток."""
+
     labels: List[NoiseLabel]
 
 
@@ -54,6 +61,7 @@ class NoiseClassifier(Processor):
 
     def process(self, input_data: List[Token], config: Dict[str, Any]) -> ProcessorResult:
         start = time.time()
+        logger.info("NoiseClassifier: processing %d tokens", len(input_data))
         try:
             labels = []
             for token in input_data:
@@ -69,12 +77,14 @@ class NoiseClassifier(Processor):
                 else:
                     labels.append(NoiseLabel(surface=surface, noise_type="non_noise"))
 
+            logger.info("NoiseClassifier: classified %d tokens", len(labels))
             return ProcessorResult(
                 module_name=self.name, status=ProcessorStatus.READY,
                 data=NoiseResult(labels=labels),
                 processing_time_ms=(time.time() - start) * 1000,
             )
         except Exception as e:
+            logger.error("NoiseClassifier failed", exc_info=True)
             return ProcessorResult(
                 module_name=self.name, status=ProcessorStatus.FAILED,
                 data=None, errors=[str(e)],

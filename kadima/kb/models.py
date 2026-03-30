@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 
 @dataclass
 class KBTerm:
+    """Термин Knowledge Base: поверхность, лемма, определение, embedding."""
+
     id: Optional[int]
     surface: str
     canonical: str
@@ -22,6 +24,8 @@ class KBTerm:
 
 @dataclass
 class KBRelation:
+    """Связь между терминами: синоним, гипероним, тематическая, embedding."""
+
     id: Optional[int]
     term_id: int
     related_term_id: int
@@ -32,6 +36,8 @@ class KBRelation:
 
 @dataclass
 class KBDefinition:
+    """Определение термина: источник, верификация."""
+
     id: Optional[int]
     term_id: int
     definition_text: str

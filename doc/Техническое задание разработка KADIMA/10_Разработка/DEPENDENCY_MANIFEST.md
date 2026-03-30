@@ -1,5 +1,9 @@
 # 10.4. Dependency Manifest — KADIMA
 
+> ⚠️ **TARGET STATE (v1.0)** — этот документ описывает целевые зависимости для v1.0.
+> Текущее состояние (v0.9) см. в `pyproject.toml` и `CLAUDE.md`.
+> Фактические deps: PyYAML, pydantic, spacy, httpx, fastapi, uvicorn.
+>
 > Версия: 1.0 (2026-03-30)
 > Связанные: PROJECT_STRUCTURE.md, NLP_STACK_INTEGRATION.md, DEPLOYMENT.md
 

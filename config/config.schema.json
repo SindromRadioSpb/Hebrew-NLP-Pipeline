@@ -1,67 +1,455 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "KADIMA Config",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kadima.dev/config.schema.json",
+  "title": "KADIMA Pipeline Configuration",
+  "description": "Configuration schema for KADIMA Hebrew NLP term extraction pipeline.",
   "type": "object",
   "properties": {
     "pipeline": {
-      "type": "object",
+      "$defs": {
+        "AnnotationConfig": {
+          "additionalProperties": false,
+          "description": "Конфигурация интеграции с Label Studio.",
+          "properties": {
+            "label_studio_url": {
+              "default": "http://localhost:8080",
+              "title": "Label Studio Url",
+              "type": "string"
+            },
+            "label_studio_api_key": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Label Studio Api Key"
+            },
+            "ml_backend_url": {
+              "default": "http://localhost:9090",
+              "title": "Ml Backend Url",
+              "type": "string"
+            }
+          },
+          "title": "AnnotationConfig",
+          "type": "object"
+        },
+        "KBConfig": {
+          "additionalProperties": false,
+          "description": "Конфигурация Knowledge Base (embedding model, автогенерация).",
+          "properties": {
+            "enabled": {
+              "default": false,
+              "title": "Enabled",
+              "type": "boolean"
+            },
+            "embedding_model": {
+              "default": "neodictabert",
+              "title": "Embedding Model",
+              "type": "string"
+            },
+            "auto_generate_definitions": {
+              "default": false,
+              "title": "Auto Generate Definitions",
+              "type": "boolean"
+            }
+          },
+          "title": "KBConfig",
+          "type": "object"
+        },
+        "LLMConfig": {
+          "additionalProperties": false,
+          "description": "Конфигурация LLM (llama.cpp, Dicta-LM).",
+          "properties": {
+            "enabled": {
+              "default": false,
+              "title": "Enabled",
+              "type": "boolean"
+            },
+            "server_url": {
+              "default": "http://localhost:8081",
+              "title": "Server Url",
+              "type": "string"
+            },
+            "model": {
+              "default": "dictalm-3.0-1.7b-instruct",
+              "title": "Model",
+              "type": "string"
+            },
+            "max_tokens": {
+              "default": 512,
+              "maximum": 8192,
+              "minimum": 1,
+              "title": "Max Tokens",
+              "type": "integer"
+            },
+            "temperature": {
+              "default": 0.7,
+              "maximum": 2.0,
+              "minimum": 0.0,
+              "title": "Temperature",
+              "type": "number"
+            }
+          },
+          "title": "LLMConfig",
+          "type": "object"
+        },
+        "LogLevel": {
+          "description": "Уровень логирования.",
+          "enum": [
+            "DEBUG",
+            "INFO",
+            "WARNING",
+            "ERROR"
+          ],
+          "title": "LogLevel",
+          "type": "string"
+        },
+        "LoggingConfig": {
+          "additionalProperties": false,
+          "description": "Конфигурация логирования: уровень и путь к файлу.",
+          "properties": {
+            "level": {
+              "$ref": "#/$defs/LogLevel",
+              "default": "INFO"
+            },
+            "file": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "~/.kadima/logs/kadima.log",
+              "title": "File"
+            }
+          },
+          "title": "LoggingConfig",
+          "type": "object"
+        },
+        "Profile": {
+          "description": "Профиль pipeline: баланс между точностью и полнотой.",
+          "enum": [
+            "precise",
+            "balanced",
+            "recall"
+          ],
+          "title": "Profile",
+          "type": "string"
+        },
+        "StorageConfig": {
+          "additionalProperties": false,
+          "description": "Конфигурация хранилища: путь к БД, автобэкап.",
+          "properties": {
+            "db_path": {
+              "default": "~/.kadima/kadima.db",
+              "title": "Db Path",
+              "type": "string"
+            },
+            "auto_backup": {
+              "default": true,
+              "title": "Auto Backup",
+              "type": "boolean"
+            }
+          },
+          "title": "StorageConfig",
+          "type": "object"
+        },
+        "ThresholdsConfig": {
+          "additionalProperties": false,
+          "description": "Пороги pipeline: минимальная частота, PMI, фильтрация hapax.",
+          "properties": {
+            "min_freq": {
+              "default": 2,
+              "minimum": 1,
+              "title": "Min Freq",
+              "type": "integer"
+            },
+            "pmi_threshold": {
+              "default": 3.0,
+              "minimum": 0.0,
+              "title": "Pmi Threshold",
+              "type": "number"
+            },
+            "hapax_filter": {
+              "default": true,
+              "title": "Hapax Filter",
+              "type": "boolean"
+            },
+            "precise": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ThresholdsOverrides"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "balanced": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ThresholdsOverrides"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "recall": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ThresholdsOverrides"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "title": "ThresholdsConfig",
+          "type": "object"
+        },
+        "ThresholdsOverrides": {
+          "additionalProperties": false,
+          "description": "Пороговые значения для конкретного профиля.",
+          "properties": {
+            "min_freq": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Min Freq"
+            },
+            "pmi_threshold": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pmi Threshold"
+            },
+            "hapax_filter": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Hapax Filter"
+            }
+          },
+          "title": "ThresholdsOverrides",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Основная конфигурация pipeline: язык, профиль, модули, пороги.",
       "properties": {
-        "language": {"type": "string", "enum": ["he"], "default": "he"},
-        "profile": {"type": "string", "enum": ["precise", "balanced", "recall"], "default": "balanced"},
+        "language": {
+          "default": "he",
+          "title": "Language",
+          "type": "string"
+        },
+        "profile": {
+          "$ref": "#/$defs/Profile",
+          "default": "balanced"
+        },
         "modules": {
-          "type": "array",
-          "items": {"type": "string", "enum": ["sent_split", "morph_analyzer", "ngram", "np_chunk", "canonicalize", "am", "term_extract", "noise"]},
-          "default": ["sent_split", "morph_analyzer", "ngram", "np_chunk", "canonicalize", "am", "term_extract", "noise"]
+          "items": {
+            "type": "string"
+          },
+          "title": "Modules",
+          "type": "array"
         },
         "thresholds": {
-          "type": "object",
-          "properties": {
-            "min_freq": {"type": "integer", "minimum": 1, "default": 2},
-            "pmi_threshold": {"type": "number", "minimum": 0, "default": 3.0},
-            "hapax_filter": {"type": "boolean", "default": true}
-          }
+          "$ref": "#/$defs/ThresholdsConfig"
+        },
+        "annotation": {
+          "$ref": "#/$defs/AnnotationConfig"
+        },
+        "llm": {
+          "$ref": "#/$defs/LLMConfig"
+        },
+        "kb": {
+          "$ref": "#/$defs/KBConfig"
+        },
+        "logging": {
+          "$ref": "#/$defs/LoggingConfig"
+        },
+        "storage": {
+          "$ref": "#/$defs/StorageConfig"
         }
-      }
+      },
+      "title": "PipelineConfig",
+      "type": "object"
     },
     "annotation": {
-      "type": "object",
+      "additionalProperties": false,
+      "description": "Конфигурация интеграции с Label Studio.",
       "properties": {
-        "label_studio_url": {"type": "string", "default": "http://localhost:8080"},
-        "label_studio_api_key": {"type": ["string", "null"]},
-        "ml_backend_url": {"type": "string", "default": "http://localhost:9090"}
-      }
+        "label_studio_url": {
+          "default": "http://localhost:8080",
+          "title": "Label Studio Url",
+          "type": "string"
+        },
+        "label_studio_api_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label Studio Api Key"
+        },
+        "ml_backend_url": {
+          "default": "http://localhost:9090",
+          "title": "Ml Backend Url",
+          "type": "string"
+        }
+      },
+      "title": "AnnotationConfig",
+      "type": "object"
     },
     "llm": {
-      "type": "object",
+      "additionalProperties": false,
+      "description": "Конфигурация LLM (llama.cpp, Dicta-LM).",
       "properties": {
-        "enabled": {"type": "boolean", "default": false},
-        "server_url": {"type": "string", "default": "http://localhost:8081"},
-        "model": {"type": "string", "default": "dictalm-3.0-1.7b-instruct"},
-        "max_tokens": {"type": "integer", "default": 512},
-        "temperature": {"type": "number", "default": 0.7}
-      }
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "server_url": {
+          "default": "http://localhost:8081",
+          "title": "Server Url",
+          "type": "string"
+        },
+        "model": {
+          "default": "dictalm-3.0-1.7b-instruct",
+          "title": "Model",
+          "type": "string"
+        },
+        "max_tokens": {
+          "default": 512,
+          "maximum": 8192,
+          "minimum": 1,
+          "title": "Max Tokens",
+          "type": "integer"
+        },
+        "temperature": {
+          "default": 0.7,
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "title": "Temperature",
+          "type": "number"
+        }
+      },
+      "title": "LLMConfig",
+      "type": "object"
     },
     "kb": {
-      "type": "object",
+      "additionalProperties": false,
+      "description": "Конфигурация Knowledge Base (embedding model, автогенерация).",
       "properties": {
-        "enabled": {"type": "boolean", "default": false},
-        "embedding_model": {"type": "string", "default": "neodictabert"},
-        "auto_generate_definitions": {"type": "boolean", "default": false}
-      }
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "embedding_model": {
+          "default": "neodictabert",
+          "title": "Embedding Model",
+          "type": "string"
+        },
+        "auto_generate_definitions": {
+          "default": false,
+          "title": "Auto Generate Definitions",
+          "type": "boolean"
+        }
+      },
+      "title": "KBConfig",
+      "type": "object"
     },
     "logging": {
-      "type": "object",
+      "$defs": {
+        "LogLevel": {
+          "description": "Уровень логирования.",
+          "enum": [
+            "DEBUG",
+            "INFO",
+            "WARNING",
+            "ERROR"
+          ],
+          "title": "LogLevel",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Конфигурация логирования: уровень и путь к файлу.",
       "properties": {
-        "level": {"type": "string", "enum": ["DEBUG", "INFO", "WARNING", "ERROR"], "default": "INFO"},
-        "file": {"type": "string", "default": "~/.kadima/logs/kadima.log"}
-      }
+        "level": {
+          "$ref": "#/$defs/LogLevel",
+          "default": "INFO"
+        },
+        "file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "~/.kadima/logs/kadima.log",
+          "title": "File"
+        }
+      },
+      "title": "LoggingConfig",
+      "type": "object"
     },
     "storage": {
-      "type": "object",
+      "additionalProperties": false,
+      "description": "Конфигурация хранилища: путь к БД, автобэкап.",
       "properties": {
-        "db_path": {"type": "string", "default": "~/.kadima/kadima.db"},
-        "auto_backup": {"type": "boolean", "default": true}
-      }
+        "db_path": {
+          "default": "~/.kadima/kadima.db",
+          "title": "Db Path",
+          "type": "string"
+        },
+        "auto_backup": {
+          "default": true,
+          "title": "Auto Backup",
+          "type": "boolean"
+        }
+      },
+      "title": "StorageConfig",
+      "type": "object"
     }
   }
 }

@@ -14,7 +14,7 @@ Usage:
 
 import logging
 import sqlite3
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from kadima.annotation.ls_client import LabelStudioClient
 from kadima.data.db import get_connection
@@ -166,18 +166,24 @@ class AnnotationSync:
         with self._conn() as conn:
             for idx, ls_task_id in enumerate(task_ids):
                 doc_id = doc_map.get(idx)
-                conn.execute(
-                    "INSERT OR IGNORE INTO annotation_tasks (project_id, document_id, ls_task_id, status) VALUES (?, ?, ?, 'pending')",
-                    (project_id, doc_id, ls_task_id),
-                )
-            conn.commit()
+                try:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO annotation_tasks (project_id, document_id, ls_task_id, status) VALUES (?, ?, ?, 'pending')",
+                        (project_id, doc_id, ls_task_id),
+                    )
+                except Exception:
+                    logger.error("Failed to track task %d for doc %d", ls_task_id, doc_id, exc_info=True)
+            try:
+                conn.commit()
+            except Exception:
+                logger.error("Failed to commit task tracking", exc_info=True)
 
         return task_ids
 
     def push_term_review_tasks(
         self,
         project_id: int,
-        terms: List[Dict],
+        terms: List[Dict[str, Any]],
     ) -> List[int]:
         """Push terms as review tasks.
 
@@ -302,7 +308,10 @@ class AnnotationSync:
                             )
                             count += 1
 
-            conn.commit()
+            try:
+                conn.commit()
+            except Exception:
+                logger.error("Failed to commit annotation sync for project %d", project_id, exc_info=True)
 
         logger.info("Synced %d annotations from LS project %d", count, ls_project_id)
         return count
@@ -352,7 +361,7 @@ class AnnotationSync:
 
     # ── Stats ─────────────────────────────────────────────────────────────────
 
-    def get_project_stats(self, project_id: int) -> Dict:
+    def get_project_stats(self, project_id: int) -> Dict[str, Any]:
         """Get combined stats from LS and local DB."""
         with self._conn() as conn:
             row = conn.execute(

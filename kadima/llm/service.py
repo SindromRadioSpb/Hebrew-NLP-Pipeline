@@ -29,19 +29,35 @@ class LLMService:
         """Generate definition for a Hebrew term."""
         ctx = f"הקשר: {context}" if context else ""
         prompt = prompts.TERM_DEFINITION.format(term=term, domain=domain, context_section=ctx)
-        return self.client.generate(prompt, max_tokens=256)
+        try:
+            return self.client.generate(prompt, max_tokens=256)
+        except Exception as e:
+            logger.error("define_term failed for '%s': %s", term, e)
+            return ""
 
     def explain_grammar(self, sentence: str) -> str:
         """Explain grammar of a Hebrew sentence."""
         prompt = prompts.GRAMMAR_EXPLAIN.format(sentence=sentence)
-        return self.client.generate(prompt, max_tokens=512)
+        try:
+            return self.client.generate(prompt, max_tokens=512)
+        except Exception as e:
+            logger.error("explain_grammar failed: %s", e)
+            return ""
 
     def generate_exercises(self, pattern: str, count: int = 5, level: str = "בינוני") -> str:
         """Generate grammar exercises."""
         prompt = prompts.EXERCISE_GENERATE.format(pattern=pattern, count=count, level=level)
-        return self.client.generate(prompt, max_tokens=1024)
+        try:
+            return self.client.generate(prompt, max_tokens=1024)
+        except Exception as e:
+            logger.error("generate_exercises failed: %s", e)
+            return ""
 
     def answer_question(self, question: str, domain: str = "עברית") -> str:
         """Answer a question about Hebrew."""
         prompt = prompts.QA.format(question=question, domain=domain)
-        return self.client.generate(prompt, max_tokens=512)
+        try:
+            return self.client.generate(prompt, max_tokens=512)
+        except Exception as e:
+            logger.error("answer_question failed: %s", e)
+            return ""

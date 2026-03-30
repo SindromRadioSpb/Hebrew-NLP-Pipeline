@@ -9,8 +9,13 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Dict
 
 
+# ── Corpus & Documents ──────────────────────────────────────────────────────
+
+
 @dataclass
 class Corpus:
+    """Текстовый корпус: набор документов с языком и статусом."""
+
     id: Optional[int] = None
     name: str = ""
     language: str = "he"
@@ -20,6 +25,8 @@ class Corpus:
 
 @dataclass
 class Document:
+    """Один документ внутри корпуса."""
+
     id: Optional[int] = None
     corpus_id: int = 0
     filename: str = ""
@@ -30,6 +37,8 @@ class Document:
 
 @dataclass
 class Token:
+    """Токен с позицией в тексте."""
+
     id: Optional[int] = None
     document_id: int = 0
     idx: int = 0
@@ -42,6 +51,8 @@ class Token:
 
 @dataclass
 class Lemma:
+    """Лемма токена с частью речи и морфологическими признаками."""
+
     id: Optional[int] = None
     token_id: int = 0
     lemma: str = ""
@@ -51,6 +62,8 @@ class Lemma:
 
 @dataclass
 class Term:
+    """Извлечённый термин с ассоциативными метриками."""
+
     id: Optional[int] = None
     run_id: int = 0
     surface: str = ""
@@ -66,6 +79,8 @@ class Term:
 
 @dataclass
 class PipelineRun:
+    """Запуск pipeline: корпус, профиль, статус, время."""
+
     id: Optional[int] = None
     corpus_id: int = 0
     profile: str = "balanced"
@@ -76,6 +91,8 @@ class PipelineRun:
 
 @dataclass
 class KBTerm:
+    """Термин в Knowledge Base."""
+
     id: Optional[int] = None
     surface: str = ""
     canonical: str = ""
@@ -93,6 +110,8 @@ class KBTerm:
 
 @dataclass
 class GoldCorpus:
+    """Gold corpus: эталонные данные для валидации pipeline."""
+
     id: Optional[int] = None
     corpus_id: int = 0
     version: str = ""
@@ -101,6 +120,8 @@ class GoldCorpus:
 
 @dataclass
 class ExpectedCheck:
+    """Одна ожидаемая проверка из gold corpus."""
+
     id: Optional[int] = None
     gold_corpus_id: int = 0
     check_type: str = ""  # sentence_count, token_count, lemma_freq, term_present
@@ -112,6 +133,8 @@ class ExpectedCheck:
 
 @dataclass
 class ReviewResult:
+    """Результат ревью проверки с типом расхождения."""
+
     id: Optional[int] = None
     run_id: int = 0
     check_id: int = 0
@@ -126,6 +149,8 @@ class ReviewResult:
 
 @dataclass
 class AnnotationProject:
+    """Проект аннотации (NER, term review, POS)."""
+
     id: Optional[int] = None
     name: str = ""
     type: str = ""  # ner, term_review, pos
@@ -137,6 +162,8 @@ class AnnotationProject:
 
 @dataclass
 class AnnotationTask:
+    """Задача аннотации: документ + статус + исполнитель."""
+
     id: Optional[int] = None
     project_id: int = 0
     document_id: Optional[int] = None
@@ -147,6 +174,8 @@ class AnnotationTask:
 
 @dataclass
 class AnnotationResult:
+    """Результат аннотации: разметка текстового спана."""
+
     id: Optional[int] = None
     task_id: int = 0
     label: str = ""
@@ -160,6 +189,8 @@ class AnnotationResult:
 
 @dataclass
 class AnnotationExport:
+    """Экспорт результатов аннотации (CoNLL-U, JSON, gold corpus)."""
+
     id: Optional[int] = None
     project_id: int = 0
     export_format: str = ""  # conllu, json, gold_corpus
@@ -173,6 +204,8 @@ class AnnotationExport:
 
 @dataclass
 class KBRelation:
+    """Связь между терминами KB (синоним, гипероним, тематическая)."""
+
     id: Optional[int] = None
     term_id: int = 0
     related_term_id: int = 0
@@ -183,6 +216,8 @@ class KBRelation:
 
 @dataclass
 class KBDefinition:
+    """Определение термина KB (ручное, LLM, импортированное)."""
+
     id: Optional[int] = None
     term_id: int = 0
     definition_text: str = ""
@@ -197,6 +232,8 @@ class KBDefinition:
 
 @dataclass
 class LLMConversation:
+    """Сессия диалога с LLM."""
+
     id: Optional[int] = None
     created_at: Optional[str] = None
     context_type: Optional[str] = None  # term_definition, grammar_qa, translation, exercise
@@ -205,6 +242,8 @@ class LLMConversation:
 
 @dataclass
 class LLMMessage:
+    """Одно сообщение в диалоге с LLM."""
+
     id: Optional[int] = None
     conversation_id: int = 0
     role: str = ""  # user, assistant

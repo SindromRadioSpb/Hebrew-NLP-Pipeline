@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ValidationReport:
+    """Отчёт валидации: статус, проверки, сводка."""
+
     corpus_id: int
     status: str             # PASS | WARN | FAIL
     checks: List[CheckResult]
@@ -52,6 +54,8 @@ def generate_report(corpus_id: int, check_results: List[CheckResult]) -> Validat
         status = "WARN"
     else:
         status = "PASS"
+
+    logger.info("Validation report for corpus %d: %s (%dP/%dW/%dF)", corpus_id, status, summary["pass"], summary["warn"], summary["fail"])
 
     return ValidationReport(
         corpus_id=corpus_id, status=status,

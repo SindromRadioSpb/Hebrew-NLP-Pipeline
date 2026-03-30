@@ -102,4 +102,7 @@ def run_checks(checks: List[ExpectedCheck], actuals: Dict[str, str]) -> List[Che
             discrepancy_type=discrepancy,
         ))
 
+    passed = sum(1 for r in results if r.result == "PASS")
+    failed = sum(1 for r in results if r.result == "FAIL")
+    logger.info("Validation: %d checks — %d PASS, %d FAIL", len(results), passed, failed)
     return results

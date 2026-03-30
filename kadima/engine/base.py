@@ -8,6 +8,8 @@ from enum import Enum
 
 
 class ProcessorStatus(str, Enum):
+    """Статус выполнения модуля pipeline."""
+
     READY = "ready"
     RUNNING = "running"
     FAILED = "failed"

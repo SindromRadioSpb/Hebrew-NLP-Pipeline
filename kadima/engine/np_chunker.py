@@ -25,6 +25,8 @@ from kadima.engine.hebpipe_wrappers import MorphAnalysis
 
 @dataclass
 class NPChunk:
+    """Именная группа: surface-форма, токены, паттерн, позиция."""
+
     surface: str
     tokens: List[str]
     pattern: str
@@ -35,6 +37,8 @@ class NPChunk:
 
 @dataclass
 class NPChunkResult:
+    """Результат NP chunking: список именных групп."""
+
     chunks: List[NPChunk]
     total: int
 
@@ -93,6 +97,7 @@ class NPChunker(Processor):
                 processing_time_ms=(time.time() - start) * 1000,
             )
         except Exception as e:
+            logger.error("NP chunking failed: %s", e, exc_info=True)
             return ProcessorResult(
                 module_name=self.name, status=ProcessorStatus.FAILED,
                 data=None, errors=[str(e)],

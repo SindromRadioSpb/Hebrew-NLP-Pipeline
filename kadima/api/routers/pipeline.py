@@ -1,6 +1,7 @@
 # kadima/api/routers/pipeline.py
 """REST API: Pipeline execution endpoints."""
 
+import logging
 from fastapi import APIRouter, HTTPException
 from typing import List
 
@@ -9,12 +10,15 @@ from kadima.pipeline.config import PipelineConfig
 from kadima.pipeline.orchestrator import PipelineService
 from kadima.engine.base import ProcessorStatus
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
 @router.post("/pipeline/run/{corpus_id}", response_model=PipelineRunResponse)
 async def run_pipeline(corpus_id: int, body: PipelineRunRequest):
-    """Run pipeline on a corpus."""
+    """Run the full NLP pipeline on a corpus by ID."""
+    logger.info("Running pipeline on corpus %d with profile=%s", corpus_id, body.profile)
     config = PipelineConfig(profile=body.profile)
     service = PipelineService(config)
     result = service.run(corpus_id)
@@ -37,7 +41,8 @@ async def run_pipeline(corpus_id: int, body: PipelineRunRequest):
 
 @router.post("/pipeline/run-text", response_model=PipelineRunResponse)
 async def run_pipeline_on_text(text: str, profile: str = "balanced"):
-    """Run pipeline on raw text (no corpus needed)."""
+    """Run the full NLP pipeline on raw text without storing a corpus."""
+    logger.info("Running pipeline on text (len=%d) with profile=%s", len(text), profile)
     config = PipelineConfig(profile=profile)
     service = PipelineService(config)
     result = service.run_on_text(text)
@@ -60,7 +65,8 @@ async def run_pipeline_on_text(text: str, profile: str = "balanced"):
 
 @router.get("/pipeline/modules")
 async def list_modules():
-    """List available pipeline modules."""
+    """List all available pipeline modules with their IDs and names."""
+    logger.info("Listing pipeline modules")
     return {
         "modules": [
             {"id": "sent_split", "module_id": "M1", "name": "Sentence Splitter"},

@@ -7,7 +7,7 @@ API reference: https://labelstud.io/api/
 
 import time
 import logging
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -47,6 +47,7 @@ class LabelStudioClient:
         try:
             return self.client.get("/api/projects/").status_code == 200
         except Exception:
+            logger.debug("Label Studio health check failed (server unreachable)")
             return False
 
     # ── Projects ─────────────────────────────────────────────────────────────
@@ -72,13 +73,13 @@ class LabelStudioClient:
         logger.info("Created LS project %d: %s", project_id, name)
         return project_id
 
-    def get_project(self, project_id: int) -> Dict:
+    def get_project(self, project_id: int) -> Dict[str, Any]:
         """Get project details."""
         resp = self.client.get(f"/api/projects/{project_id}")
         resp.raise_for_status()
         return resp.json()
 
-    def get_project_stats(self, project_id: int) -> Dict:
+    def get_project_stats(self, project_id: int) -> Dict[str, Any]:
         """Get project statistics."""
         data = self.get_project(project_id)
         return {
@@ -94,7 +95,7 @@ class LabelStudioClient:
 
     # ── Tasks ────────────────────────────────────────────────────────────────
 
-    def import_tasks(self, project_id: int, tasks: List[Dict]) -> List[int]:
+    def import_tasks(self, project_id: int, tasks: List[Dict[str, Any]]) -> List[int]:
         """Import tasks into a project.
 
         Args:
@@ -115,7 +116,7 @@ class LabelStudioClient:
         logger.info("Imported %d tasks to project %d", len(task_ids), project_id)
         return task_ids
 
-    def list_tasks(self, project_id: int, page: int = 1, page_size: int = 100) -> Dict:
+    def list_tasks(self, project_id: int, page: int = 1, page_size: int = 100) -> Dict[str, Any]:
         """List tasks in a project."""
         resp = self.client.get(
             f"/api/projects/{project_id}/tasks",
@@ -126,7 +127,7 @@ class LabelStudioClient:
 
     # ── Predictions ──────────────────────────────────────────────────────────
 
-    def import_predictions(self, project_id: int, predictions: List[Dict]) -> None:
+    def import_predictions(self, project_id: int, predictions: List[Dict[str, Any]]) -> None:
         """Import predictions (pre-annotations).
 
         Args:
@@ -148,7 +149,7 @@ class LabelStudioClient:
         project_id: int,
         export_type: str = "JSON",
         only_finished: bool = True,
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """Export annotations from a project.
 
         Uses the LS export workflow:
@@ -192,7 +193,7 @@ class LabelStudioClient:
         logger.warning("Unexpected export response format: %s", type(result))
         return result if isinstance(result, list) else []
 
-    def _poll_export(self, project_id: int, export_id: int) -> List[Dict]:
+    def _poll_export(self, project_id: int, export_id: int) -> List[Dict[str, Any]]:
         """Poll for export completion."""
         for _ in range(EXPORT_POLL_MAX):
             time.sleep(EXPORT_POLL_INTERVAL)
@@ -209,7 +210,7 @@ class LabelStudioClient:
         logger.error("Export %d timed out", export_id)
         return []
 
-    def create_annotation(self, task_id: int, result: List[Dict], **kwargs) -> int:
+    def create_annotation(self, task_id: int, result: List[Dict[str, Any]], **kwargs) -> int:
         """Create an annotation on a task.
 
         Args:

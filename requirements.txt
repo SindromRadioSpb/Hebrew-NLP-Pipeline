@@ -2,13 +2,14 @@
 # Source of truth: pyproject.toml (version ranges)
 # This file: exact pins for reproducible Docker builds
 #
-# Generate:  pip freeze | grep -iE "pyyaml|pydantic|httpx|fastapi|uvicorn"
+# Generate:  pip install -e . && pip freeze > requirements.lock
 # Update:    1) edit pyproject.toml ranges
-#            2) pip install <pkg>==<ver> && pip freeze | grep <pkg>
-#            3) update this file
+#            2) pip install <pkg>==<ver>
+#            3) update this file with exact pins
 
 PyYAML==6.0.1
 pydantic==2.10.6
+spacy==3.8.4
 httpx==0.28.1
 fastapi==0.115.8
-uvicorn==0.34.0
+uvicorn[standard]==0.34.0

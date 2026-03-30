@@ -23,7 +23,7 @@ COPY templates/ ./templates/
 COPY kadima/ ./kadima/
 
 # ── Install ──────────────────────────────────────────────────────────────────
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir .
 
 # ── Runtime ──────────────────────────────────────────────────────────────────
 # Data volume: /data holds kadima.db, logs, models, backups

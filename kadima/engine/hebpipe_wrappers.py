@@ -44,6 +44,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Sentence:
+    """Предложение с позицией в исходном тексте."""
+
     index: int
     text: str
     start: int        # char offset в исходном тексте
@@ -52,12 +54,16 @@ class Sentence:
 
 @dataclass
 class SentenceSplitResult:
+    """Результат разбиения на предложения."""
+
     sentences: List[Sentence]
     count: int
 
 
 @dataclass
 class Token:
+    """Токен с surface-формой и позицией."""
+
     index: int
     surface: str      # "הפלדה"
     start: int
@@ -67,12 +73,16 @@ class Token:
 
 @dataclass
 class TokenizeResult:
+    """Результат токенизации предложения."""
+
     tokens: List[Token]
     count: int
 
 
 @dataclass
 class MorphAnalysis:
+    """Морфологический анализ одного токена."""
+
     surface: str
     base: str           # "פלדה" (без префиксов)
     lemma: str
@@ -84,6 +94,8 @@ class MorphAnalysis:
 
 @dataclass
 class MorphResult:
+    """Результат морфологического анализа предложения."""
+
     analyses: List[MorphAnalysis]
     count: int
 

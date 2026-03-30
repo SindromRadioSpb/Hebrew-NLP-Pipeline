@@ -28,6 +28,7 @@ def compute_statistics(documents: List[Dict[str, str]]) -> Dict[str, Any]:
     Returns:
         Словарь со статистикой
     """
+    logger.info("Computing statistics for %d documents", len(documents))
     total_chars = 0
     total_words = 0
     total_sentences = 0
@@ -54,7 +55,7 @@ def compute_statistics(documents: List[Dict[str, str]]) -> Dict[str, Any]:
     # Top 20
     top_words = word_freq.most_common(20)
 
-    return {
+    stats = {
         "document_count": len(documents),
         "total_characters": total_chars,
         "total_words": total_words,
@@ -65,3 +66,5 @@ def compute_statistics(documents: List[Dict[str, str]]) -> Dict[str, Any]:
         "avg_words_per_doc": round(total_words / max(len(documents), 1), 1),
         "top_words": [{"word": w, "freq": c} for w, c in top_words],
     }
+    logger.info("Statistics computed: %d docs, %d words, %d unique", len(documents), total_words, unique_words)
+    return stats

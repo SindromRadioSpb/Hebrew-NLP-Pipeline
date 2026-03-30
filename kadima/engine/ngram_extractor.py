@@ -25,6 +25,8 @@ from kadima.engine.hebpipe_wrappers import Token
 
 @dataclass
 class Ngram:
+    """N-грамма: список токенов, частота, document frequency."""
+
     tokens: List[str]
     n: int
     freq: int
@@ -33,6 +35,8 @@ class Ngram:
 
 @dataclass
 class NgramResult:
+    """Результат извлечения n-грамм: отфильтрованный список + статистика."""
+
     ngrams: List[Ngram]
     total_candidates: int
     filtered: int
@@ -84,6 +88,7 @@ class NgramExtractor(Processor):
                 processing_time_ms=(time.time() - start) * 1000,
             )
         except Exception as e:
+            logger.error("N-gram extraction failed: %s", e, exc_info=True)
             return ProcessorResult(
                 module_name=self.name, status=ProcessorStatus.FAILED,
                 data=None, errors=[str(e)],

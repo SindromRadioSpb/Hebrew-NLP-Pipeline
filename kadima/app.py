@@ -14,7 +14,6 @@ def main() -> None:
         from kadima.ui.main_window import MainWindow
     except ImportError:
         logger.error("PyQt6 not installed. Install with: pip install pyqt6")
-        print("Error: PyQt6 not installed. Run: pip install pyqt6")
         sys.exit(1)
 
     app = QApplication(sys.argv)

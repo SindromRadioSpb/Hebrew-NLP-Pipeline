@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Term:
+    """Извлечённый термин с ассоциативными метриками и рангом."""
+
     surface: str
     canonical: str
     kind: str           # "NOUN_NOUN" / "NOUN_ADJ" / "UNIGRAM" / ...
@@ -38,6 +40,8 @@ class Term:
 
 @dataclass
 class TermResult:
+    """Результат извлечения терминов: ранжированный список."""
+
     terms: List[Term]
     profile: str
     total_candidates: int

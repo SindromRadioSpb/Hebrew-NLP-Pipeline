@@ -5,7 +5,7 @@ Thin wrapper around annotation_projects table. For LS-side operations,
 use ls_client.py. For push/pull sync, use sync.py.
 """
 
-from typing import List, Dict
+from typing import Any, List, Dict
 import logging
 
 from kadima.data.db import get_connection
@@ -13,7 +13,7 @@ from kadima.data.db import get_connection
 logger = logging.getLogger(__name__)
 
 
-def list_projects(db_path: str) -> List[Dict]:
+def list_projects(db_path: str) -> List[Dict[str, Any]]:
     """List all annotation projects with task counts."""
     conn = get_connection(db_path)
     try:
@@ -36,6 +36,8 @@ def delete_project(db_path: str, project_id: int) -> bool:
     try:
         cur = conn.execute("DELETE FROM annotation_projects WHERE id=?", (project_id,))
         conn.commit()
-        return cur.rowcount > 0
+        deleted = cur.rowcount > 0
+        logger.info("Deleted project %d: %s", project_id, "success" if deleted else "not found")
+        return deleted
     finally:
         conn.close()

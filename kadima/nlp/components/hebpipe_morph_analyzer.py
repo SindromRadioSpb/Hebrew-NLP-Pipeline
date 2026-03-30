@@ -5,11 +5,15 @@ Wraps kadima.engine.hebpipe_wrappers.HebPipeMorphAnalyzer into a
 spaCy pipeline component.
 """
 
+import logging
+
 import spacy
 from spacy.language import Language
 from spacy.tokens import Doc
 
 from kadima.engine.hebpipe_wrappers import HebPipeMorphAnalyzer, Token
+
+logger = logging.getLogger(__name__)
 
 
 @Language.factory("kadima_morph")
@@ -43,6 +47,9 @@ class KadimaMorphAnalyzer:
                 if i < len(doc):
                     doc[i].lemma_ = analysis.lemma
                     doc[i].pos_ = self._map_pos(analysis.pos)
+            logger.debug("Morph analyzed %d tokens", len(result.data.analyses))
+        else:
+            logger.warning("Morph analysis returned no data for %d tokens", len(tokens))
         return doc
 
     @staticmethod

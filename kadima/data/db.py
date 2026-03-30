@@ -104,6 +104,11 @@ def ensure_db(db_path: str) -> None:
     if applied:
         logger.info("Database ready (%d new migrations applied)", applied)
 
+    # Post-migration validation
+    missing = validate_schema(db_path)
+    if missing:
+        logger.error("Schema drift detected! Missing tables: %s", missing)
+
 
 def get_schema_version(db_path: str) -> str:
     """Вернуть имя последней применённой миграции (или 'empty')."""
@@ -117,6 +122,7 @@ def get_schema_version(db_path: str) -> str:
         ).fetchone()
         return row[0] if row else "empty"
     except Exception:
+        logger.debug("No migrations table found, returning 'unknown'")
         return "unknown"
     finally:
         conn.close()
@@ -131,7 +137,7 @@ def generate_migration(name: str) -> str:
     Returns:
         Path to created file.
     """
-    if not MIGRATION_PATTERN.match(f"000_{name}.sql"):
+    if not re.match(r'^[a-z][a-z0-9_]*$', name):
         raise ValueError(
             f"Invalid migration name '{name}'. "
             "Use lowercase with underscores (e.g. 'add_user_table')"
@@ -165,3 +171,48 @@ def generate_migration(name: str) -> str:
 
     logger.info("Created migration: %s", filepath)
     return filepath
+
+
+def validate_schema(db_path: str, expected_tables: List[str] | None = None) -> List[str]:
+    """Проверить что все ожидаемые таблицы существуют в БД.
+
+    Args:
+        db_path: Path to SQLite database.
+        expected_tables: Список имён таблиц. Если None — проверяются все
+            таблицы из миграционных SQL файлов.
+
+    Returns:
+        Список отсутствующих таблиц (пустой если всё ок).
+    """
+    if expected_tables is None:
+        # Extract table names from migration SQL files
+        expected_tables = []
+        if os.path.isdir(MIGRATIONS_DIR):
+            for fname in sorted(os.listdir(MIGRATIONS_DIR)):
+                if fname.endswith(".sql"):
+                    filepath = os.path.join(MIGRATIONS_DIR, fname)
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        for line in f:
+                            m = re.match(r'CREATE TABLE IF NOT EXISTS (\w+)', line)
+                            if m:
+                                expected_tables.append(m.group(1))
+
+    db_path = os.path.expanduser(db_path)
+    if not os.path.exists(db_path):
+        return expected_tables  # all missing
+
+    conn = get_connection(db_path)
+    try:
+        actual = set(
+            row[0] for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            ).fetchall()
+        )
+        missing = [t for t in expected_tables if t not in actual]
+        if missing:
+            logger.warning("Schema validation: missing tables: %s", missing)
+        else:
+            logger.debug("Schema validation: all %d tables present", len(expected_tables))
+        return missing
+    finally:
+        conn.close()

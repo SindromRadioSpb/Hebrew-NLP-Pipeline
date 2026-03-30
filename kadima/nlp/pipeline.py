@@ -38,6 +38,7 @@ def build_pipeline(
     try:
         nlp = spacy.blank("xx")
     except Exception:
+        logger.debug("spacy.blank('xx') failed, falling back to 'he'")
         nlp = spacy.blank("he")
 
     for component_name in components:

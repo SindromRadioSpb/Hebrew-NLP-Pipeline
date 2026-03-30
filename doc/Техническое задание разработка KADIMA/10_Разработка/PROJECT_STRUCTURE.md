@@ -1,5 +1,9 @@
 # 10.1. Project Structure — KADIMA
 
+> ⚠️ **TARGET STATE (v1.0)** — описывает целевую структуру.
+> Текущее: `Dockerfile` + `docker-compose.yml` + `Makefile` (без отдельных LS/ML dockerfiles).
+> Актуальный корень: `pyproject.toml`, `requirements.txt`, `config/config.default.yaml`, `config/config.schema.json`.
+>
 > Версия: 1.0 (2026-03-30)
 > Связанные: ARCHITECTURE.md, DATA_MODEL.md, API_SPEC.md, INTERFACE_CONTRACTS.md
 

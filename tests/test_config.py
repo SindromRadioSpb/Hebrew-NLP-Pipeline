@@ -152,8 +152,14 @@ class TestLoadConfig:
         assert config.annotation.label_studio_url == "http://localhost:8080"
         assert config.logging.level == LogLevel.INFO
 
-    def test_missing_file_returns_defaults(self, tmp_path):
-        config = load_config(str(tmp_path / "nonexistent.yaml"))
+    def test_missing_file_raises(self, tmp_path):
+        import pytest
+        with pytest.raises(FileNotFoundError):
+            load_config(str(tmp_path / "nonexistent.yaml"))
+
+    def test_no_path_returns_defaults(self):
+        # When no path given and no user config exists, returns defaults
+        config = load_config()
         assert config.language == "he"
         assert config.profile == Profile.BALANCED
 

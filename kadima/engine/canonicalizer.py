@@ -22,6 +22,8 @@ from kadima.engine.base import Processor, ProcessorResult, ProcessorStatus
 
 @dataclass
 class CanonicalMapping:
+    """Маппинг surface → canonical с применёнными правилами."""
+
     surface: str
     canonical: str
     rules_applied: List[str]
@@ -29,6 +31,8 @@ class CanonicalMapping:
 
 @dataclass
 class CanonicalResult:
+    """Результат каноникализации: список маппингов."""
+
     mappings: List[CanonicalMapping]
 
 
@@ -65,6 +69,7 @@ class Canonicalizer(Processor):
                 processing_time_ms=(time.time() - start) * 1000,
             )
         except Exception as e:
+            logger.error("Canonicalization failed: %s", e, exc_info=True)
             return ProcessorResult(
                 module_name=self.name, status=ProcessorStatus.FAILED,
                 data=None, errors=[str(e)],

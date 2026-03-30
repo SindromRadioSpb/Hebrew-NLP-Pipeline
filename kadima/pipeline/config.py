@@ -1,25 +1,50 @@
 # kadima/pipeline/config.py
-"""Pipeline configuration: Pydantic models + validated YAML loader."""
+"""Pipeline configuration: Pydantic models + validated YAML loader.
+
+Provides strict config validation with:
+- Pydantic v2 models with extra="forbid" (typos caught at load time)
+- JSON Schema export for editor autocompletion and CI validation
+- Profile-aware threshold resolution
+- Module-specific config generation
+
+Example:
+    >>> from kadima.pipeline.config import load_config
+    >>> config = load_config()  # loads ~/.kadima/config.yaml or defaults
+    >>> config.profile
+    <Profile.BALANCED: 'balanced'>
+    >>> config.get_module_config("ngram")
+    {'min_n': 2, 'max_n': 5, 'min_freq': 2}
+"""
 
 import os
+import json
 import yaml
 import logging
 from enum import Enum
 from typing import Dict, List, Any, Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 logger = logging.getLogger(__name__)
+
+# Path to bundled default config
+_DEFAULT_YAML = os.path.join(
+    os.path.dirname(__file__), "..", "..", "config", "config.default.yaml"
+)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
 class Profile(str, Enum):
+    """Профиль pipeline: баланс между точностью и полнотой."""
+
     PRECISE = "precise"
     BALANCED = "balanced"
     RECALL = "recall"
 
 
 class LogLevel(str, Enum):
+    """Уровень логирования."""
+
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"
@@ -35,6 +60,10 @@ VALID_MODULES = frozenset([
 # ── Sub-configs ──────────────────────────────────────────────────────────────
 
 class AnnotationConfig(BaseModel):
+    """Конфигурация интеграции с Label Studio."""
+
+    model_config = ConfigDict(extra="forbid")
+
     label_studio_url: str = "http://localhost:8080"
     label_studio_api_key: Optional[str] = None
     ml_backend_url: str = "http://localhost:9090"
@@ -49,6 +78,10 @@ class AnnotationConfig(BaseModel):
 
 
 class LLMConfig(BaseModel):
+    """Конфигурация LLM (llama.cpp, Dicta-LM)."""
+
+    model_config = ConfigDict(extra="forbid")
+
     enabled: bool = False
     server_url: str = "http://localhost:8081"
     model: str = "dictalm-3.0-1.7b-instruct"
@@ -65,35 +98,68 @@ class LLMConfig(BaseModel):
 
 
 class KBConfig(BaseModel):
+    """Конфигурация Knowledge Base (embedding model, автогенерация)."""
+
+    model_config = ConfigDict(extra="forbid")
+
     enabled: bool = False
     embedding_model: str = "neodictabert"
     auto_generate_definitions: bool = False
 
 
 class LoggingConfig(BaseModel):
+    """Конфигурация логирования: уровень и путь к файлу."""
+
+    model_config = ConfigDict(extra="forbid")
+
     level: LogLevel = LogLevel.INFO
     file: Optional[str] = "~/.kadima/logs/kadima.log"
 
 
 class StorageConfig(BaseModel):
+    """Конфигурация хранилища: путь к БД, автобэкап."""
+
+    model_config = ConfigDict(extra="forbid")
+
     db_path: str = "~/.kadima/kadima.db"
     auto_backup: bool = True
 
 
 # ── Profile thresholds ──────────────────────────────────────────────────────
 
+class ThresholdsOverrides(BaseModel):
+    """Пороговые значения для конкретного профиля."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    min_freq: Optional[int] = Field(default=None, ge=1)
+    pmi_threshold: Optional[float] = Field(default=None, ge=0.0)
+    hapax_filter: Optional[bool] = None
+
+
 class ThresholdsConfig(BaseModel):
+    """Пороги pipeline: минимальная частота, PMI, фильтрация hapax."""
+
+    model_config = ConfigDict(extra="forbid")
+
     min_freq: int = Field(default=2, ge=1)
     pmi_threshold: float = Field(default=3.0, ge=0.0)
     hapax_filter: bool = True
 
-    # Profile overrides
-    precise: Optional[Dict[str, Any]] = None
-    balanced: Optional[Dict[str, Any]] = None
-    recall: Optional[Dict[str, Any]] = None
+    # Profile overrides (schema-typed, not Dict[str, Any])
+    precise: Optional[ThresholdsOverrides] = None
+    balanced: Optional[ThresholdsOverrides] = None
+    recall: Optional[ThresholdsOverrides] = None
 
     def for_profile(self, profile: str | Profile) -> "ThresholdsConfig":
-        """Return thresholds with profile-specific overrides applied."""
+        """Return thresholds with profile-specific overrides applied.
+
+        Args:
+            profile: Профиль (precise, balanced, recall).
+
+        Returns:
+            New ThresholdsConfig с перекрытыми значениями.
+        """
         profile_name = profile.value if isinstance(profile, Profile) else profile
         overrides = getattr(self, profile_name, None)
         if not overrides:
@@ -102,13 +168,18 @@ class ThresholdsConfig(BaseModel):
         base.pop("precise", None)
         base.pop("balanced", None)
         base.pop("recall", None)
-        base.update(overrides)
+        override_vals = overrides.model_dump(exclude_none=True)
+        base.update(override_vals)
         return ThresholdsConfig(**base)
 
 
 # ── Main config ──────────────────────────────────────────────────────────────
 
 class PipelineConfig(BaseModel):
+    """Основная конфигурация pipeline: язык, профиль, модули, пороги."""
+
+    model_config = ConfigDict(extra="forbid")
+
     language: str = "he"
     profile: Profile = Profile.BALANCED
     modules: List[str] = Field(default_factory=lambda: [
@@ -146,15 +217,45 @@ class PipelineConfig(BaseModel):
         return v
 
     def get_module_config(self, module_name: str) -> Dict[str, Any]:
-        """Module-specific configuration from resolved thresholds."""
+        """Получить конфигурацию конкретного модуля с учётом профиля.
+
+        Args:
+            module_name: Имя модуля (sent_split, tokenizer, ...).
+
+        Returns:
+            Dict с параметрами модуля. Пустой dict если модуль не имеет
+            специфических настроек.
+        """
         thresholds = self.thresholds.for_profile(self.profile)
-        return {
+        profile = self.profile.value
+
+        configs = {
+            "sent_split": {
+                "language": self.language,
+            },
+            "tokenizer": {
+                "language": self.language,
+            },
+            "morph_analyzer": {
+                "language": self.language,
+            },
             "ngram": {
-                "min_n": 2, "max_n": 5,
+                "min_n": 2,
+                "max_n": 5,
+                "min_freq": thresholds.min_freq,
+            },
+            "np_chunk": {
+                "language": self.language,
+                "min_freq": thresholds.min_freq,
+            },
+            "canonicalize": {
+                "language": self.language,
+            },
+            "am": {
                 "min_freq": thresholds.min_freq,
             },
             "term_extract": {
-                "profile": self.profile.value,
+                "profile": profile,
                 "min_freq": thresholds.min_freq,
                 "pmi_threshold": thresholds.pmi_threshold,
                 "hapax_filter": thresholds.hapax_filter,
@@ -163,32 +264,63 @@ class PipelineConfig(BaseModel):
                 "min_freq": thresholds.min_freq,
                 "hapax_filter": thresholds.hapax_filter,
             },
-        }.get(module_name, {})
+        }
+
+        return configs.get(module_name, {})
 
 
 # ── Loader ───────────────────────────────────────────────────────────────────
 
-def load_config(path: Optional[str] = None) -> PipelineConfig:
-    """Load and validate pipeline configuration from YAML.
+def _load_yaml(path: str) -> Dict[str, Any]:
+    """Загрузить YAML файл.
 
     Args:
-        path: Path to config.yaml. Defaults to ~/.kadima/config.yaml.
+        path: Путь к YAML файлу.
 
     Returns:
-        Validated PipelineConfig instance.
+        Содержимое как dict.
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def load_config(path: Optional[str] = None) -> PipelineConfig:
+    """Загрузить и провалидировать конфигурацию pipeline из YAML.
+
+    Поиск конфига (если path не указан):
+      1. ~/.kadima/config.yaml
+      2. config/config.default.yaml (бандлим)
+
+    Args:
+        path: Путь к config.yaml. Если None — автопоиск.
+
+    Returns:
+        Валидированный PipelineConfig.
 
     Raises:
-        pydantic.ValidationError: If config contains invalid values.
-        FileNotFoundError: If explicit path doesn't exist.
+        pydantic.ValidationError: Если значения невалидны.
+        yaml.YAMLError: Если YAML синтаксически сломан.
     """
-    config_path = path or os.path.expanduser("~/.kadima/config.yaml")
+    user_path = os.path.expanduser("~/.kadima/config.yaml")
 
-    if not os.path.exists(config_path):
-        logger.info("No config at %s, using defaults", config_path)
+    if path:
+        # Explicit path — must exist
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Config not found: {path}")
+        raw = _load_yaml(path)
+        logger.info("Config loaded from explicit path: %s", path)
+    elif os.path.exists(user_path):
+        # User config
+        raw = _load_yaml(user_path)
+        logger.info("Config loaded from %s", user_path)
+    elif os.path.exists(_DEFAULT_YAML):
+        # Bundled default
+        raw = _load_yaml(_DEFAULT_YAML)
+        logger.info("User config not found, using bundled defaults: %s", _DEFAULT_YAML)
+    else:
+        # Pure defaults
+        logger.info("No config files found, using hardcoded defaults")
         return PipelineConfig()
-
-    with open(config_path, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f) or {}
 
     p = raw.get("pipeline", raw)  # support both nested and flat formats
 
@@ -205,8 +337,97 @@ def load_config(path: Optional[str] = None) -> PipelineConfig:
     )
 
     logger.info(
-        "Config loaded: profile=%s, modules=%d, thresholds.min_freq=%d",
+        "Config validated: profile=%s, modules=%d, thresholds.min_freq=%d",
         config.profile.value, len(config.modules), config.thresholds.min_freq,
     )
 
     return config
+
+
+# ── JSON Schema export ───────────────────────────────────────────────────────
+
+def export_json_schema(pretty: bool = True) -> str:
+    """Экспортировать JSON Schema всех конфигурационных моделей.
+
+    Полезно для:
+    - Editor autocompletion (VS Code YAML extension)
+    - CI валидации config.yaml
+    - Документации
+
+    Args:
+        pretty: Форматировать с отступами.
+
+    Returns:
+        JSON Schema как строка.
+    """
+    schema = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://kadima.dev/config.schema.json",
+        "title": "KADIMA Pipeline Configuration",
+        "description": "Configuration schema for KADIMA Hebrew NLP term extraction pipeline.",
+        "type": "object",
+        "properties": {
+            "pipeline": PipelineConfig.model_json_schema(),
+            "annotation": AnnotationConfig.model_json_schema(),
+            "llm": LLMConfig.model_json_schema(),
+            "kb": KBConfig.model_json_schema(),
+            "logging": LoggingConfig.model_json_schema(),
+            "storage": StorageConfig.model_json_schema(),
+        },
+    }
+
+    indent = 2 if pretty else None
+    return json.dumps(schema, indent=indent, ensure_ascii=False)
+
+
+def save_json_schema(path: str = "config/config.schema.json") -> None:
+    """Сохранить JSON Schema в файл.
+
+    Args:
+        path: Путь для сохранения.
+    """
+    schema_str = export_json_schema()
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(schema_str)
+    logger.info("JSON Schema saved to %s", path)
+
+
+def validate_config_file(path: str) -> List[str]:
+    """Проверить YAML-конфиг без загрузки pipeline.
+
+    Для использования в CI и pre-commit hooks.
+
+    Args:
+        path: Путь к config.yaml.
+
+    Returns:
+        Список ошибок (пустой если всё ок).
+    """
+    errors: List[str] = []
+
+    if not os.path.exists(path):
+        return [f"File not found: {path}"]
+
+    try:
+        raw = _load_yaml(path)
+    except yaml.YAMLError as e:
+        return [f"YAML parse error: {e}"]
+
+    try:
+        p = raw.get("pipeline", raw)
+        PipelineConfig(
+            language=p.get("language", "he"),
+            profile=p.get("profile", "balanced"),
+            modules=p.get("modules", PipelineConfig.model_fields["modules"].default),
+            thresholds=p.get("thresholds", {}),
+            annotation=raw.get("annotation", {}),
+            llm=raw.get("llm", {}),
+            kb=raw.get("kb", {}),
+            logging=raw.get("logging", {}),
+            storage=raw.get("storage", {}),
+        )
+    except Exception as e:
+        errors.append(str(e))
+
+    return errors

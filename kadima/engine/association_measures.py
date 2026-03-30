@@ -179,6 +179,7 @@ class AMEngine(Processor):
                 processing_time_ms=(time.time() - start) * 1000,
             )
         except Exception as e:
+            logger.error("Association measures failed: %s", e, exc_info=True)
             return ProcessorResult(
                 module_name=self.name, status=ProcessorStatus.FAILED,
                 data=None, errors=[str(e)],

@@ -50,7 +50,7 @@ class PredictRequest(BaseModel):
     """POST /predict body."""
     tasks: List[Task]
     label_config: Optional[str] = None
-    project: Optional[Dict] = None
+    project: Optional[Dict[str, Any]] = None
 
 
 class PredictResponse(BaseModel):
@@ -61,19 +61,19 @@ class PredictResponse(BaseModel):
 class SetupRequest(BaseModel):
     """POST /setup body."""
     label_config: str
-    project: Optional[Dict] = None
+    project: Optional[Dict[str, Any]] = None
 
 
 class SetupResponse(BaseModel):
     """POST /setup response."""
     model_version: str = "kadima-0.9"
-    health: Dict = Field(default_factory=lambda: {"isBroken": False})
+    health: Dict[str, Any] = Field(default_factory=lambda: {"isBroken": False})
 
 
 class TrainRequest(BaseModel):
     """POST /train body."""
-    annotations: List[Dict] = Field(default_factory=list)
-    project: Optional[Dict] = None
+    annotations: List[Dict[str, Any]] = Field(default_factory=list)
+    project: Optional[Dict[str, Any]] = None
     label_config: Optional[str] = None
 
 
