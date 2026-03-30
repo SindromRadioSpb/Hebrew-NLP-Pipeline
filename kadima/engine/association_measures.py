@@ -49,6 +49,7 @@ class CorpusStats:
     """
 
     def __init__(self) -> None:
+        """Инициализировать накопители частот."""
         self.total_tokens: int = 0
         self.total_pairs: int = 0
         self.token_freq: Dict[str, int] = {}      # f(w)

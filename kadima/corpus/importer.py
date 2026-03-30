@@ -5,7 +5,7 @@ import os
 import csv
 import json
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from pathlib import Path
 
 logger = logging.getLogger(__name__)

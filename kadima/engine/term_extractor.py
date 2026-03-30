@@ -15,7 +15,7 @@ Example:
 import time
 import logging
 from typing import Any, Dict, List
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from kadima.engine.base import Processor, ProcessorResult, ProcessorStatus
 

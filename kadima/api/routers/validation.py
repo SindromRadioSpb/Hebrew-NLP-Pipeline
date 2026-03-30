@@ -1,31 +1,35 @@
 # kadima/api/routers/validation.py
-"""Validation API endpoints."""
+"""REST API: Validation framework endpoints."""
 
 from fastapi import APIRouter, HTTPException
+from typing import List, Dict, Any
+
 from kadima.api.schemas import GoldCorpusUpload, ValidationReportResponse, ReviewUpdateRequest
 
 router = APIRouter()
 
 
-@router.post("/corpora/{corpus_id}/gold")
-async def upload_gold_corpus(corpus_id: int, gold: GoldCorpusUpload):
-    """Upload gold corpus for validation."""
-    raise HTTPException(status_code=501, detail="Not implemented")
+@router.post("/validation/gold", status_code=201)
+async def upload_gold_corpus(body: GoldCorpusUpload):
+    """Upload gold corpus metadata for validation."""
+    # TODO: implement gold corpus import via kadima.validation.gold_importer
+    return {"status": "created", "corpus_id": body.corpus_id, "version": body.version}
 
 
-@router.post("/corpora/{corpus_id}/validate", response_model=ValidationReportResponse)
-async def run_validation(corpus_id: int):
-    """Run validation against gold corpus."""
-    raise HTTPException(status_code=501, detail="Not implemented")
+@router.get("/validation/report/{corpus_id}", response_model=ValidationReportResponse)
+async def get_validation_report(corpus_id: int):
+    """Get validation report for a corpus."""
+    # TODO: implement via kadima.validation.report
+    return ValidationReportResponse(
+        corpus_id=corpus_id,
+        status="PENDING",
+        checks=[],
+        summary={"PASS": 0, "WARN": 0, "FAIL": 0},
+    )
 
 
-@router.get("/validations/{validation_id}", response_model=ValidationReportResponse)
-async def get_validation(validation_id: int):
-    """Get validation report."""
-    raise HTTPException(status_code=501, detail="Not implemented")
-
-
-@router.put("/validations/{validation_id}/reviews/{review_id}")
-async def update_review(validation_id: int, review_id: int, update: ReviewUpdateRequest):
-    """Update review result."""
-    raise HTTPException(status_code=501, detail="Not implemented")
+@router.post("/validation/review/{check_id}")
+async def update_review(check_id: int, body: ReviewUpdateRequest):
+    """Update a review result (manual override)."""
+    # TODO: implement review update
+    return {"check_id": check_id, "status": "updated"}

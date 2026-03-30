@@ -1,40 +1,66 @@
 # kadima/nlp/pipeline.py
-"""spaCy pipeline builder for Hebrew NLP.
+"""spaCy pipeline builder for KADIMA.
 
-Builds a spaCy pipeline with custom KADIMA components:
-  tokenizer → sent_split → morph_analyzer → ngram → np_chunk → noise
-
-Usage:
-    nlp = build_pipeline(config)
-    doc = nlp("טקסט בעברית")
+Assembles a spaCy Language pipeline with KADIMA custom components
+(HebPipe sentence splitter, morphological analyzer, etc.).
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional
+
+import spacy
+from spacy.language import Language
 
 logger = logging.getLogger(__name__)
 
+# Import components to register factories
+import kadima.nlp.components.hebpipe_sent_splitter  # noqa: F401
+import kadima.nlp.components.hebpipe_morph_analyzer  # noqa: F401
 
-def build_pipeline(config: Optional[Dict[str, Any]] = None):
-    """Build spaCy Hebrew pipeline with KADIMA components.
+
+def build_pipeline(
+    components: Optional[list] = None,
+    model_name: str = "xx_blank",
+) -> Language:
+    """Build a spaCy pipeline with KADIMA components.
 
     Args:
-        config: Pipeline configuration dict (from PipelineConfig).
+        components: List of component names to add. Defaults to
+            ["kadima_sent_split", "kadima_morph"].
+        model_name: Base spaCy model. Use "xx_blank" for blank multilingual.
 
     Returns:
-        spaCy Language object.
-
-    Raises:
-        ImportError: If spaCy or Hebrew model not installed.
+        Configured spaCy Language object.
     """
-    try:
-        import spacy
-    except ImportError:
-        raise ImportError("spaCy required: pip install spacy")
+    if components is None:
+        components = ["kadima_sent_split", "kadima_morph"]
 
-    # TODO: Load Hebrew model and register custom components
-    # nlp = spacy.blank("he")
-    # nlp.add_pipe("hebpipe_sent_splitter")
-    # nlp.add_pipe("hebpipe_morph_analyzer")
-    # ...
-    raise NotImplementedError("spaCy pipeline builder not yet implemented. Use pipeline.orchestrator instead.")
+    try:
+        nlp = spacy.blank("xx")
+    except Exception:
+        nlp = spacy.blank("he")
+
+    for component_name in components:
+        try:
+            nlp.add_pipe(component_name)
+            logger.info("Added spaCy component: %s", component_name)
+        except ValueError as e:
+            logger.warning("Could not add component %s: %s", component_name, e)
+
+    return nlp
+
+
+def get_pipeline_info(nlp: Language) -> dict:
+    """Return pipeline component info for debugging.
+
+    Args:
+        nlp: spaCy Language object.
+
+    Returns:
+        Dict with pipeline name and component list.
+    """
+    return {
+        "pipeline_name": nlp.meta.get("name", "unknown"),
+        "components": list(nlp.pipe_names),
+        "lang": nlp.lang,
+    }

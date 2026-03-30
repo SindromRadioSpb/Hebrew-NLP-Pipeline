@@ -6,7 +6,7 @@ import csv
 import json
 import yaml
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)

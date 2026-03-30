@@ -24,7 +24,7 @@ DB_PATH = os.path.join(KADIMA_HOME, "kadima.db")
 LOG_PATH = os.path.join(KADIMA_HOME, "logs", "kadima.log")
 
 
-def init_kadima():
+def init_kadima() -> None:
     """Инициализация: создать директории, config, DB."""
     dirs = [
         KADIMA_HOME,
@@ -57,7 +57,7 @@ def init_kadima():
     print("Run 'kadima gui' to start the UI")
 
 
-def run_pipeline(args):
+def run_pipeline(args: argparse.Namespace) -> None:
     """Запуск pipeline из CLI."""
     from kadima.data.db import ensure_db as _ensure_db
     from kadima.pipeline.config import load_config
@@ -82,7 +82,7 @@ def run_pipeline(args):
         sys.exit(1)
 
 
-def run_gui():
+def run_gui() -> None:
     """Запуск PyQt UI."""
     from kadima.data.db import ensure_db as _ensure_db
     _ensure_db(DB_PATH)
@@ -90,7 +90,7 @@ def run_gui():
     gui_main()
 
 
-def run_api(args):
+def run_api(args: argparse.Namespace) -> None:
     """Запуск FastAPI сервера."""
     from kadima.data.db import ensure_db as _ensure_db
     _ensure_db(args.db or DB_PATH)
@@ -103,7 +103,7 @@ def run_api(args):
     )
 
 
-def run_migrate(args):
+def run_migrate(args: argparse.Namespace) -> None:
     """Управление миграциями."""
     from kadima.data.db import run_migrations, get_schema_version, generate_migration
 
@@ -119,7 +119,8 @@ def run_migrate(args):
         print(f"Applied {count} migration(s).")
 
 
-def main():
+def main() -> None:
+    """Точка входа CLI: парсит аргументы и запускает команду."""
     parser = argparse.ArgumentParser(prog="kadima", description="KADIMA — Hebrew NLP Platform")
     parser.add_argument("--version", action="version", version="%(prog)s " + __import__("kadima").__version__)
     parser.add_argument("--init", action="store_true", help="Initialize KADIMA")

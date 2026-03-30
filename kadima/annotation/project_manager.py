@@ -5,8 +5,7 @@ Thin wrapper around annotation_projects table. For LS-side operations,
 use ls_client.py. For push/pull sync, use sync.py.
 """
 
-from typing import List, Optional, Dict
-import sqlite3
+from typing import List, Dict
 import logging
 
 from kadima.data.db import get_connection

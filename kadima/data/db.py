@@ -6,7 +6,7 @@ import re
 import sqlite3
 import logging
 from pathlib import Path
-from typing import Optional, List
+from typing import List
 
 logger = logging.getLogger(__name__)
 

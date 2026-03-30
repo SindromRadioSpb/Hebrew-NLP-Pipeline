@@ -1,28 +1,76 @@
 # kadima/api/routers/pipeline.py
-"""Pipeline API endpoints."""
+"""REST API: Pipeline execution endpoints."""
 
 from fastapi import APIRouter, HTTPException
-from kadima.api.schemas import PipelineRunRequest, PipelineRunResponse
+from typing import List
+
+from kadima.api.schemas import PipelineRunRequest, PipelineRunResponse, TermResponse
+from kadima.pipeline.config import PipelineConfig
+from kadima.pipeline.orchestrator import PipelineService
+from kadima.engine.base import ProcessorStatus
 
 router = APIRouter()
 
 
-@router.post("/corpora/{corpus_id}/run", response_model=PipelineRunResponse)
-async def run_pipeline(corpus_id: int, request: PipelineRunRequest):
-    """Run pipeline on corpus."""
-    # TODO: implement — PipelineService.run(corpus_id)
-    raise HTTPException(status_code=501, detail="Not implemented")
+@router.post("/pipeline/run/{corpus_id}", response_model=PipelineRunResponse)
+async def run_pipeline(corpus_id: int, body: PipelineRunRequest):
+    """Run pipeline on a corpus."""
+    config = PipelineConfig(profile=body.profile)
+    service = PipelineService(config)
+    result = service.run(corpus_id)
+
+    terms = [
+        TermResponse(
+            surface=t.surface, canonical=t.canonical, kind=t.kind,
+            freq=t.freq, doc_freq=t.doc_freq,
+            pmi=t.pmi, llr=t.llr, dice=t.dice, rank=t.rank,
+        )
+        for t in result.terms
+    ]
+
+    return PipelineRunResponse(
+        run_id=0, corpus_id=corpus_id, profile=body.profile,
+        status=result.status.value,
+        terms=terms, total_time_ms=result.total_time_ms,
+    )
 
 
-@router.get("/runs/{run_id}", response_model=PipelineRunResponse)
-async def get_run(run_id: int):
-    """Get pipeline run status and results."""
-    # TODO: implement
-    raise HTTPException(status_code=501, detail="Not implemented")
+@router.post("/pipeline/run-text", response_model=PipelineRunResponse)
+async def run_pipeline_on_text(text: str, profile: str = "balanced"):
+    """Run pipeline on raw text (no corpus needed)."""
+    config = PipelineConfig(profile=profile)
+    service = PipelineService(config)
+    result = service.run_on_text(text)
+
+    terms = [
+        TermResponse(
+            surface=t.surface, canonical=t.canonical, kind=t.kind,
+            freq=t.freq, doc_freq=t.doc_freq,
+            pmi=t.pmi, llr=t.llr, dice=t.dice, rank=t.rank,
+        )
+        for t in result.terms
+    ]
+
+    return PipelineRunResponse(
+        run_id=0, corpus_id=0, profile=profile,
+        status=result.status.value,
+        terms=terms, total_time_ms=result.total_time_ms,
+    )
 
 
-@router.get("/runs/{run_id}/export")
-async def export_run(run_id: int, format: str = "csv"):
-    """Export run results."""
-    # TODO: implement
-    raise HTTPException(status_code=501, detail="Not implemented")
+@router.get("/pipeline/modules")
+async def list_modules():
+    """List available pipeline modules."""
+    return {
+        "modules": [
+            {"id": "sent_split", "module_id": "M1", "name": "Sentence Splitter"},
+            {"id": "tokenizer", "module_id": "M2", "name": "Tokenizer"},
+            {"id": "morph_analyzer", "module_id": "M3", "name": "Morphological Analyzer"},
+            {"id": "ngram", "module_id": "M4", "name": "N-gram Extractor"},
+            {"id": "np_chunk", "module_id": "M5", "name": "NP Chunker"},
+            {"id": "canonicalize", "module_id": "M6", "name": "Canonicalizer"},
+            {"id": "am", "module_id": "M7", "name": "Association Measures"},
+            {"id": "term_extract", "module_id": "M8", "name": "Term Extractor"},
+            {"id": "noise", "module_id": "M12", "name": "Noise Classifier"},
+        ]
+    }

@@ -1,37 +1,82 @@
 # kadima/api/routers/corpora.py
-"""Corpus API endpoints."""
+"""REST API: Corpus management endpoints."""
 
 from fastapi import APIRouter, HTTPException
 from typing import List
 
 from kadima.api.schemas import CorpusCreate, CorpusResponse
+from kadima.data.db import ensure_db, get_connection
 
 router = APIRouter()
+
+DB_PATH = "~/.kadima/kadima.db"
 
 
 @router.get("/corpora", response_model=List[CorpusResponse])
 async def list_corpora():
-    """List all corpora."""
-    # TODO: implement
-    return []
+    """List all active corpora."""
+    ensure_db(DB_PATH)
+    conn = get_connection(DB_PATH)
+    try:
+        rows = conn.execute(
+            "SELECT * FROM corpora WHERE status='active' ORDER BY created_at DESC"
+        ).fetchall()
+        return [
+            CorpusResponse(
+                id=r["id"], name=r["name"], language=r["language"],
+                created_at=str(r["created_at"]), status=r["status"],
+            )
+            for r in rows
+        ]
+    finally:
+        conn.close()
 
 
-@router.post("/corpora", response_model=CorpusResponse)
-async def create_corpus(corpus: CorpusCreate):
+@router.post("/corpora", response_model=CorpusResponse, status_code=201)
+async def create_corpus(body: CorpusCreate):
     """Create a new corpus."""
-    # TODO: implement
-    raise HTTPException(status_code=501, detail="Not implemented")
+    ensure_db(DB_PATH)
+    conn = get_connection(DB_PATH)
+    try:
+        cur = conn.execute(
+            "INSERT INTO corpora (name, language) VALUES (?, ?)",
+            (body.name, body.language),
+        )
+        conn.commit()
+        corpus_id = cur.lastrowid
+        row = conn.execute("SELECT * FROM corpora WHERE id=?", (corpus_id,)).fetchone()
+        return CorpusResponse(
+            id=row["id"], name=row["name"], language=row["language"],
+            created_at=str(row["created_at"]), status=row["status"],
+        )
+    finally:
+        conn.close()
 
 
 @router.get("/corpora/{corpus_id}", response_model=CorpusResponse)
 async def get_corpus(corpus_id: int):
-    """Get corpus details."""
-    # TODO: implement
-    raise HTTPException(status_code=501, detail="Not implemented")
+    """Get corpus by ID."""
+    ensure_db(DB_PATH)
+    conn = get_connection(DB_PATH)
+    try:
+        row = conn.execute("SELECT * FROM corpora WHERE id=?", (corpus_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Corpus not found")
+        return CorpusResponse(
+            id=row["id"], name=row["name"], language=row["language"],
+            created_at=str(row["created_at"]), status=row["status"],
+        )
+    finally:
+        conn.close()
 
 
-@router.delete("/corpora/{corpus_id}")
+@router.delete("/corpora/{corpus_id}", status_code=204)
 async def delete_corpus(corpus_id: int):
-    """Delete corpus."""
-    # TODO: implement
-    raise HTTPException(status_code=501, detail="Not implemented")
+    """Soft-delete a corpus (set status=archived)."""
+    ensure_db(DB_PATH)
+    conn = get_connection(DB_PATH)
+    try:
+        conn.execute("UPDATE corpora SET status='archived' WHERE id=?", (corpus_id,))
+        conn.commit()
+    finally:
+        conn.close()

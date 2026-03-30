@@ -1,20 +1,19 @@
 -- 004_llm.sql
--- LLM Service tables (v1.x)
--- Модуль: M18
+-- LLM tables: conversations, messages
 
 CREATE TABLE IF NOT EXISTS llm_conversations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    context_type TEXT,              -- term_definition | grammar_qa | translation | exercise
-    context_ref TEXT                -- term_id or text reference
+    context_type TEXT,
+    context_ref TEXT
 );
 
 CREATE TABLE IF NOT EXISTS llm_messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    conversation_id INTEGER NOT NULL REFERENCES llm_conversations(id) ON DELETE CASCADE,
-    role TEXT NOT NULL,             -- user | assistant
+    conversation_id INTEGER NOT NULL REFERENCES llm_conversations(id),
+    role TEXT NOT NULL,
     content TEXT NOT NULL,
-    model TEXT,                     -- DictaLM-3.0-1.7B-Instruct
+    model TEXT,
     tokens_used INTEGER DEFAULT 0,
     latency_ms INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

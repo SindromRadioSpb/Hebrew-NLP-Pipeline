@@ -20,6 +20,12 @@ class KBDefinitionGenerator:
     """Генерация определений терминов через LLM."""
 
     def __init__(self, repository: KBRepository, llm_client: Optional[LlamaCppClient] = None):
+        """Инициализировать генератор определений.
+
+        Args:
+            repository: KBRepository для сохранения определений.
+            llm_client: LlamaCppClient (если None, генерация недоступна).
+        """
         self.repo = repository
         self.llm = llm_client
 

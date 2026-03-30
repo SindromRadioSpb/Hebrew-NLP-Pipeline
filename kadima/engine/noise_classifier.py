@@ -6,7 +6,6 @@ import re
 from typing import Any, Dict, List
 from dataclasses import dataclass
 
-import logging
 from kadima.engine.base import Processor, ProcessorResult, ProcessorStatus
 from kadima.engine.hebpipe_wrappers import Token
 
@@ -23,7 +22,24 @@ class NoiseResult:
 
 
 class NoiseClassifier(Processor):
-    """M12: Token noise classification."""
+    """M12: Token noise classification.
+
+    Classifies each token by noise type: Hebrew text, numbers, Latin text,
+    punctuation, chemical formulas, quantities, math symbols.
+
+    Attributes:
+        Input: List[Token]
+        Output: NoiseResult (List[NoiseLabel])
+
+    Example:
+        >>> from kadima.engine.noise_classifier import NoiseClassifier
+        >>> from kadima.engine.hebpipe_wrappers import Token
+        >>> clf = NoiseClassifier()
+        >>> tokens = [Token(0,"חוזק",0,4), Token(1,"7.5",4,7), Token(2,"MPa",7,10)]
+        >>> result = clf.process(tokens, {})
+        >>> [l.noise_type for l in result.data.labels]
+        ['non_noise', 'number', 'latin']
+    """
 
     @property
     def name(self) -> str:

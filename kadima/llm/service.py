@@ -5,7 +5,7 @@ Wraps llm.client with prompt templates and domain logic.
 """
 
 import logging
-from typing import Optional, Dict
+from typing import Optional
 
 from kadima.llm.client import LlamaCppClient
 from kadima.llm import prompts
@@ -14,7 +14,15 @@ logger = logging.getLogger(__name__)
 
 
 class LLMService:
+    """High-level LLM service для доменных задач (определения, грамматика, QA, упражнения)."""
+
     def __init__(self, client: Optional[LlamaCppClient] = None, server_url: str = "http://localhost:8081"):
+        """Инициализировать сервис.
+
+        Args:
+            client: Готовый LlamaCppClient (если None, создаётся новый).
+            server_url: URL сервера (используется если client не передан).
+        """
         self.client = client or LlamaCppClient(server_url=server_url)
 
     def define_term(self, term: str, domain: str = "הנדסת חומרים", context: str = "") -> str:

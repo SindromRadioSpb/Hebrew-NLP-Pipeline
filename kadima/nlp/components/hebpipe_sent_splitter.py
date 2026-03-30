@@ -1,16 +1,38 @@
 # kadima/nlp/components/hebpipe_sent_splitter.py
-"""spaCy custom component: hebpipe_sent_splitter.
+"""spaCy component: Hebrew sentence splitting via HebPipe (M1).
 
-This is a stub. Implement using spacy.language.Language.component decorator.
-
-Usage:
-    @spacy.Language.component("hebpipe_sent_splitter")
-    def hebpipe_sent_splitter(doc):
-        # process doc
-        return doc
+Wraps kadima.engine.hebpipe_wrappers.HebPipeSentSplitter into a
+spaCy pipeline component for integration with spaCy workflows.
 """
 
-import logging
-logger = logging.getLogger(__name__)
+import spacy
+from spacy.language import Language
+from spacy.tokens import Doc
 
-# TODO: Register and implement spaCy component
+from kadima.engine.hebpipe_wrappers import HebPipeSentSplitter
+
+
+@Language.factory("kadima_sent_split")
+class KadimaSentSplitter:
+    """spaCy component for Hebrew sentence splitting.
+
+    Uses HebPipeSentSplitter internally. Sets Doc.sents
+    based on M1 output.
+    """
+
+    def __init__(self, nlp: Language, name: str = "kadima_sent_split"):
+        self.nlp = nlp
+        self.name = name
+        self._splitter = HebPipeSentSplitter()
+
+    def __call__(self, doc: Doc) -> Doc:
+        """Process a spaCy Doc and set sentence boundaries."""
+        result = self._splitter.process(doc.text, {})
+        if result.data:
+            for sent in result.data.sentences:
+                # Find the token span and set is_sent_start
+                for token in doc:
+                    if token.idx == sent.start:
+                        token.is_sent_start = True
+                        break
+        return doc

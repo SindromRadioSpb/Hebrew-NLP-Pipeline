@@ -2,7 +2,7 @@
 """M11: ExpectedCheck → actual → comparison."""
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 
 from kadima.validation.gold_importer import ExpectedCheck

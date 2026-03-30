@@ -2,7 +2,7 @@
 """M19: Full-text + embedding similarity search."""
 
 import logging
-from typing import List, Optional
+from typing import List
 
 from kadima.kb.repository import KBRepository, KBTerm
 
@@ -13,6 +13,11 @@ class KBSearch:
     """Поиск по Knowledge Base."""
 
     def __init__(self, repository: KBRepository):
+        """Инициализировать поиск.
+
+        Args:
+            repository: KBRepository для доступа к данным.
+        """
         self.repo = repository
 
     def search_text(self, query: str, limit: int = 20) -> List[KBTerm]:

@@ -18,7 +18,15 @@ EXPORT_POLL_MAX = 30
 
 
 class LabelStudioClient:
+    """REST API клиент для Label Studio (projects, tasks, annotations, export)."""
+
     def __init__(self, url: str = "http://localhost:8080", api_key: Optional[str] = None):
+        """Инициализировать клиент Label Studio.
+
+        Args:
+            url: URL Label Studio сервера.
+            api_key: API token (если None, запросы без авторизации).
+        """
         self.base_url = url.rstrip("/")
         headers = {}
         if api_key:
@@ -29,7 +37,7 @@ class LabelStudioClient:
             timeout=DEFAULT_TIMEOUT,
         )
 
-    def close(self):
+    def close(self) -> None:
         self.client.close()
 
     # ── Health ───────────────────────────────────────────────────────────────

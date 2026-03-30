@@ -1,7 +1,7 @@
 # kadima/kb/models.py
 """M19: KB data models."""
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict
 from dataclasses import dataclass, field
 
 

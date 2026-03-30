@@ -6,7 +6,7 @@ import yaml
 import logging
 from enum import Enum
 from typing import Dict, List, Any, Optional
-from pydantic import BaseModel, Field, field_validator, model_validator, HttpUrl
+from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +42,7 @@ class AnnotationConfig(BaseModel):
     @field_validator("label_studio_url", "ml_backend_url")
     @classmethod
     def validate_url(cls, v: str) -> str:
+        """Проверить что URL начинается с http:// или https://."""
         if not v.startswith(("http://", "https://")):
             raise ValueError(f"URL must start with http:// or https://, got: {v}")
         return v
@@ -57,6 +58,7 @@ class LLMConfig(BaseModel):
     @field_validator("server_url")
     @classmethod
     def validate_url(cls, v: str) -> str:
+        """Проверить что URL начинается с http:// или https://."""
         if not v.startswith(("http://", "https://")):
             raise ValueError(f"URL must start with http:// or https://, got: {v}")
         return v
@@ -123,6 +125,7 @@ class PipelineConfig(BaseModel):
     @field_validator("language")
     @classmethod
     def validate_language(cls, v: str) -> str:
+        """Проверить что язык входит в допустимый список."""
         allowed = ("he", "heb", "hebrew", "iw")
         if v not in allowed:
             raise ValueError(f"language must be one of {allowed}, got: {v}")
@@ -131,6 +134,7 @@ class PipelineConfig(BaseModel):
     @field_validator("modules")
     @classmethod
     def validate_modules(cls, v: List[str]) -> List[str]:
+        """Проверить что все модули из допустимого набора и список не пуст."""
         unknown = set(v) - VALID_MODULES
         if unknown:
             raise ValueError(

@@ -12,7 +12,6 @@ Usage:
     sync.pull_annotations(project_id=1)
 """
 
-import json
 import logging
 import sqlite3
 from typing import Dict, List, Optional, Tuple
@@ -52,6 +51,13 @@ class AnnotationSync:
         ls_url: str = "http://localhost:8080",
         ls_api_key: Optional[str] = None,
     ):
+        """Инициализировать синхронизатор.
+
+        Args:
+            db_path: Путь к локальной SQLite БД.
+            ls_url: URL Label Studio сервера.
+            ls_api_key: API token для Label Studio.
+        """
         self.db_path = db_path
         self.ls = LabelStudioClient(url=ls_url, api_key=ls_api_key)
 

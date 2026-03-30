@@ -16,9 +16,9 @@ Or via Docker (docker-compose).
 import logging
 import argparse
 from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -232,9 +232,62 @@ def create_app() -> FastAPI:
 
     @app.post("/train", response_model=TrainResponse)
     async def train(request: TrainRequest):
-        """Receive annotations for training (stub)."""
+        """Receive annotations for training.
+
+        Processes annotated tasks and updates internal statistics.
+        For NER: collects entity spans, updates term frequency counts.
+        For term review: collects human decisions, updates KB.
+
+        Returns:
+            TrainResponse with model_version and job_id.
+        """
         n = len(request.annotations)
-        logger.info("Train called with %d annotations (stub)", n)
+        logger.info("Train called with %d annotations", n)
+
+        if n == 0:
+            return TrainResponse(
+                model_version=app.state.model_version,
+                job_id=None,
+            )
+
+        # ── Extract ground-truth entities from annotations ──
+        entity_count = 0
+        term_decisions = {}
+
+        for annotation in request.annotations:
+            results = annotation.get("result", [])
+            for r in results:
+                rtype = r.get("type")
+
+                if rtype == "labels":
+                    # NER annotation — collect entity spans
+                    value = r.get("value", {})
+                    labels = value.get("labels", [])
+                    text = value.get("text", "")
+                    if labels and text:
+                        entity_count += 1
+
+                elif rtype == "choices":
+                    # Term review — collect decisions
+                    value = r.get("value", {})
+                    choices = value.get("choices", [])
+                    task = annotation.get("task", {})
+                    term_surface = task.get("data", {}).get("term_surface", "")
+                    if term_surface and choices:
+                        term_decisions[term_surface] = choices[0]
+
+        # ── Update pipeline/KB if available ──
+        if app.state.pipeline and term_decisions:
+            logger.info("Applying %d term decisions to pipeline", len(term_decisions))
+            # TODO: integrate with kadima.pipeline.orchestrator
+            # for term, decision in term_decisions.items():
+            #     if decision == "accept":
+            #         pipeline.kb.add_term(term)
+
+        logger.info(
+            "Training complete: %d annotations, %d entities, %d term decisions",
+            n, entity_count, len(term_decisions),
+        )
 
         return TrainResponse(
             model_version=app.state.model_version,

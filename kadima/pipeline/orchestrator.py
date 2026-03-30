@@ -37,6 +37,12 @@ class PipelineService:
     """
 
     def __init__(self, config: PipelineConfig, db_path: str = "~/.kadima/kadima.db"):
+        """Инициализировать orchestrator.
+
+        Args:
+            config: Валидированная PipelineConfig.
+            db_path: Путь к SQLite базе.
+        """
         self.config = config
         self.db_path = db_path
         self.modules: Dict[str, Processor] = {}

@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def main():
+def main() -> None:
     """Запуск KADIMA GUI."""
     try:
         from PyQt6.QtWidgets import QApplication

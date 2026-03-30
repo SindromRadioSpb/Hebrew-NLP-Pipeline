@@ -5,18 +5,24 @@ Each repository takes a db_path and provides typed methods.
 Repositories use data/db.py:get_connection() internally.
 """
 
-import json
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 
 from kadima.data.db import get_connection
-from kadima.data.models import Corpus, Document, Term, PipelineRun
+from kadima.data.models import Corpus, Term
 
 logger = logging.getLogger(__name__)
 
 
 class CorpusRepository:
+    """Repository для CRUD операций над corpora."""
+
     def __init__(self, db_path: str):
+        """Инициализировать репозиторий.
+
+        Args:
+            db_path: Путь к SQLite файлу.
+        """
         self.db_path = db_path
 
     def create(self, name: str, language: str = "he") -> int:
@@ -49,7 +55,14 @@ class CorpusRepository:
 
 
 class TermRepository:
+    """Repository для CRUD операций над terms."""
+
     def __init__(self, db_path: str):
+        """Инициализировать репозиторий.
+
+        Args:
+            db_path: Путь к SQLite файлу.
+        """
         self.db_path = db_path
 
     def list_for_run(self, run_id: int, limit: int = 100) -> List[Dict]:

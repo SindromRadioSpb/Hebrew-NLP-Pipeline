@@ -5,7 +5,6 @@ Helpers for RTL text, niqqud stripping, maqaf handling, etc.
 """
 
 import re
-import unicodedata
 
 
 # Hebrew Unicode range: 0x0590–0x05FF, 0xFB1D–0xFB4F
