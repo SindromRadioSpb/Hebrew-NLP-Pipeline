@@ -12,8 +12,10 @@ Data flow:
   ngrams + am_scores + np_chunks → M8 term_extract → TermResult
 """
 
+import os
 import time
 import logging
+import sqlite3
 from typing import Dict, Any, Optional, List
 
 from kadima.engine.base import Processor, PipelineResult, ProcessorStatus
@@ -24,6 +26,7 @@ from kadima.engine.ngram_extractor import NgramResult
 from kadima.engine.np_chunker import NPChunkResult
 from kadima.engine.association_measures import AMResult
 from kadima.pipeline.config import PipelineConfig
+from kadima.data.db import get_connection
 
 logger = logging.getLogger(__name__)
 
@@ -76,9 +79,123 @@ class PipelineService:
         return base
 
     def run(self, corpus_id: int) -> PipelineResult:
-        """Запускает pipeline на корпусе (из БД)."""
-        # TODO: загрузить документы из БД, запустить run_on_text на каждом
-        return PipelineResult(corpus_id=corpus_id, profile=self.config.profile.value)
+        """Запускает pipeline на корпусе из БД.
+
+        Загружает документы по corpus_id, обрабатывает каждый через
+        run_on_text, агрегирует результаты, записывает pipeline_run
+        и terms обратно в БД.
+
+        Args:
+            corpus_id: ID корпуса в таблице corpora.
+
+        Returns:
+            PipelineResult с агрегированными terms, ngrams, np_chunks.
+
+        Raises:
+            ValueError: Если корпус не найден или не содержит документов.
+        """
+        start = time.time()
+        db_path = os.path.expanduser(self.db_path)
+        conn = get_connection(db_path)
+
+        try:
+            # Проверить что корпус существует
+            row = conn.execute(
+                "SELECT id, name FROM corpora WHERE id = ?", (corpus_id,)
+            ).fetchone()
+            if row is None:
+                raise ValueError(f"Corpus {corpus_id} not found")
+
+            # Загрузить документы
+            docs = conn.execute(
+                "SELECT id, raw_text FROM documents WHERE corpus_id = ? ORDER BY id",
+                (corpus_id,),
+            ).fetchall()
+            if not docs:
+                raise ValueError(f"Corpus {corpus_id} has no documents")
+
+            logger.info(
+                "Running pipeline on corpus %d (%d documents)", corpus_id, len(docs)
+            )
+
+            # Создать запись pipeline_run
+            cursor = conn.execute(
+                "INSERT INTO pipeline_runs (corpus_id, profile, status) VALUES (?, ?, ?)",
+                (corpus_id, self.config.profile.value, "running"),
+            )
+            run_id = cursor.lastrowid
+            conn.commit()
+
+            # Обработать каждый документ
+            aggregated = PipelineResult(
+                corpus_id=corpus_id, profile=self.config.profile.value
+            )
+            all_terms = []
+            all_ngrams = []
+            all_np_chunks = []
+
+            for doc in docs:
+                doc_id, raw_text = doc["id"], doc["raw_text"]
+                doc_result = self.run_on_text(raw_text)
+
+                all_terms.extend(doc_result.terms)
+                all_ngrams.extend(doc_result.ngrams)
+                all_np_chunks.extend(doc_result.np_chunks)
+
+                # Merge module_results (последний документ перезаписывает)
+                for mod_name, mod_result in doc_result.module_results.items():
+                    aggregated.module_results[mod_name] = mod_result
+
+            aggregated.terms = all_terms
+            aggregated.ngrams = all_ngrams
+            aggregated.np_chunks = all_np_chunks
+
+            # Записать terms в БД
+            for term in all_terms:
+                conn.execute(
+                    "INSERT INTO terms (run_id, surface, canonical, kind, freq, "
+                    "doc_freq, pmi, llr, dice, rank) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        run_id, term.surface, term.canonical, term.kind,
+                        term.freq, term.doc_freq, term.pmi, term.llr,
+                        term.dice, term.rank,
+                    ),
+                )
+
+            # Обновить статус pipeline_run
+            conn.execute(
+                "UPDATE pipeline_runs SET status = ?, finished_at = CURRENT_TIMESTAMP "
+                "WHERE id = ?",
+                ("completed", run_id),
+            )
+            conn.commit()
+
+            aggregated.total_time_ms = (time.time() - start) * 1000
+            aggregated.status = ProcessorStatus.READY
+            logger.info(
+                "Pipeline run %d completed: %d terms, %.0fms",
+                run_id, len(all_terms), aggregated.total_time_ms,
+            )
+            return aggregated
+
+        except ValueError:
+            raise
+        except Exception as e:
+            # Откатить и пометить failed
+            conn.rollback()
+            logger.error("Pipeline run failed for corpus %d: %s", corpus_id, e)
+            try:
+                conn.execute(
+                    "UPDATE pipeline_runs SET status = ?, finished_at = CURRENT_TIMESTAMP "
+                    "WHERE id = ?",
+                    ("failed", run_id),
+                )
+                conn.commit()
+            except Exception:
+                pass
+            raise
+        finally:
+            conn.close()
 
     def run_on_text(self, text: str) -> PipelineResult:
         """Запускает pipeline на одном тексте (без БД).
