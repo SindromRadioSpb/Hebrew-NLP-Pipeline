@@ -1,472 +1,390 @@
-# CLAUDE.md — Project Map for Claude Code
+# CLAUDE.md — Kadima Project Map
 
-> **Язык проекта:** Python 3.10+ | **Пакет:** `kadima/` | **БД:** SQLite + миграции
-> **Конвенции:** snake_case файлы/функции, PascalCase классы, UPPER_SNAKE константы
-> **Таргет:** RTX 3060 (12GB VRAM) | **v0.9.0** → **v1.0.0** (генеративные модули)
+> **Python 3.10+** | **Package:** `kadima/` | **DB:** SQLite WAL + migrations
+> **Conventions:** snake_case files/functions, PascalCase classes, UPPER_SNAKE constants
+> **Target HW:** RTX 3060 12GB (dev) / RTX 3070 8GB (CI)
+> **Version:** 0.9.x (NLP pipeline) -> 1.0.0 (+ generative modules)
 
 ---
 
-## Куда класть код
+## Quick Start
 
-| Что | Куда | Пример |
-|-----|------|--------|
-| NLP-процессор (M1–M8, M12) | `kadima/engine/<name>.py` | `term_extractor.py` |
-| **Новые модули (M13–M25)** | `kadima/engine/<name>.py` | `diacritizer.py` |
-| Pipeline оркестрация | `kadima/pipeline/` | `orchestrator.py`, `config.py` |
-| Валидация / gold corpus | `kadima/validation/` | `check_engine.py` |
-| Корпусный менеджер | `kadima/corpus/` | `importer.py`, `exporter.py` |
-| Label Studio интеграция | `kadima/annotation/` | `ls_client.py`, `sync.py`, `ml_backend.py` |
+```bash
+# Install (core only)
+pip install -e ".[dev]"
+
+# Install with ML modules
+pip install -e ".[ml,dev]"
+
+# Install with GPU-accelerated ML
+pip install -e ".[gpu,dev]"
+
+# Run tests (MUST pass before any change)
+pytest tests/ -v
+
+# Lint + typecheck
+ruff check kadima/
+mypy kadima/ --ignore-missing-imports
+
+# Run API
+kadima api --host 0.0.0.0 --port 8501
+
+# Docker
+make up                     # API + Label Studio
+make up-llm                 # + llama.cpp (GPU)
+```
+
+---
+
+## Current Status (2026-03-31)
+
+### What works
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Engine M1-M8, M12 | Working | M3 rule-based fallback + hebpipe integration |
+| Pipeline `run_on_text()` | Working | Sequential M1->M8->M12 |
+| Pipeline `run(corpus_id)` | Working | DB load + process + save pipeline_runs/terms |
+| Pipeline config | Working | Pydantic v2, profiles, JSON Schema, M13-M25 sub-configs |
+| Data layer | Working | WAL, FK, 4 migrations, parameterized queries |
+| Validation | Working | 26 gold corpus sets, check_engine |
+| Annotation client | Working | Label Studio REST client, sync, project manager |
+| API (corpora, pipeline) | Working | FastAPI, 2 of 6 routers functional |
+| Tests | 350+ functions | Engine, config, corpus, data, validation, E2E covered |
+
+### Resolved blockers (Phase 0)
+
+| ID | Resolution | Commit scope |
+|----|-----------|--------------|
+| B1 | M3 rule-based: prefix stripping (7 proclitics + chains), POS heuristics (PUNCT/NUM/ADP/ADV/PRON/VERB/ADJ/X/NOUN), hebpipe integration when available | `engine/hebpipe_wrappers.py` |
+| B2 | `PipelineService.run(corpus_id)`: loads docs from DB, runs pipeline, saves pipeline_runs + terms | `pipeline/orchestrator.py` |
+| B3 | 28 E2E tests: direct wiring, orchestrator, edge cases, DB integration | `tests/integration/test_pipeline_e2e.py` |
+| B4 | `VALID_MODULES` = 9 NLP + 13 generative (22 total), 13 Pydantic sub-configs with validation | `pipeline/config.py` |
+
+### Tech debt
+
+| ID | Problem | Location |
+|----|---------|----------|
+| D1 | Docker: `LABEL_STUDIO_PASSWORD` hardcoded | `docker-compose.yml` |
+| D2 | Docker: images unpinned (`:latest`) | `docker-compose.yml` |
+| D3 | Docker: `service_started` instead of `service_healthy` | `docker-compose.yml` |
+| D4 | API routers: validation, annotation, kb, llm are empty stubs | `api/routers/` |
+| D5 | UI: all 7 widget files are 10-line stubs | `kadima/ui/` |
+| D6 | `Token` dataclass declared in 2 places with different fields | `data/models.py` and `engine/hebpipe_wrappers.py` |
+
+---
+
+## File Layout
+
+| What | Where | Example |
+|------|-------|---------|
+| NLP processors (M1-M8, M12) | `kadima/engine/<name>.py` | `term_extractor.py` |
+| **Generative modules (M13-M25)** | `kadima/engine/<name>.py` | `diacritizer.py` |
+| VRAM/model management | `kadima/engine/model_manager.py` | Lazy load + LRU eviction |
+| Pipeline orchestration | `kadima/pipeline/` | `orchestrator.py`, `config.py` |
+| Validation / gold corpus | `kadima/validation/` | `check_engine.py` |
+| Corpus manager | `kadima/corpus/` | `importer.py`, `exporter.py` |
+| Label Studio integration | `kadima/annotation/` | `ls_client.py`, `sync.py` |
 | Knowledge Base | `kadima/kb/` | `repository.py`, `search.py` |
-| LLM сервис | `kadima/llm/` | `client.py`, `prompts.py`, `service.py` |
-| spaCy компоненты | `kadima/nlp/components/` | `hebpipe_*.py`, `*_component.py` |
-| DB / миграции | `kadima/data/` | `db.py`, `models.py`, `migrations/XXX.sql` |
-| REST API endpoints | `kadima/api/routers/` | `corpora.py`, `annotation.py` |
-| Pydantic схемы API | `kadima/api/schemas.py` | — |
-| PyQt UI виджеты | `kadima/ui/` + `kadima/ui/widgets/` | `dashboard.py`, `term_table.py` |
-| Утилиты | `kadima/utils/` | `hebrew.py`, `logging.py` |
-| Unit-тесты | `tests/<module>/test_<name>.py` | `tests/engine/test_term_extractor.py` |
-| Integration тесты | `tests/integration/` | `test_pipeline_e2e.py` |
+| LLM service | `kadima/llm/` | `client.py`, `prompts.py` |
+| spaCy components | `kadima/nlp/components/` | `hebpipe_*.py` |
+| DB / migrations | `kadima/data/` | `db.py`, `models.py`, `migrations/XXX.sql` |
+| REST API | `kadima/api/routers/` | `corpora.py`, `generative.py` |
+| API schemas | `kadima/api/schemas.py` | Pydantic models |
+| PyQt UI | `kadima/ui/` | `main_window.py`, `widgets/` |
+| Utils | `kadima/utils/` | `hebrew.py`, `logging.py` |
+| Unit tests | `tests/<module>/test_<name>.py` | `tests/engine/test_term_extractor.py` |
+| Integration tests | `tests/integration/` | `test_pipeline_e2e.py` |
 | Gold corpus fixtures | `tests/data/he_XX_*/` | `expected_counts.yaml`, `raw/*.txt` |
-| Label Studio шаблоны | `templates/` | `hebrew_ner.xml` |
+| Label Studio templates | `templates/` | `hebrew_ner.xml` |
+| Dev prompt / roadmap | `Tasks/Kadima_v2.md` | Phased implementation plan |
 
 ---
 
-## Полная карта модулей (25 модулей)
+## Module Map (25 modules)
 
-### Engine Layer — существующие (M1–M8, M12)
+### NLP Pipeline (sequential: M1 -> M2 -> M3 -> M4 -> M5 -> M6 -> M7 -> M8 -> M12)
 
-| ID | Модуль | Файл | Вход → Выход | Статус |
-|----|--------|------|--------------|--------|
-| M1 | Sentence Splitter | `hebpipe_wrappers.py` | `str → SentenceSplitResult` | ✅ |
-| M2 | Tokenizer | `hebpipe_wrappers.py` | `str → TokenizeResult` | ✅ |
-| M3 | Morph Analyzer | `hebpipe_wrappers.py` | `List[Token] → MorphResult` | ✅ |
-| M4 | N-gram Extractor | `ngram_extractor.py` | `List[List[Token]] → NgramResult` | ✅ |
-| M5 | NP Chunker | `np_chunker.py` | `List[MorphAnalysis] → NPChunkResult` | ✅ |
-| M6 | Canonicalizer | `canonicalizer.py` | `List[str] → CanonicalResult` | ✅ |
-| M7 | Association Measures | `association_measures.py` | `List[Ngram] → AMResult` | ✅ |
-| M8 | Term Extractor | `term_extractor.py` | `TermExtractInput → TermResult` | ✅ |
-| M12 | Noise Classifier | `noise_classifier.py` | `List[Token] → NoiseResult` | ✅ |
+| ID | Module | File | I/O | Status |
+|----|--------|------|-----|--------|
+| M1 | Sentence Splitter | `hebpipe_wrappers.py` | `str -> SentenceSplitResult` | Working (regex, no HebPipe) |
+| M2 | Tokenizer | `hebpipe_wrappers.py` | `str -> TokenizeResult` | Working (str.split, no HebPipe) |
+| M3 | Morph Analyzer | `hebpipe_wrappers.py` | `List[Token] -> MorphResult` | **STUB**: lemma=surface, POS="NOUN" |
+| M4 | N-gram Extractor | `ngram_extractor.py` | `List[List[Token]] -> NgramResult` | Working |
+| M5 | NP Chunker | `np_chunker.py` | `List[MorphAnalysis] -> NPChunkResult` | Working |
+| M6 | Canonicalizer | `canonicalizer.py` | `List[str] -> CanonicalResult` | Working |
+| M7 | Association Measures | `association_measures.py` | `List[Ngram] -> AMResult` | Working |
+| M8 | Term Extractor | `term_extractor.py` | `TermExtractInput -> TermResult` | Working |
+| M12 | Noise Classifier | `noise_classifier.py` | `List[Token] -> NoiseResult` | Working |
 
-### Engine Layer — новые модули (M13–M25)
+### Generative Modules (on-demand, NOT sequential)
 
-| ID | Модуль | Файл | Модель | VRAM | Вход → Выход | Приоритет |
-|----|--------|------|--------|------|--------------|-----------|
-| M13 | Diacritizer | `diacritizer.py` | DictaBERT (phonikud-onnx) | <1GB | `str → str` (с никудом) | 🔴 |
-| M14 | Translator | `translator.py` | mBART-50 (facebook/mbart-large-50-many-to-many-mmt) | 3GB | `str,lang,lang → str` | 🔴 |
-| M15 | TTS Synthesizer | `tts_synthesizer.py` | XTTS v2 (Coqui) | 4GB | `str,lang → Path(WAV)` | 🔴 |
-| M16 | STT Transcriber | `stt_transcriber.py` | Whisper large-v3 (openai-whisper) | 3-6GB | `Path(WAV) → str` | 🔴 |
-| M17 | NER Extractor | `ner_extractor.py` | HeQ-NER (dicta-il) | <1GB | `str → List[Entity]` | 🔴 |
-| M18 | Sentiment Analyzer | `sentiment_analyzer.py` | heBERT (avichr/heBERT_sentiment_analysis) | <1GB | `str → Dict{label,score}` | 🟡 |
-| M19 | Summarizer | `summarizer.py` | mT5-base (google/mt5-base) | 2GB | `str → str` (summary) | 🟡 |
-| M20 | QA Extractor | `qa_extractor.py` | AlephBERT (onlplab/alephbert-base) | <1GB | `str,str → Dict{answer,score}` | 🟡 |
-| M21 | Morph Generator | `morph_generator.py` | Rules (без ML) | <100MB | `lemma,pos → List[MorphForm]` | 🟡 |
-| M22 | Transliterator | `transliterator.py` | Rules + lookup | <100MB | `str ↔ str` (ktiv male↔haser) | 🟢 |
-| M23 | Grammar Corrector | `grammar_corrector.py` | T5-hebrew / LLM | 2-4GB | `str → str` (исправленный) | 🟢 |
-| M24 | Keyphrase Extractor | `keyphrase_extractor.py` | YAKE! / KeyBERT | <1GB | `str → List[str]` | 🟢 |
-| M25 | Paraphraser | `paraphraser.py` | mT5 / LLM | 2-4GB | `str → List[str]` | ⚪ |
+| ID | Module | File | Model | VRAM | I/O | Tier |
+|----|--------|------|-------|------|-----|------|
+| M13 | Diacritizer | `diacritizer.py` | phonikud-onnx / DictaBERT | <1GB | `str -> str` | 1 |
+| M14 | Translator | `translator.py` | mBART-50 / OPUS-MT | 3GB | `str,lang -> str` | 1 |
+| M15 | TTS Synthesizer | `tts_synthesizer.py` | XTTS v2 (Coqui) | 4GB | `str -> Path(WAV)` | 2 |
+| M16 | STT Transcriber | `stt_transcriber.py` | Whisper large-v3 | 3-6GB | `Path(WAV) -> str` | 2 |
+| M17 | NER Extractor | `ner_extractor.py` | HeQ-NER (dicta-il) | <1GB | `str -> List[Entity]` | 1 |
+| M18 | Sentiment Analyzer | `sentiment_analyzer.py` | heBERT | <1GB | `str -> {label,score}` | 2 |
+| M19 | Summarizer | `summarizer.py` | mT5-base | 2GB | `str -> str` | 2 |
+| M20 | QA Extractor | `qa_extractor.py` | AlephBERT | <1GB | `{q,ctx} -> {answer,score}` | 2 |
+| M21 | Morph Generator | `morph_generator.py` | Rules (no ML) | 0 | `lemma,pos -> List[MorphForm]` | 1 |
+| M22 | Transliterator | `transliterator.py` | Rules + lookup | 0 | `str <-> str` | 1 |
+| M23 | Grammar Corrector | `grammar_corrector.py` | T5-hebrew / LLM | 2-4GB | `str -> str` | 3 |
+| M24 | Keyphrase Extractor | `keyphrase_extractor.py` | YAKE! / KeyBERT | <1GB | `str -> List[str]` | 3 |
+| M25 | Paraphraser | `paraphraser.py` | mT5 / LLM | 2-4GB | `str -> List[str]` | 3 |
 
-### Архитектура Processor Protocol
+**All M13-M25 are NOT YET IMPLEMENTED.** See `Tasks/Kadima_v2.md` for phased plan.
 
-Каждый новый модуль должен реализовывать `ProcessorProtocol` из `kadima/engine/contracts.py`:
+**Tier meaning:** 1 = first to implement (rules-only or <1GB), 2 = ML-heavy, 3 = LLM-dependent.
+
+---
+
+## Architecture
+
+### Two Pipeline Modes
+
+```
+CLI / API / GUI
+      |
+      v
+PipelineService (pipeline/orchestrator.py)
+      |
+      +--- run_on_text(text) ---- NLP Pipeline (sequential) ----+
+      |    M1 -> M2 -> M3 -> M4 -> M5 -> M6 -> M7 -> M8 -> M12 |
+      |                                                          |
+      +--- run_module(id, input) - Generative (on-demand) ------+
+      |    M13..M25: each called independently by user request   |
+      |                                                          |
+      v                                                          v
+Data Layer (data/)              Validation (validation/)
+SQLite WAL + migrations         Gold corpus (26 sets)
+```
+
+**Key distinction:** NLP pipeline is a fixed chain. Generative modules are independent
+services invoked on demand — they do NOT form a sequential pipeline.
+
+### Processor Protocol
+
+Every module implements `ProcessorProtocol` from `kadima/engine/contracts.py`:
 
 ```python
 @runtime_checkable
 class ProcessorProtocol(Protocol):
     @property
-    def name(self) -> str: ...          # "diacritizer"
+    def name(self) -> str: ...       # "diacritizer"
     @property
-    def module_id(self) -> str: ...     # "M13"
-    def process(self, input_data: Any, config: Dict[str, Any]) -> Any: ...
+    def module_id(self) -> str: ...  # "M13"
+    def process(self, input_data: Any, config: Dict[str, Any]) -> ProcessorResult: ...
+    def validate_input(self, input_data: Any) -> bool: ...
 ```
 
-**Дополнительно** для новых модулей — каждый должен иметь:
+Concrete base class: `kadima/engine/base.py::Processor` (ABC).
+
+New generative modules additionally implement:
+- `process_batch(inputs, config)` — batch processing
+- Static metric methods specific to the module
+
+### VRAM Management
+
+ML modules use lazy loading. Not all models fit in VRAM simultaneously.
+
+| Budget | Max simultaneous |
+|--------|-----------------|
+| RTX 3070 (8GB) | 2-3 small (<1GB) + 1 medium (2-3GB) |
+| RTX 3060 (12GB) | 2-3 small + 1 large (4-6GB) |
+
+**Rule:** Always check `torch.cuda.is_available()` before `.to("cuda")`.
+**Rule:** ML imports wrapped in `try/except ImportError` with clear message.
+
+### Module Registration (orchestrator)
 
 ```python
-class XxxProcessor(Processor):
-    # Наследуется от kadima/engine/base.py::Processor
-
-    def process(self, input_data, config): ...       # Обработка одного элемента
-    def process_batch(self, inputs, config): ...     # Batch обработка
-    def process_corpus(self, corpus_path, config): ... # Обработка корпуса
-    def generate_expected(self, corpus_path): ...    # Генерация ground truth
-
-    # Metrics (static methods)
-    @staticmethod
-    def metric_xxx(reference, actual) -> float: ...  # Метрика качества
-```
-
----
-
-## Pipeline Orchestrator — расширенный Data Flow
-
-```
-CLI/API/GUI
-    ↓
-Pipeline Orchestrator (pipeline/orchestrator.py)
-    ↓
-┌─── NLP Pipeline (существующий) ────────────────────────────┐
-│ M1 SentSplit → M2 Token → M3 Morph →                     │
-│ M4 Ngram → M5 NP → M6 Canonicalize →                     │
-│ M7 AM → M8 TermExtract → M12 Noise                        │
-└───────────────────────────────────────────────────────────┘
-    ↓
-┌─── Generative Pipeline (новый) ────────────────────────────┐
-│ M13 Diacritize → огласованный текст                       │
-│ M14 Translate → перевод (HE→EN/RU)                        │
-│ M15 TTS → аудио (WAV)                                     │
-│ M16 STT ← аудио (WAV) → текст (обратно к M1)             │
-│ M17 NER → сущности (PER, LOC, ORG, ...)                   │
-│ M18 Sentiment → тональность (pos/neg/neutral)             │
-│ M19 Summarize → краткое содержание                        │
-│ M20 QA → ответ на вопрос из контекста                     │
-│ M21 MorphGen → парадигмы словоформ                        │
-│ M22 Transliterate → ktiv male↔haser                       │
-│ M23 GrammarCorrect → исправленный текст                   │
-│ M24 Keyphrase → ключевые фразы                            │
-│ M25 Paraphrase → переформулированный текст                 │
-└───────────────────────────────────────────────────────────┘
-    ↓
-Data Layer (data/) ← SQLite + миграции
-    ↑
-Validation (validation/) ← gold corpus проверка
-```
-
----
-
-## Детализация новых модулей
-
-### M13 — Diacritizer (ניקוד)
-```python
-# kadima/engine/diacritizer.py
-from kadima.engine.base import Processor
-
-class Diacritizer(Processor):
-    """Добавляет огласовку (никуд) к неогласованному ивриту."""
-    module_id = "M13"
-    name = "diacritizer"
-
-    def __init__(self, backend="phonikud", device="cuda"):
-        # backend: "phonikud" (ONNX) | "dicta" (transformers)
-        ...
-
-    def process(self, text: str, config: dict) -> str:
-        """Огласовать текст."""
-        ...
-
-    @staticmethod
-    def char_accuracy(ref: str, hyp: str) -> float: ...
-    @staticmethod
-    def word_accuracy(ref: str, hyp: str) -> float: ...
-    @staticmethod
-    def strip_nikud(text: str) -> str: ...
-```
-
-**Зависимости:** `phonikud-onnx>=1.0.0` + `onnxruntime>=1.15.0`
-**Модель:** `dicta-il/dictabert-large-char-menaked` (SOTA 2025-03, CC BY 4.0)
-**Интеграция с M3:** Morph Analyzer может использовать огласованный текст для улучшения морфологического анализа
-
-### M14 — Translator
-```python
-class Translator(Processor):
-    """Перевод иврита на целевые языки."""
-    module_id = "M14"
-
-    def __init__(self, backend="mbart", device="cuda"):
-        # backend: "mbart" (mBART-50, 50 langs) | "opus" (Helsinki-NLP, fast) | "nllb" (200 langs)
-        ...
-
-    def process(self, text: str, config: dict) -> str:
-        # config: {"src_lang": "he", "tgt_lang": "en"}
-        ...
-
-    @staticmethod
-    def bleu_score(ref: str, hyp: str) -> float: ...
-```
-
-**Зависимости:** `transformers>=4.35.0`, `torch>=2.0.0`, `sentencepiece>=0.1.99`
-**Интеграция с API:** endpoint `POST /pipeline/translate`
-
-### M15 — TTS Synthesizer
-```python
-class TTSSynthesizer(Processor):
-    """Синтез речи из ивритского текста."""
-    module_id = "M15"
-
-    def __init__(self, backend="xtts", device="cuda", speaker_wav=None):
-        # backend: "xtts" (XTTS v2, voice cloning) | "mms" (MMS-TTS-heb, fast) | "piper"
-        ...
-
-    def process(self, text: str, config: dict) -> Path:
-        """Синтезировать WAV."""
-        ...
-
-    @staticmethod
-    def estimate_duration(text: str, lang: str) -> float: ...
-```
-
-**Зависимости:** `TTS>=0.22.0` (Coqui) — ~1.5GB модель
-**Интеграция с UI:** кнопка "Озвучить" в pipeline_view
-
-### M16 — STT Transcriber
-```python
-class STTTranscriber(Processor):
-    """Транскрибация аудио в текст."""
-    module_id = "M16"
-
-    def __init__(self, backend="whisper", device="cuda"):
-        ...
-
-    def process(self, audio_path: Path, config: dict) -> str:
-        ...
-
-    @staticmethod
-    def wer(ref: str, hyp: str) -> float: ...
-    @staticmethod
-    def cer(ref: str, hyp: str) -> float: ...
-```
-
-**Зависимости:** `openai-whisper>=20231117`
-**Замыкает цикл:** TTS → аудио → STT → текст → сравнение с исходным
-
-### M17 — NER Extractor
-```python
-class NERExtractor(Processor):
-    """Извлечение именованных сущностей."""
-    module_id = "M17"
-
-    def __init__(self, backend="heq_ner", device="cuda"):
-        # backend: "heq_ner" (dicta-il, рекомендуется) | "alephbert" | "hebert"
-        ...
-
-    def process(self, text: str, config: dict) -> List[Entity]:
-        ...
-
-    @staticmethod
-    def precision_recall_f1(expected, actual) -> dict: ...
-```
-
-**Зависимости:** `transformers>=4.35.0`
-**Интеграция с M8:** NER результаты → Term Extractor (сущности как кандидаты терминов)
-**Интеграция с Label Studio:** NER → annotation export
-
-### M18 — Sentiment Analyzer
-```python
-class SentimentAnalyzer(Processor):
-    """Анализ тональности ивритского текста."""
-    module_id = "M18"
-
-    def process(self, text: str, config: dict) -> dict:
-        # → {"label": "positive|negative|neutral", "score": 0.87}
-        ...
-```
-
-### M19 — Summarizer
-```python
-class Summarizer(Processor):
-    """Суммаризация ивритских документов."""
-    module_id = "M19"
-
-    def process(self, text: str, config: dict) -> str:
-        # config: {"max_length": 150, "min_length": 30}
-        ...
-
-    @staticmethod
-    def rouge_l(ref: str, hyp: str) -> float: ...
-```
-
-### M20 — QA Extractor
-```python
-class QAExtractor(Processor):
-    """Вопросно-ответная система (extractive)."""
-    module_id = "M20"
-
-    def process(self, qa_pair: dict, config: dict) -> dict:
-        # input: {"question": "...", "context": "..."}
-        # output: {"answer": "...", "score": 0.95, "start": 10, "end": 25}
-        ...
-```
-
-### M21 — Morphological Generator
-```python
-class MorphGenerator(Processor):
-    """Генерация всех словоформ из леммы + грамматических параметров."""
-    module_id = "M21"
-
-    def generate_noun_forms(self, lemma, gender="masculine") -> List[MorphForm]: ...
-    def generate_verb_paradigm(self, root, binyan="paal", tense="present") -> List[MorphForm]: ...
-
-    # Биньяны: paal, piel, pual, hifil, hufal, hitpael, nifal
-    # Падежи: singular/plural, absolute/construct, definite/indefinite
-```
-
-**Зависимости:** Нет (только правила). **Интеграция с M3:** расширение морфологического анализа
-
-### M22 — Transliterator
-```python
-class Transliterator(Processor):
-    """Конвертация между ktiv male и ktiv haser."""
-    module_id = "M22"
-
-    def to_male(self, text: str) -> str: ...     # הַשָּׁנָה → השנה
-    def to_haser(self, text: str) -> str: ...    # השנה → הַשָּׁנָה
-    def to_phonetic(self, text: str) -> str: ... # IPA транскрипция
-```
-
-### M23 — Grammar Corrector
-```python
-class GrammarCorrector(Processor):
-    """Грамматическая коррекция иврита."""
-    module_id = "M23"
-    # Требует fine-tuned модель или LLM
-```
-
-### M24 — Keyphrase Extractor
-```python
-class KeyphraseExtractor(Processor):
-    """Извлечение ключевых фраз (дополняет M8)."""
-    module_id = "M24"
-    # YAKE! (language-independent) или KeyBERT
-```
-
-### M25 — Paraphraser
-```python
-class Paraphraser(Processor):
-    """Переформулировка текста."""
-    module_id = "M25"
-    # Требует LLM или fine-tuned seq2seq
-```
-
----
-
-## Gold Corpus Schema — расширенный
-
-### existing_file_counts (добавить)
-```json
-{
-  "expected_diacritics_csv": {"type": "boolean", "default": false},
-  "expected_translation_csv": {"type": "boolean", "default": false},
-  "expected_tts_csv": {"type": "boolean", "default": false},
-  "expected_stt_csv": {"type": "boolean", "default": false},
-  "expected_ner_csv": {"type": "boolean", "default": false},
-  "expected_sentiment_csv": {"type": "boolean", "default": false},
-  "expected_summary_csv": {"type": "boolean", "default": false},
-  "expected_qa_csv": {"type": "boolean", "default": false},
-  "expected_morph_gen_csv": {"type": "boolean", "default": false},
-  "expected_transliteration_csv": {"type": "boolean", "default": false}
+# NLP modules: imported directly (always available)
+self.modules = {
+    "sent_split": HebPipeSentSplitter(),
+    "tokenizer": HebPipeTokenizer(),
+    ...
 }
-```
 
-### focus_areas (добавить)
-```
-diacritization, nikud_male, nikud_haser, matres_lectionis,
-translation_he_en, translation_he_ru, translation_he_multi,
-tts_synthesis, tts_voice_cloning, tts_prosody,
-stt_transcription, stt_alignment,
-ner_extraction, ner_coreference,
-sentiment_analysis,
-summarization, summarization_extractive, summarization_abstractive,
-question_answering, qa_reading_comprehension,
-morphological_generation, verb_paradigm, noun_declension_gen,
-transliteration, grammar_correction, keyphrase_extraction, paraphrase
-```
-
-### quality_metrics (добавить)
-```json
-{
-  "nikud_accuracy_target": 0.95,
-  "bleu_target": 30.0,
-  "tts_mos_target": 3.5,
-  "tts_wer_target": 0.15,
-  "stt_wer_target": 0.10,
-  "ner_f1_target": 0.85,
-  "sentiment_accuracy_target": 0.85,
-  "summary_rouge_l_target": 0.40,
-  "qa_f1_target": 0.80,
-  "morph_gen_accuracy_target": 0.90
+# Generative modules: lazy-loaded, skip if unavailable
+_optional = {
+    "diacritizer": ("kadima.engine.diacritizer", "Diacritizer"),
+    "translator":  ("kadima.engine.translator", "Translator"),
+    ...
 }
+for name, (mod_path, cls_name) in _optional.items():
+    if name not in self.config.modules:
+        continue
+    try:
+        mod = importlib.import_module(mod_path)
+        cls = getattr(mod, cls_name)
+        self.modules[name] = cls(self.config.get_module_config(name))
+    except ImportError as e:
+        logger.warning("Module %s unavailable: %s", name, e)
 ```
 
-### Expected CSV Formats
+---
 
-| Модуль | Файл | Обязательные колонки |
-|--------|------|---------------------|
-| M13 | expected_diacritics.csv | `surface, expected_nikud, expectation_type, tolerance` |
-| M14 | expected_translation_*.csv | `surface, src_lang, tgt_lang, expected_translation, expectation_type` |
-| M15 | expected_tts.csv | `surface, lang, expected_duration_sec, format, expectation_type` |
-| M16 | expected_stt.csv | `audio_file, expected_text, lang, expectation_type` |
-| M17 | expected_ner.csv | `surface, entity_text, entity_type, expectation_type` |
-| M18 | expected_sentiment.csv | `surface, expected_sentiment, expectation_type` |
-| M19 | expected_summary.csv | `surface, expected_summary, expectation_type` |
-| M20 | expected_qa.csv | `context, question, answer, expectation_type` |
-| M21 | expected_morph_gen.csv | `lemma, pos, surface, features, expectation_type` |
+## Configuration
+
+| File | Purpose |
+|------|---------|
+| `pyproject.toml` | Dependencies (ranges), tool config, optional groups [ml]/[gpu]/[gui]/[dev] |
+| `requirements.txt` | Pinned deps for Docker (core only) |
+| `requirements-dev.txt` | Pinned dev deps |
+| `config/config.default.yaml` | Default pipeline + module config |
+| `config/config.schema.json` | JSON Schema (auto-generated from Pydantic) |
+| `.env.example` | Required env vars template |
+| `.env` | Actual secrets (gitignored) |
+
+### Config structure (config.default.yaml)
+
+```yaml
+pipeline:
+  language: he
+  profile: balanced          # precise | balanced | recall
+  modules: [sent_split, tokenizer, morph_analyzer, ...]
+  thresholds: {min_freq: 2, pmi_threshold: 3.0, hapax_filter: true}
+
+# Generative module configs (added as modules are implemented)
+diacritizer:  {backend: phonikud, device: cuda}
+translator:   {backend: mbart, device: cuda, default_tgt_lang: en}
+tts:          {backend: xtts, device: cuda}
+stt:          {backend: whisper, device: cuda}
+ner:          {backend: heq_ner, device: cuda}
+sentiment:    {backend: hebert, device: cuda}
+summarizer:   {backend: mt5, device: cuda, max_length: 150}
+qa:           {backend: alephbert, device: cuda}
+morph_gen:    {gender: masculine, binyan: paal}
+transliterator: {mode: latin}
+grammar:      {backend: llm, device: cuda}
+keyphrase:    {backend: yake, top_n: 10}
+paraphrase:   {backend: mt5, device: cuda, num_variants: 1}
+
+annotation:   {label_studio_url: ..., ml_backend_url: ...}
+llm:          {enabled: false, server_url: ..., model: dictalm-3.0}
+kb:           {enabled: false, embedding_model: neodictabert}
+logging:      {level: INFO, file: ~/.kadima/logs/kadima.log}
+storage:      {db_path: ~/.kadima/kadima.db, auto_backup: true}
+```
 
 ---
 
-## Конвенции кода
+## Database
 
-### Typing
-- **Обязательны** аннотации типов для всех публичных функций и методов
-- `List[Dict[str, Any]]`, не `List[Dict]`
-- Engine Layer: `@dataclass`. API Layer: `pydantic.BaseModel`
-- Config: `pydantic.BaseModel` с `extra="forbid"`
+### Current schema (4 migrations)
 
-### Docstrings
-- Google style, обязательны для публичных классов и методов
+| Migration | Tables |
+|-----------|--------|
+| `001_initial.sql` | corpora, documents, tokens, lemmas, pipeline_runs, terms |
+| `002_annotation.sql` | gold_corpora, expected_checks, review_results, annotation_* |
+| `003_kb.sql` | kb_terms, kb_relations, kb_definitions |
+| `004_llm.sql` | llm_conversations, llm_messages |
 
-### Error Handling
-- **Processor не падает** — возвращает `ProcessorResult(status=FAILED, errors=[...])`
-- ML-зависимости обёрнуты в `try/except ImportError` с понятным сообщением
-- Устройство: всегда проверять `torch.cuda.is_available()` перед `.to("cuda")`
+### Planned migration for M13-M25
 
-### Logging
-- `logger = logging.getLogger(__name__)` в каждом модуле
-- Не использовать `print()` вне CLI
+```sql
+-- 005_generative_results.sql (create when first generative module lands)
+-- Tables: results_nikud, results_translation, results_tts,
+--         results_ner, results_sentiment, results_summary, results_qa
+```
 
----
-
-## Конфигурация
-
-| Файл | Назначение |
-|------|-----------|
-| `pyproject.toml` | Зависимости (ranges) + tool config |
-| `requirements.txt` | Pinned deps для Docker |
-| `requirements-dev.txt` | Dev deps |
-| `config/config.default.yaml` | Дефолтная конфигурация pipeline |
-| `config/config.schema.json` | JSON Schema |
+### Migration commands
 
 ```bash
-pip install -e ".[dev]"
-kadima migrate
+kadima migrate                     # Apply pending
+kadima migrate --new add_foo       # Create XXX_name.sql
+```
+
+**Rule:** Never create tables in code. Only SQL migrations in `kadima/data/migrations/`.
+
+---
+
+## Dependencies
+
+### Core (always installed)
+
+| Package | Range | Purpose |
+|---------|-------|---------|
+| PyYAML | `>=6.0,<7` | Config loader |
+| pydantic | `>=2.6,<3` | Validation, API schemas |
+| spacy | `>=3.7,<4` | NLP pipeline |
+| httpx | `>=0.27,<1` | HTTP client |
+| fastapi | `>=0.110,<1` | REST API |
+| uvicorn | `>=0.29,<1` | ASGI server |
+
+### Optional groups
+
+| Group | Packages | Purpose |
+|-------|----------|---------|
+| `[ml]` | transformers, sentencepiece, phonikud-onnx, onnxruntime, yake | M13-M25 CPU inference |
+| `[gpu]` | torch (cu128), openai-whisper, TTS | GPU-accelerated M13-M25 |
+| `[gui]` | PyQt6 | Desktop UI |
+| `[hebpipe]` | hebpipe | Real morphological analysis for M3 |
+| `[dev]` | pytest, pytest-cov, ruff, mypy | Development tools |
+
+```bash
+pip install -e ".[dev]"          # Dev without ML
+pip install -e ".[ml,dev]"       # Dev with ML (CPU)
+pip install -e ".[gpu,ml,dev]"   # Dev with ML (GPU)
 ```
 
 ---
 
-## Миграции БД
+## Testing
 
 ```bash
-kadima migrate                     # Применить pending
-kadima migrate --new add_foo       # Создать XXX_name.sql
+pytest tests/ -v                          # All tests
+pytest tests/engine/ -v                   # Engine only
+pytest tests/integration/ -v              # E2E pipeline
+pytest tests/engine/test_diacritizer.py   # Specific module
+make test                                 # Shortcut
+make ci                                   # Full CI: lint + typecheck + tests
 ```
 
-Новые модули (M13–M25) могут потребовать миграции для хранения результатов:
-- `results_nikud` — огласованные тексты
-- `results_translation` — переводы
-- `results_tts` — аудиофайлы (пути)
-- `results_ner` — извлечённые сущности
-- `results_sentiment` — тональность
-- `results_summary` — суммаризации
-- `results_qa` — QA пары
+### Test structure per module
+
+Each `tests/engine/test_<module>.py` must include:
+1. **Unit tests for metrics** (no ML model needed, fast)
+2. **`process()` with mock/lightweight model** or rules fallback
+3. **`validate_input()` with invalid data** (returns False, no crash)
+4. **`process()` with empty input** (returns FAILED status, no crash)
+5. **Gold corpus validation** where applicable (via `tests/data/`)
+
+### Gold corpus (26 sets)
+
+Located in `tests/data/he_01_*` through `he_26_*`.
+Each set: `expected_counts.yaml` + `raw/*.txt` + optional `expected_*.csv`.
+
+Loaded via `conftest.py` fixtures: `gold_corpus_he_01`, `all_gold_corpora`.
 
 ---
 
 ## Docker
 
 ```bash
-make build && make up              # API (8501) + Label Studio (8080)
-make up-llm                        # + llama.cpp (8081, GPU)
+make build    # Build API image
+make up       # API (8501) + Label Studio (8080)
+make up-llm   # + llama.cpp (8081, GPU)
+make down     # Stop all
 ```
 
-Новые модули (M13–M21) требуют GPU. Docker-compose должен монтировать GPU:
+### Environment
+
+All secrets via `.env` file (gitignored). Copy `.env.example` to `.env` and fill in:
+
+```bash
+# .env.example
+LS_API_KEY=                          # Label Studio API key
+LABEL_STUDIO_PASSWORD=               # Label Studio admin password
+HF_HOME=/path/to/huggingface/cache   # HuggingFace model cache
+```
+
+### GPU for generative modules
+
+When M13-M25 are active, the `api` service needs GPU reservation:
 ```yaml
 deploy:
   resources:
@@ -477,218 +395,179 @@ deploy:
 
 ---
 
-## Зависимости
+## API Endpoints
 
-| Пакет | Range | Для чего |
-|-------|-------|----------|
-| PyYAML | `>=6.0,<7` | Config |
-| pydantic | `>=2.6,<3` | Validation, API |
-| spacy | `>=3.7,<4` | NLP pipeline |
-| httpx | `>=0.27,<1` | HTTP client |
-| fastapi | `>=0.110,<1` | REST API |
-| transformers | `>=4.35,<5` | **M14, M17, M18, M19, M20** |
-| torch | `>=2.0,<3` | **M13–M20** (ML inference) |
-| sentencepiece | `>=0.1.99` | **M14** (translation) |
-| phonikud-onnx | `>=1.0.0` | **M13** (diacritization) |
-| onnxruntime | `>=1.15.0` | **M13** |
-| openai-whisper | `>=20231117` | **M16** (STT) |
-| TTS (coqui) | `>=0.22.0` | **M15** (XTTS v2) |
+### Implemented
 
-Optional: `PyQt6` (gui), `hebpipe` (hebpipe), `pytest`+`ruff`+`mypy` (dev)
+| Method | Path | Status |
+|--------|------|--------|
+| `GET` | `/health` | Working |
+| `GET` | `/api/v1/corpora` | Working |
+| `POST` | `/api/v1/corpora` | Working |
+| `POST` | `/api/v1/pipeline/run-text` | Working |
+| `POST` | `/api/v1/pipeline/run/{corpus_id}` | **Stub** (B2) |
+
+### Planned (generative router)
+
+`kadima/api/routers/generative.py`:
+
+```
+POST /api/v1/generative/diacritize    {text} -> {result}
+POST /api/v1/generative/translate     {text, tgt_lang} -> {result}
+POST /api/v1/generative/tts           {text} -> {audio_url}
+POST /api/v1/generative/stt           {audio_url} -> {text}
+POST /api/v1/generative/ner           {text} -> {entities}
+POST /api/v1/generative/sentiment     {text} -> {label, score}
+POST /api/v1/generative/summarize     {text} -> {summary}
+POST /api/v1/generative/qa            {question, context} -> {answer}
+POST /api/v1/generative/morph-gen     {lemma, pos} -> {forms}
+POST /api/v1/generative/transliterate {text, mode} -> {result}
+POST /api/v1/generative/grammar       {text} -> {corrected}
+POST /api/v1/generative/keyphrase     {text} -> {keyphrases}
+POST /api/v1/generative/paraphrase    {text} -> {paraphrases}
+```
+
+### Stub routers (need implementation)
+
+- `api/routers/validation.py` — 5 TODO methods
+- `api/routers/annotation.py` — 4 TODO methods
+- `api/routers/kb.py` — 5 TODO methods
+- `api/routers/llm.py` — 5 TODO methods
 
 ---
 
-## Тестирование
+## Development Workflow
 
-```bash
-# All tests
-pytest tests/ -v
+### Adding a new generative module
 
-# Engine tests only
-pytest tests/engine/ -v
+```
+1. Create kadima/engine/<module>.py
+   - Inherit from Processor (kadima/engine/base.py)
+   - Implement: process(), process_batch(), validate_input()
+   - Add static metric methods
+   - Wrap ML imports: try/except ImportError
+   - Check CUDA: torch.cuda.is_available() before .to("cuda")
+   - Use: logger = logging.getLogger(__name__)
+   - Add: Google-style docstrings on public methods
 
-# Integration (pipeline E2E)
-pytest tests/integration/ -v
+2. Create tests/engine/test_<module>.py
+   - Metric unit tests (no model)
+   - process() with mock model
+   - validate_input() edge cases
+   - Empty input handling
 
-# Specific module
-pytest tests/engine/test_diacritizer.py -v
+3. Register in pipeline/orchestrator.py
+   - Add to _optional_modules dict
+   - try/except ImportError on load
+
+4. Add config section to config/config.default.yaml
+
+5. Add API endpoint to api/routers/generative.py
+
+6. Verify: pytest tests/ -v — ALL PASS
+
+7. Commit: feat(engine): add M<XX> <ModuleName>
 ```
 
-Для новых модулей — каждый получает свой `tests/engine/test_<module>.py` с:
-- Unit-тестами метрик (без ML-модели)
-- Integration-тестами (с заглушкой или small моделью)
-- Gold corpus валидацией через `tests/data/`
+### Commit format
+
+```
+type(scope): short description (imperative, max 72 chars)
+
+Types: feat | fix | refactor | test | docs | chore | perf | security
+Scope: engine | pipeline | api | ui | data | config | docker | ci
+```
+
+### Before any change
+
+1. `pytest tests/ -v` — must pass BEFORE your change
+2. Read the code you are changing
+3. Identify which tests cover the area
+
+### After any change
+
+1. `pytest tests/ -v` — must still pass
+2. `ruff check kadima/` — 0 errors
+3. No hardcoded secrets, no `print()`, no bare `except:`
 
 ---
 
-## Что НЕ делать
+## Code Conventions
 
-- Не класть NLP-логику в `api/routers/` — только вызовы из `engine/`/`pipeline/`
-- Не хардкодить пути — использовать `KADIMA_HOME` env
-- Не создавать таблицы в коде — только миграции
-- Не импортировать ML-модули без try/except ImportError
-- Не использовать CUDA без проверки `torch.cuda.is_available()`
-- Не мержить fixture с реальными данными
+### Typing
+- Type annotations required on all public functions
+- Engine layer: `@dataclass` for data. API layer: `pydantic.BaseModel`
+- Config models: `pydantic.BaseModel` with `extra="forbid"`
+
+### Error handling
+- **Processors never crash** — return `ProcessorResult(status=FAILED, errors=[...])`
+- ML dependencies: `try/except ImportError` with actionable message
+- CUDA: always `torch.cuda.is_available()` before `.to("cuda")`
+- Catch specific exceptions, never bare `except:`
+
+### Logging
+- `logger = logging.getLogger(__name__)` in every module
+- Never `print()` outside CLI
+
+### SQL
+- All queries parameterized (`?` placeholders)
+- Tables created only via migrations
+- Never interpolate user input into SQL
+
+### Paths
+- Use `KADIMA_HOME` env var, never hardcoded absolute paths
+- `os.path.expanduser()` for `~` paths
 
 ---
 
-*Смотри также: `doc/Техническое задание разработка KADIMA/` — полная документация*
-*Workspace prototype: `/home/lletp/.openclaw/workspace/hebrew-corpus-v2/` — прототип модулей M13–M21*
+## What NOT to do
+
+- Do not put NLP logic in `api/routers/` — routers call `engine/` or `pipeline/`
+- Do not hardcode paths — use `KADIMA_HOME` env
+- Do not create tables in code — only migrations
+- Do not import ML modules without `try/except ImportError`
+- Do not use CUDA without checking `torch.cuda.is_available()`
+- Do not mix fixtures with real data
+- Do not load all ML models simultaneously — respect VRAM budget
+- Do not start M13-M25 work until blockers B1-B4 are resolved
+- Do not break existing tests to add new features
 
 ---
 
-## Интеграционные точки для Claude Code
+## Quality Targets (v1.0.0)
 
-### Pipeline Orchestrator (M13–M25)
+| Metric | Target | How to measure |
+|--------|--------|----------------|
+| Tests | 100% PASS, >200 functions | `pytest tests/ -v` |
+| Module coverage | 25/25 implemented | Files in `kadima/engine/` |
+| API endpoints | 0 stubs | All routers return data |
+| VRAM peak | <=8GB with 3 models | `nvidia-smi` under load |
+| Nikud char accuracy | >0.95 | Gold corpus `expected_diacritics.csv` |
+| NER F1 | >0.85 | Gold corpus `expected_ner.csv` |
+| Translation BLEU | >30.0 (HE->EN) | Gold corpus `expected_translation.csv` |
+| TTS->STT WER | <0.15 | Round-trip integration test |
+| CI | Green on main | GitHub Actions |
+| Security | 0 critical findings | `security-auditor` agent |
 
-Новые модули должны регистрироваться в `kadima/pipeline/orchestrator.py`:
+---
 
-```python
-# В _register_modules() добавить:
-from kadima.engine.diacritizer import Diacritizer
-from kadima.engine.translator import Translator
-from kadima.engine.tts_synthesizer import TTSSynthesizer
-from kadima.engine.stt_transcriber import STTTranscriber
-from kadima.engine.ner_extractor import NERExtractor
-from kadima.engine.sentiment_analyzer import SentimentAnalyzer
-from kadima.engine.summarizer import Summarizer
-from kadima.engine.qa_extractor import QAExtractor
-from kadima.engine.morph_generator import MorphGenerator
-from kadima.engine.transliterator import Transliterator
-from kadima.engine.grammar_corrector import GrammarCorrector
-from kadima.engine.keyphrase_extractor import KeyphraseExtractor
-from kadima.engine.paraphraser import Paraphraser
+## Phased Roadmap
 
-self.modules = {
-    ...existing...,
-    "M13": Diacritizer(config.get("diacritizer", {})),
-    "M14": Translator(config.get("translator", {})),
-    "M15": TTSSynthesizer(config.get("tts", {})),
-    "M16": STTTranscriber(config.get("stt", {})),
-    "M17": NERExtractor(config.get("ner", {})),
-    "M18": SentimentAnalyzer(config.get("sentiment", {})),
-    "M19": Summarizer(config.get("summarizer", {})),
-    "M20": QAExtractor(config.get("qa", {})),
-    "M21": MorphGenerator(config.get("morph_gen", {})),
-    "M22": Transliterator(config.get("transliterator", {})),
-    "M23": GrammarCorrector(config.get("grammar", {})),
-    "M24": KeyphraseExtractor(config.get("keyphrase", {})),
-    "M25": Paraphraser(config.get("paraphrase", {})),
-}
-```
+Detailed plan with patch series, VRAM budgets, and exit criteria:
+**`Tasks/Kadima_v2.md`**
 
-### Config (config/config.default.yaml)
+| Phase | Scope | Key deliverables |
+|-------|-------|-----------------|
+| 0 | Stabilization | Fix B1-B4, add CI, harden Docker, add [ml] deps |
+| 1 | Tier 1 modules | M22, M21, M13, M17, M14 (rules + small ML) |
+| 2 | Tier 2 modules | M18, M20, M19, M15, M16 (heavy ML + VRAM mgmt) |
+| 3 | Tier 3 + infra | M24, M23, M25, full API, UI, PipelineService.run() |
+| 4 | v1.0.0 release | Regression suite, load testing, security audit, docs |
 
-Добавить секции для новых модулей:
-```yaml
-diacritizer:
-  backend: phonikud
-  device: cuda
+---
 
-translator:
-  backend: mbart
-  device: cuda
-  tgt_lang: en
+## Reference
 
-tts:
-  backend: xtts
-  device: cuda
-
-stt:
-  backend: whisper
-  device: cuda
-
-ner:
-  backend: heq_ner
-  device: cuda
-
-sentiment:
-  backend: hebert
-  device: cuda
-
-summarizer:
-  backend: mt5
-  device: cuda
-  max_length: 150
-
-qa:
-  backend: alephbert
-  device: cuda
-
-morph_gen:
-  gender: masculine
-  binyan: paal
-
-transliterator:
-  mode: latin
-
-grammar:
-  backend: mt5
-  device: cuda
-
-keyphrase:
-  backend: yake
-  top_n: 10
-
-paraphrase:
-  backend: mt5
-  device: cuda
-  num_variants: 1
-```
-
-### API Endpoints (kadima/api/routers/)
-
-Нужно создать `kadima/api/routers/generative.py`:
-
-```python
-# POST /generative/diacritize   {"text": "..."} → {"result": "..."}
-# POST /generative/translate    {"text": "...", "tgt_lang": "en"} → {"result": "..."}
-# POST /generative/tts          {"text": "..."} → {"audio_url": "..."}
-# POST /generative/stt          {"audio_url": "..."} → {"text": "..."}
-# POST /generative/ner          {"text": "..."} → {"entities": [...]}
-# POST /generative/sentiment    {"text": "..."} → {"label": "...", "score": 0.87}
-# POST /generative/summarize    {"text": "..."} → {"summary": "..."}
-# POST /generative/qa           {"question": "...", "context": "..."} → {"answer": "..."}
-# POST /generative/morph-gen    {"lemma": "...", "pos": "NOUN"} → {"forms": [...]}
-# POST /generative/transliterate {"text": "...", "mode": "latin"} → {"result": "..."}
-# POST /generative/grammar      {"text": "..."} → {"corrected": "..."}
-# POST /generative/keyphrase    {"text": "..."} → {"keyphrases": [...]}
-# POST /generative/paraphrase   {"text": "..."} → {"paraphrases": [...]}
-```
-
-### UI Views (kadima/ui/)
-
-Нужно создать `kadima/ui/generative_view.py`:
-- Таб "Генеративные модули" с 13 кнопками (по одной на модуль)
-- Входное поле для текста
-- Выходное поле для результата
-- Настройки (backend, device, язык)
-
-### Validation (kadima/validation/)
-
-`check_engine.py` должен проверять новые модули через gold corpus:
-```python
-# Добавить проверку expected_diacritics.csv, expected_translation_*.csv и т.д.
-# Использовать NikudMetrics, TranslationMetrics и т.д. из workspace prototype
-```
-
-### Рабочий прототип
-
-Прототипы всех модулей лежат в workspace:
-```
-/home/lletp/.openclaw/workspace/hebrew-corpus-v2/tools/
-```
-
-Эти файлы содержат:
-- Готовые метрики (static methods)
-- CLI-интерфейсы
-- Логику загрузки моделей
-- Форматы expected CSV
-
-**Класть в настоящий проект нужно ПО КОМПОНЕНТНО:**
-1. Метрики → `kadima/engine/<module>_metrics.py`
-2. Процессор → `kadima/engine/<module>.py` (с наследованием от Processor)
-3. CLI → расширить `kadima/cli.py`
-4. API → `kadima/api/routers/generative.py`
-5. UI → `kadima/ui/generative_view.py`
-
+- Full technical spec: `doc/Техническое задание разработка KADIMA/`
+- Gold corpus methodology: `tests/data/README.md`
+- Validation strategy: `tests/data/VALIDATION_STRATEGY.md`

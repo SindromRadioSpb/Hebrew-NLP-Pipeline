@@ -215,9 +215,155 @@ class HebPipeTokenizer(Processor):
 
 # ── M3: Morphological Analyzer ───────────────────────────────────────────────
 
+# Try to import hebpipe for real morphological analysis
+_HEBPIPE_AVAILABLE = False
+try:
+    import hebpipe
+    _HEBPIPE_AVAILABLE = True
+    logger.info("hebpipe available — using full morphological analysis")
+except ImportError:
+    logger.info(
+        "hebpipe not installed — using rule-based fallback. "
+        "Install with: pip install -e '.[hebpipe]'"
+    )
+
+
+# ── Hebrew prefix/POS rules ────────────────────────────────────────────────
+
+# Single-char proclitics: ב(in) ה(the) ו(and) ל(to) כ(like) מ(from) ש(that)
+_PREFIXES_SINGLE = "בהולכמש"
+
+# Common multi-char prefix chains (ordered longest-first for greedy match)
+_PREFIX_CHAINS = [
+    ("וכש", ["ו", "כש"]),    # and+when
+    ("וב", ["ו", "ב"]),      # and+in
+    ("ול", ["ו", "ל"]),      # and+to
+    ("וה", ["ו", "ה"]),      # and+the
+    ("וכ", ["ו", "כ"]),      # and+like
+    ("ומ", ["ו", "מ"]),      # and+from
+    ("וש", ["ו", "ש"]),      # and+that
+    ("של", ["של"]),           # of (genitive)
+    ("בה", ["ב", "ה"]),      # in+the
+    ("לה", ["ל", "ה"]),      # to+the
+    ("כה", ["כ", "ה"]),      # like+the
+    ("מה", ["מ", "ה"]),      # from+the
+    ("שה", ["ש", "ה"]),      # that+the
+    ("שב", ["ש", "ב"]),      # that+in
+    ("שמ", ["ש", "מ"]),      # that+from
+    ("כש", ["כש"]),           # when
+]
+
+# Minimum remaining stem length after prefix stripping
+_MIN_STEM_LEN = 2
+
+# Function words: prepositions, conjunctions, particles
+_FUNCTION_WORDS: Dict[str, str] = {
+    # Prepositions → ADP
+    "של": "ADP", "על": "ADP", "אל": "ADP", "עם": "ADP",
+    "את": "ADP", "מן": "ADP", "בין": "ADP", "אצל": "ADP",
+    "לפני": "ADP", "אחרי": "ADP", "תחת": "ADP", "בלי": "ADP",
+    "בגלל": "ADP", "למען": "ADP", "כלפי": "ADP", "מול": "ADP",
+    "ליד": "ADP", "סביב": "ADP", "דרך": "ADP", "עד": "ADP",
+    "מעל": "ADP", "מתחת": "ADP",
+    # Conjunctions → CCONJ / SCONJ
+    "או": "CCONJ", "אבל": "CCONJ", "אך": "CCONJ",
+    "גם": "CCONJ", "אלא": "CCONJ", "אולם": "CCONJ",
+    "כי": "SCONJ", "אם": "SCONJ", "כאשר": "SCONJ",
+    "כשם": "SCONJ", "למרות": "SCONJ", "משום": "SCONJ",
+    "שכן": "SCONJ", "לכן": "SCONJ",
+    # Adverbs → ADV
+    "מאד": "ADV", "מאוד": "ADV", "גם": "ADV", "רק": "ADV",
+    "כבר": "ADV", "עוד": "ADV", "כאן": "ADV", "שם": "ADV",
+    "היום": "ADV", "אתמול": "ADV", "מחר": "ADV", "עכשיו": "ADV",
+    "תמיד": "ADV", "לעולם": "ADV", "הרבה": "ADV", "קצת": "ADV",
+    "יותר": "ADV", "פחות": "ADV", "ביותר": "ADV",
+    # Pronouns → PRON
+    "הוא": "PRON", "היא": "PRON", "הם": "PRON", "הן": "PRON",
+    "אני": "PRON", "אנחנו": "PRON", "אתה": "PRON", "את": "PRON",
+    "אתם": "PRON", "אתן": "PRON", "זה": "PRON", "זאת": "PRON",
+    "זו": "PRON", "אלה": "PRON", "אלו": "PRON",
+    # Existential / copula → VERB
+    "יש": "VERB", "אין": "VERB", "היה": "VERB", "היתה": "VERB",
+    "היו": "VERB", "יהיה": "VERB", "תהיה": "VERB",
+    # Determiners → DET
+    "כל": "DET", "כמה": "DET", "הרבה": "DET", "כמעט": "ADV",
+    # Quantifiers / Numerals → NUM
+    "אחד": "NUM", "שני": "NUM", "שתי": "NUM", "שלוש": "NUM",
+    "ארבע": "NUM", "חמש": "NUM", "שש": "NUM", "שבע": "NUM",
+    "שמונה": "NUM", "תשע": "NUM", "עשר": "NUM",
+}
+
+# Hebrew char range for checking if token is Hebrew
+_HE_RANGE = re.compile(r'[\u0590-\u05FF]')
+_ALL_HE = re.compile(r'^[\u0590-\u05FF]+$')
+_PUNCT_RE = re.compile(r'^[^\w\u0590-\u05FF]+$')
+_NUM_RE = re.compile(r'^[\d.,/%+-]+$')
+
+# Common adjective suffixes (feminine ה-, plural ים-/ות-)
+_ADJ_PATTERNS = re.compile(
+    r'^[\u0590-\u05FF]{2,}(ית|יים|יות|ני|נית|לי|לית|אי|אית)$'
+)
+
+
+def _strip_prefixes(surface: str) -> tuple:
+    """Strip Hebrew proclitics from surface form.
+
+    Returns:
+        (base, prefix_chain, has_det)
+    """
+    if not _ALL_HE.match(surface) or len(surface) < _MIN_STEM_LEN + 1:
+        return surface, [], False
+
+    # Try multi-char chains first (longest match)
+    for chain_str, chain_parts in _PREFIX_CHAINS:
+        if surface.startswith(chain_str) and len(surface) - len(chain_str) >= _MIN_STEM_LEN:
+            base = surface[len(chain_str):]
+            has_det = "ה" in chain_parts
+            return base, chain_parts, has_det
+
+    # Try single-char prefix
+    first = surface[0]
+    if first in _PREFIXES_SINGLE and len(surface) - 1 >= _MIN_STEM_LEN:
+        base = surface[1:]
+        has_det = first == "ה"
+        return base, [first], has_det
+
+    return surface, [], False
+
+
+def _detect_pos(surface: str, base: str) -> str:
+    """Heuristic POS detection for Hebrew token."""
+    # Punctuation
+    if _PUNCT_RE.match(surface):
+        return "PUNCT"
+
+    # Numbers
+    if _NUM_RE.match(surface):
+        return "NUM"
+
+    # Function words (check both surface and base)
+    if surface in _FUNCTION_WORDS:
+        return _FUNCTION_WORDS[surface]
+    if base != surface and base in _FUNCTION_WORDS:
+        return _FUNCTION_WORDS[base]
+
+    # Non-Hebrew tokens (Latin, mixed)
+    if not _HE_RANGE.search(surface):
+        return "X"
+
+    # Adjective patterns (nisba/relational suffixes)
+    if _ADJ_PATTERNS.match(base):
+        return "ADJ"
+
+    # Default: NOUN (most common POS in Hebrew text)
+    return "NOUN"
+
 
 class HebPipeMorphAnalyzer(Processor):
     """M3: Морфологический анализ токенов.
+
+    Использует hebpipe когда доступен, иначе rule-based fallback
+    с prefix stripping и POS heuristics.
 
     Example:
         >>> from kadima.engine.hebpipe_wrappers import Token
@@ -229,6 +375,8 @@ class HebPipeMorphAnalyzer(Processor):
         True
         >>> a.prefix_chain
         ['ה']
+        >>> a.base
+        'פלדה'
     """
 
     @property
@@ -245,19 +393,11 @@ class HebPipeMorphAnalyzer(Processor):
     def process(self, input_data: List[Token], config: Dict[str, Any]) -> ProcessorResult:
         start = time.time()
         try:
-            analyses = []
-            for token in input_data:
-                is_det = token.surface.startswith("\u05d4")  # ה
-                analysis = MorphAnalysis(
-                    surface=token.surface,
-                    base=token.surface,
-                    lemma=token.surface,
-                    pos="NOUN",
-                    features={},
-                    is_det=is_det,
-                    prefix_chain=["ה"] if is_det else [],
-                )
-                analyses.append(analysis)
+            if _HEBPIPE_AVAILABLE:
+                analyses = self._process_hebpipe(input_data, config)
+            else:
+                analyses = self._process_rules(input_data)
+
             return ProcessorResult(
                 module_name=self.name, status=ProcessorStatus.READY,
                 data=MorphResult(analyses=analyses, count=len(analyses)),
@@ -270,3 +410,73 @@ class HebPipeMorphAnalyzer(Processor):
                 data=None, errors=[str(e)],
                 processing_time_ms=(time.time() - start) * 1000,
             )
+
+    def _process_rules(self, tokens: List[Token]) -> List[MorphAnalysis]:
+        """Rule-based morphological analysis (fallback)."""
+        analyses = []
+        for token in tokens:
+            surface = token.surface
+
+            # Function words recognized as-is (no prefix stripping)
+            if surface in _FUNCTION_WORDS:
+                analyses.append(MorphAnalysis(
+                    surface=surface,
+                    base=surface,
+                    lemma=surface,
+                    pos=_FUNCTION_WORDS[surface],
+                    features={},
+                    is_det=False,
+                    prefix_chain=[],
+                ))
+                continue
+
+            base, prefix_chain, has_det = _strip_prefixes(surface)
+            pos = _detect_pos(surface, base)
+            lemma = base
+
+            analyses.append(MorphAnalysis(
+                surface=surface,
+                base=base,
+                lemma=lemma,
+                pos=pos,
+                features={},
+                is_det=has_det,
+                prefix_chain=prefix_chain,
+            ))
+        return analyses
+
+    def _process_hebpipe(self, tokens: List[Token], config: Dict[str, Any]) -> List[MorphAnalysis]:
+        """Full morphological analysis via hebpipe."""
+        # Reconstruct sentence text for hebpipe
+        text = " ".join(t.surface for t in tokens)
+        try:
+            result = hebpipe.parse(text)
+            analyses = []
+            for i, token in enumerate(tokens):
+                if i < len(result):
+                    parsed = result[i]
+                    analyses.append(MorphAnalysis(
+                        surface=token.surface,
+                        base=getattr(parsed, "lemma", token.surface),
+                        lemma=getattr(parsed, "lemma", token.surface),
+                        pos=getattr(parsed, "pos", "NOUN"),
+                        features=getattr(parsed, "features", {}),
+                        is_det=getattr(parsed, "is_det", False),
+                        prefix_chain=getattr(parsed, "prefixes", []),
+                    ))
+                else:
+                    # Fallback for alignment mismatch
+                    base, prefix_chain, has_det = _strip_prefixes(token.surface)
+                    analyses.append(MorphAnalysis(
+                        surface=token.surface,
+                        base=base,
+                        lemma=base,
+                        pos=_detect_pos(token.surface, base),
+                        features={},
+                        is_det=has_det,
+                        prefix_chain=prefix_chain,
+                    ))
+            return analyses
+        except Exception as e:
+            logger.warning("hebpipe failed, falling back to rules: %s", e)
+            return self._process_rules(tokens)
