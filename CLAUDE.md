@@ -36,7 +36,7 @@ make up-llm                 # + llama.cpp (GPU)
 
 ---
 
-## Current Status (2026-03-31)
+## Current Status (2026-04-01)
 
 ### What works
 
@@ -58,7 +58,8 @@ make up-llm                 # + llama.cpp (GPU)
 | Generative M13, M14, M17, M21, M22 | Working | Rules + ML fallback, API endpoints live |
 | NER M17 | Working | neodictabert → heq_ner → rules fallback chain (R-2.2) |
 | Transformer backbone | Working | KadimaTransformer, doc.tensor, spaCy pipeline builder (T1) |
-| Tests | 600+ functions | Engine, config, corpus, data, validation, KB, E2E covered |
+| Desktop UI (T3) | Working | MainWindow + 6 full views + 5 widgets + dark QSS theme |
+| Tests | 647 functions | Engine, config, corpus, data, validation, KB, E2E + UI smoke covered |
 
 ### Resolved blockers (Phase 0)
 
@@ -71,12 +72,15 @@ make up-llm                 # + llama.cpp (GPU)
 
 ### Tech debt
 
-| ID | Problem | Location |
-|----|---------|----------|
-| D4 | API routers: validation, annotation, kb, llm are empty stubs | `api/routers/` |
-| D5 | ~~UI: main_window + 7 view files are 10-line stubs~~ **CLOSED in T3** | `kadima/ui/` |
-| D6 | `Token` dataclass declared in 2 places with different fields | `data/models.py` and `engine/hebpipe_wrappers.py` |
-| D7 | SQLAlchemy ORM added alongside legacy sqlite3 — UI uses legacy layer by design | `data/` — `repositories.py` still uses raw sqlite3 |
+| ID | Problem | Location | Priority |
+|----|---------|----------|----------|
+| D4 | API routers: validation, annotation, kb, llm are empty stubs (16 TODO endpoints) | `api/routers/` | T5 |
+| D5 | ~~UI: main_window + 7 view files are 10-line stubs~~ **CLOSED in T3** | `kadima/ui/` | — |
+| D6 | `Token` dataclass declared in 2 places with different fields (different layers, no conflict) | `data/models.py` + `engine/hebpipe_wrappers.py` | Low |
+| D7 | SQLAlchemy ORM added alongside legacy sqlite3 — UI uses legacy layer by design | `data/repositories.py` | Won't fix |
+| D8 | **T3 connective tissue: 7 view signals unwired in MainWindow** — pipeline→results, corpus→pipeline, results→KB, validation run, dashboard quick actions | `kadima/ui/main_window.py` | **NOW (pre-T4)** |
+| D9 | **Engine stubs M15/M16/M18/M20 missing** — tts_synthesizer, stt_transcriber, sentiment_analyzer, qa_extractor not created | `kadima/engine/` | **T4 start** |
+| D10 | **T4 widgets missing**: backend_selector, export_button, entity_table, audio_player | `kadima/ui/widgets/` | **T4 start** |
 
 ---
 
@@ -603,6 +607,23 @@ Step 9:  tests/ui/test_*.py — pytest-qt smoke tests for each view
 
 ### UI Architecture Rules
 
+**Cross-view wiring (MainWindow responsibility)**:
+All inter-view signal connections live in `MainWindow._wire_views()`, called lazily after both views are created via `_get_or_create_view()`. Pattern:
+```python
+# pipeline → results (auto-switch on finish)
+pipe_view.run_finished_signal.connect(lambda r: (self._switch_view(2), results_view.load_results(r)))
+# corpora → pipeline (run by corpus_id)
+corpora_view.pipeline_run_requested.connect(lambda cid: (self._switch_view(1), pipe_view.set_corpus(cid), pipe_view.trigger_run()))
+# results → KB (open term)
+results_view.kb_open_requested.connect(lambda t: (self._switch_view(4), kb_view.search(t)))
+# validation run → ValidationWorker
+validation_view.run_validation_requested.connect(self._run_validation)
+# dashboard quick actions → switch_to
+dashboard_view.quick_run_clicked.connect(lambda: self._switch_view(1))
+dashboard_view.results_clicked.connect(lambda: self._switch_view(2))
+dashboard_view.kb_clicked.connect(lambda: self._switch_view(4))
+```
+
 **Threading** (non-negotiable):
 - Pipeline runs in `PipelineWorker(QRunnable)` → `QThreadPool`
 - Generative calls in `GenerativeWorker(QRunnable)` → `QThreadPool`
@@ -718,9 +739,12 @@ except ImportError:
 | | | Step 7: `corpora_view.py` — import + statistics + pipeline trigger | **DONE** | 3–4 |
 | | | Step 8: `styles/app.qss` — design tokens, dark theme | **DONE** | 2–3 |
 | | | Step 9: `tests/ui/test_main_window.py` — 29 pytest-qt smoke tests (skip if no PyQt6) | **DONE** | 4–6 |
-| **T4** | Phase 2 + UI | R-4.1 M18 Sentiment Classifier | Pending | 4–6 |
-| | | R-4.2 M15 TTS (Coqui/OpenTTS) | Pending | 6–8 |
-| | | R-4.3 M16 STT (Whisper) | Pending | 6–8 |
+| **pre-T4** | T3 wiring + stubs | D8: MainWindow signal wiring (7 connections: pipeline→results, corpus→pipeline, results→KB, validation run, dashboard actions) | **NOW** | 1–2 |
+| | | D9: Engine stubs M15/M16/M18/M20 + orchestrator registration + config sections | **NOW** | 0.5 |
+| | | D10: T4 widgets — `backend_selector.py`, `export_button.py`, `entity_table.py`, `audio_player.py` | **NOW** | 1 |
+| **T4** | Phase 2 + UI | R-4.1 M18 Sentiment Classifier (heBERT) | Pending | 4–6 |
+| | | R-4.2 M15 TTS (Coqui XTTS v2) | Pending | 6–8 |
+| | | R-4.3 M16 STT (Whisper large-v3) | Pending | 6–8 |
 | | | R-4.4 M20 Active Learning (uncertainty sampling → LS) | Pending | 6–8 |
 | | | Step 10: `generative_view.py` — 6 tabs: Sentiment/TTS/STT/Translate/Diacritize/NER | Pending | 6–8 |
 | | | Step 11: `annotation_view.py` — LS projects + pre-annotate + AL queue | Pending | 4–6 |
