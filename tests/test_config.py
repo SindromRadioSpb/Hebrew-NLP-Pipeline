@@ -422,3 +422,38 @@ class TestLoadConfigGenerative:
         assert config.diacritizer.device == "cpu"
         assert config.keyphrase.backend == "keybert"
         assert config.keyphrase.top_n == 5
+
+
+class TestCoreDependencies:
+    """R-1.1: Verify core NLP dependencies are importable (spacy-transformers, transformers)."""
+
+    def test_spacy_importable(self):
+        import spacy
+        assert spacy.__version__
+
+    def test_transformers_importable(self):
+        """transformers is now a core dependency (R-1.1)."""
+        import transformers
+        assert transformers.__version__
+
+    def test_spacy_transformers_importable(self):
+        """spacy-transformers is now a core dependency (R-1.1)."""
+        import spacy_transformers  # noqa: F401 — import itself is the assertion
+        import importlib.metadata
+        version = importlib.metadata.version("spacy-transformers")
+        assert version
+
+    def test_numpy_importable(self):
+        """numpy is now a core dependency (R-1.5)."""
+        import numpy as np
+        assert np.__version__
+
+    def test_scipy_importable(self):
+        """scipy is now a core dependency (R-1.5)."""
+        import scipy
+        assert scipy.__version__
+
+    def test_pandas_importable(self):
+        """pandas is now a core dependency (R-1.5)."""
+        import pandas as pd
+        assert pd.__version__

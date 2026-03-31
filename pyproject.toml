@@ -12,8 +12,14 @@ dependencies = [
     # Config / validation
     "PyYAML>=6.0,<7",
     "pydantic>=2.6,<3",
-    # NLP pipeline integration
+    # NLP pipeline — transformer backbone (R-1.1)
     "spacy>=3.7,<4",
+    "spacy-transformers>=1.3,<2",
+    "transformers>=4.35,<5",
+    # NLP utilities (R-1.5)
+    "numpy>=1.26,<2.0",
+    "scipy>=1.12,<2.0",
+    "pandas>=2.1,<3.0",
     # HTTP clients (annotation + LLM backends)
     "httpx>=0.27,<1",
     # API server
@@ -27,6 +33,9 @@ gui = [
 ]
 hebpipe = [
     "hebpipe>=0.2",
+]
+annotation = [
+    "label-studio-sdk>=1.0",
 ]
 ml = [
     # M13 Diacritizer
@@ -54,7 +63,7 @@ dev = [
     "mypy>=1.8,<2",
 ]
 all = [
-    "kadima[gui,hebpipe,gpu,dev]",
+    "kadima[gui,hebpipe,annotation,gpu,dev]",
 ]
 
 [project.scripts]
