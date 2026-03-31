@@ -93,6 +93,74 @@ class KBRepository:
             logger.debug("KB search '%s' → %d results", query, len(results))
             return results
 
+    def get_term(self, term_id: int) -> Optional["KBTerm"]:
+        """Получить термин по ID.
+
+        Args:
+            term_id: ID термина в БД.
+
+        Returns:
+            KBTerm или None если не найден.
+        """
+        with self._conn() as c:
+            row = c.execute(
+                "SELECT * FROM kb_terms WHERE id=?", (term_id,)
+            ).fetchone()
+            if not row:
+                return None
+            try:
+                features = json.loads(row[5] or "{}")
+            except (json.JSONDecodeError, TypeError):
+                features = {}
+            return KBTerm(
+                id=row[0], surface=row[1], canonical=row[2],
+                lemma=row[3], pos=row[4], features=features,
+                definition=row[6], embedding=row[7],
+                source_corpus_id=row[8], freq=row[10],
+            )
+
+    def update_embedding(self, term_id: int, embedding: bytes) -> None:
+        """Сохранить embedding вектор термина.
+
+        Вектор хранится как BLOB (float32 little-endian bytes).
+        Десериализация: np.frombuffer(embedding, dtype=np.float32).
+
+        Args:
+            term_id: ID термина.
+            embedding: float32 bytes (np.ndarray.tobytes()).
+        """
+        with self._conn() as c:
+            c.execute(
+                "UPDATE kb_terms SET embedding=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                (embedding, term_id),
+            )
+            logger.debug("Updated embedding for term id=%d (%d bytes)", term_id, len(embedding))
+
+    def get_all_with_embeddings(self) -> List["KBTerm"]:
+        """Вернуть все термины, у которых есть embedding.
+
+        Returns:
+            Список KBTerm с непустым полем embedding.
+        """
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT * FROM kb_terms WHERE embedding IS NOT NULL"
+            ).fetchall()
+            results = []
+            for row in rows:
+                try:
+                    features = json.loads(row[5] or "{}")
+                except (json.JSONDecodeError, TypeError):
+                    features = {}
+                results.append(KBTerm(
+                    id=row[0], surface=row[1], canonical=row[2],
+                    lemma=row[3], pos=row[4], features=features,
+                    definition=row[6], embedding=row[7],
+                    source_corpus_id=row[8], freq=row[10],
+                ))
+            logger.debug("Loaded %d terms with embeddings", len(results))
+            return results
+
     def update_definition(self, term_id: int, definition: str) -> None:
         """Обновить определение термина.
 
