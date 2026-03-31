@@ -3,7 +3,7 @@
 > **Python 3.10+** | **Package:** `kadima/` | **DB:** SQLite WAL + migrations
 > **Conventions:** snake_case files/functions, PascalCase classes, UPPER_SNAKE constants
 > **Target HW:** RTX 3060 12GB (dev) / RTX 3070 8GB (CI)
-> **Version:** 0.9.x (NLP pipeline) -> 1.0.0 (+ generative modules)
+> **Version:** 0.9.x → 1.0.0 | **Current phase:** T4 (Phase 2 engine modules + GenerativeView)
 
 ---
 
@@ -58,8 +58,10 @@ make up-llm                 # + llama.cpp (GPU)
 | Generative M13, M14, M17, M21, M22 | Working | Rules + ML fallback, API endpoints live |
 | NER M17 | Working | neodictabert → heq_ner → rules fallback chain (R-2.2) |
 | Transformer backbone | Working | KadimaTransformer, doc.tensor, spaCy pipeline builder (T1) |
-| Desktop UI (T3) | Working | MainWindow + 6 full views + 5 widgets + dark QSS theme |
-| Tests | 647 functions | Engine, config, corpus, data, validation, KB, E2E + UI smoke covered |
+| Desktop UI (T3) | Working | MainWindow + 6 full views + 9 widgets + dark QSS theme + cross-view wiring |
+| Engine stubs M15/M16/M18/M20 | Files exist | D9: TTSSynthesizer, STTTranscriber, SentimentAnalyzer, QAExtractor — always return FAILED (Tier 2 pending) |
+| T4 widgets | Done | D10: BackendSelector, ExportButton, EntityTable, AudioPlayer created in `ui/widgets/` |
+| Tests | 672+ functions | Engine, config, corpus, data, validation, KB, E2E + 28 UI smoke tests |
 
 ### Resolved blockers (Phase 0)
 
@@ -78,9 +80,10 @@ make up-llm                 # + llama.cpp (GPU)
 | D5 | ~~UI: main_window + 7 view files are 10-line stubs~~ **CLOSED in T3** | `kadima/ui/` | — |
 | D6 | `Token` dataclass declared in 2 places with different fields (different layers, no conflict) | `data/models.py` + `engine/hebpipe_wrappers.py` | Low |
 | D7 | SQLAlchemy ORM added alongside legacy sqlite3 — UI uses legacy layer by design | `data/repositories.py` | Won't fix |
-| D8 | **T3 connective tissue: 7 view signals unwired in MainWindow** — pipeline→results, corpus→pipeline, results→KB, validation run, dashboard quick actions | `kadima/ui/main_window.py` | **NOW (pre-T4)** |
-| D9 | **Engine stubs M15/M16/M18/M20 missing** — tts_synthesizer, stt_transcriber, sentiment_analyzer, qa_extractor not created | `kadima/engine/` | **T4 start** |
-| D10 | **T4 widgets missing**: backend_selector, export_button, entity_table, audio_player | `kadima/ui/widgets/` | **T4 start** |
+| D8 | ~~T3 connective tissue: 7 view signals unwired~~ **CLOSED** — `_wire_all()` + `_wired:set` + 6 cross-view connections + `trigger_run_for_corpus()` | `kadima/ui/main_window.py` | — |
+| D9 | ~~Engine stubs M15/M16/M18/M20 missing~~ **CLOSED** — 4 stub files created, registered in orchestrator | `kadima/engine/` | — |
+| D10 | ~~T4 widgets missing~~ **CLOSED** — BackendSelector, ExportButton, EntityTable, AudioPlayer created | `kadima/ui/widgets/` | — |
+| D11 | `test_term_clusterer.py::TestSilhouette::test_two_clusters` pre-existing failure — silhouette score == 0.0 on synthetic data | `tests/engine/test_term_clusterer.py` | Low |
 
 ---
 
@@ -137,20 +140,21 @@ make up-llm                 # + llama.cpp (GPU)
 |----|--------|------|-------|------|-----|------|--------|
 | M13 | Diacritizer | `diacritizer.py` | phonikud-onnx / DictaBERT | <1GB | `str -> str` | 1 | **Working** (rules + ML fallback) |
 | M14 | Translator | `translator.py` | mBART-50 / OPUS-MT | 3GB | `str,lang -> str` | 1 | **Working** (dict + ML fallback) |
-| M15 | TTS Synthesizer | `tts_synthesizer.py` | XTTS v2 (Coqui) | 4GB | `str -> Path(WAV)` | 2 | Stub |
-| M16 | STT Transcriber | `stt_transcriber.py` | Whisper large-v3 | 3-6GB | `Path(WAV) -> str` | 2 | Stub |
+| M15 | TTS Synthesizer | `tts_synthesizer.py` | XTTS v2 (Coqui) | 4GB | `str -> Path(WAV)` | 2 | Stub file (R-4.2 pending) |
+| M16 | STT Transcriber | `stt_transcriber.py` | Whisper large-v3 | 3-6GB | `Path(WAV) -> str` | 2 | Stub file (R-4.3 pending) |
 | M17 | NER Extractor | `ner_extractor.py` | HeQ-NER (dicta-il) | <1GB | `str -> List[Entity]` | 1 | **Working** (gazetteer + ML fallback) |
-| M18 | Sentiment Analyzer | `sentiment_analyzer.py` | heBERT | <1GB | `str -> {label,score}` | 2 | Stub |
-| M19 | Summarizer | `summarizer.py` | mT5-base | 2GB | `str -> str` | 2 | Stub |
-| M20 | QA Extractor | `qa_extractor.py` | AlephBERT | <1GB | `{q,ctx} -> {answer,score}` | 2 | Stub |
+| M18 | Sentiment Analyzer | `sentiment_analyzer.py` | heBERT | <1GB | `str -> {label,score}` | 2 | Stub file (R-4.1 **next**) |
+| M19 | Summarizer | — | mT5-base | 2GB | `str -> str` | 2 | Not created (R-5.3) |
+| M20 | QA Extractor | `qa_extractor.py` | AlephBERT | <1GB | `{q,ctx} -> {answer,score}` | 2 | Stub file (R-4.4 pending) |
 | M21 | Morph Generator | `morph_generator.py` | Rules (no ML) | 0 | `lemma,pos -> List[MorphForm]` | 1 | **Working** (7 binyanim, noun/adj inflection) |
 | M22 | Transliterator | `transliterator.py` | Rules + lookup | 0 | `str <-> str` | 1 | **Working** (Academy + IPA + reverse) |
-| M23 | Grammar Corrector | `grammar_corrector.py` | T5-hebrew / LLM | 2-4GB | `str -> str` | 3 | Stub |
-| M24 | Keyphrase Extractor | `keyphrase_extractor.py` | YAKE! / KeyBERT | <1GB | `str -> List[str]` | 3 | Stub |
-| M25 | Paraphraser | `paraphraser.py` | mT5 / LLM | 2-4GB | `str -> List[str]` | 3 | Stub |
+| M23 | Grammar Corrector | — | T5-hebrew / LLM | 2-4GB | `str -> str` | 3 | Not created (R-5.2) |
+| M24 | Keyphrase Extractor | — | YAKE! / KeyBERT | <1GB | `str -> List[str]` | 3 | Not created (R-5.1) |
+| M25 | Paraphraser | — | mT5 / LLM | 2-4GB | `str -> List[str]` | 3 | Not created |
 
 **Phase 1 (Tier 1) complete:** M13, M14, M17, M21, M22 implemented with rules + ML fallback.
-**Remaining:** M15, M16, M18, M19, M20 (Tier 2); M23, M24, M25 (Tier 3). See `Tasks/Kadima_v2.md`.
+**T4 next (Tier 2):** R-4.1 M18 Sentiment (heBERT), R-4.2 M15 TTS (XTTS), R-4.3 M16 STT (Whisper), R-4.4 M20 Active Learning.
+**T5 later (Tier 3):** M24 Keyphrase (YAKE), M23 Grammar (Dicta-LM), M25 Summarizer (Dicta-LM).
 
 **Tier meaning:** 1 = first to implement (rules-only or <1GB), 2 = ML-heavy, 3 = LLM-dependent.
 
@@ -556,7 +560,7 @@ Full TZ: `Tasks/3. TZ_UI_desktop_KADIMA.md`
 kadima gui  →  cli.py::run_gui()  →  app.py::main()  →  MainWindow (QStackedWidget)
 ```
 
-`kadima/app.py` is already implemented. `main_window.py` is a stub — Step 1 of T3.
+`kadima/app.py` and `main_window.py` fully implemented (T3 complete). Cross-view wiring via `_wire_all()` (D8 closed).
 
 ### View Map
 
@@ -585,24 +589,78 @@ kadima gui  →  cli.py::run_gui()  →  app.py::main()  →  MainWindow (QStack
 | `widgets/ngram_table.py` | **NEW T3** | Results |
 | `widgets/np_chunk_table.py` | **NEW T3** | Results |
 | `widgets/check_table.py` | **NEW T3** | Validation |
-| `widgets/backend_selector.py` | **NEW T3** | Pipeline, Generative |
-| `widgets/export_button.py` | **NEW T3** | Results, Validation, KB |
-| `widgets/entity_table.py` | NEW T4 | Generative (NER tab) |
-| `widgets/audio_player.py` | NEW T4 | Generative (TTS tab) |
+| `widgets/backend_selector.py` | **Done pre-T4** | Pipeline, Generative |
+| `widgets/export_button.py` | **Done pre-T4** | Results, Validation, KB |
+| `widgets/entity_table.py` | **Done pre-T4** | Generative (NER tab) |
+| `widgets/audio_player.py` | **Done pre-T4** | Generative (TTS tab) |
 | `widgets/chat_widget.py` | NEW T5 | LLM view |
 
-### T3 Implementation Steps
+### T3 Steps (all DONE)
 
 ```
-Step 1:  main_window.py — QMainWindow + QStackedWidget + MenuBar + ToolBar + StatusBar + lazy view loading
-Step 2:  widgets/status_card.py + dashboard_view.py — 3 status cards + recent runs + quick actions
-Step 3:  widgets/rtl_text_edit.py + pipeline_view.py — module toggles + PipelineWorker(QRunnable)
-Step 4:  widgets/ngram_table.py + widgets/np_chunk_table.py + results_view.py — TermsTableModel + export
-Step 5:  widgets/check_table.py + validation_view.py — PASS/WARN/FAIL + ResultColorDelegate
-Step 6:  kb_view.py — text/embedding/similar search + definition editor + cluster view
-Step 7:  corpora_view.py — import + corpus table + statistics + pipeline trigger
-Step 8:  styles/app.qss + styles/dark.qss — design tokens, dark theme
-Step 9:  tests/ui/test_*.py — pytest-qt smoke tests for each view
+Step 1:  main_window.py — QMainWindow + QStackedWidget + MenuBar + ToolBar + StatusBar + lazy view loading  ✅
+Step 2:  widgets/status_card.py + dashboard_view.py — 3 status cards + recent runs + quick actions          ✅
+Step 3:  widgets/rtl_text_edit.py + pipeline_view.py — module toggles + PipelineWorker(QRunnable)           ✅
+Step 4:  widgets/ngram_table.py + widgets/np_chunk_table.py + results_view.py — TermsTableModel + export     ✅
+Step 5:  widgets/check_table.py + validation_view.py — PASS/WARN/FAIL + ResultColorDelegate                  ✅
+Step 6:  kb_view.py — text/embedding/similar search + definition editor + cluster view                       ✅
+Step 7:  corpora_view.py — import + corpus table + statistics + pipeline trigger                             ✅
+Step 8:  styles/app.qss — design tokens, dark theme                                                          ✅
+Step 9:  tests/ui/test_main_window.py — 28 pytest-qt smoke tests                                            ✅
+pre-T4: D8 _wire_all() cross-view signals | D9 stubs M15/M16/M18/M20 | D10 T4 widgets                       ✅
+```
+
+### T4 Steps (NOW — active)
+
+```
+R-4.1:  sentiment_analyzer.py — implement heBERT backend + rules fallback  ← NEXT
+R-4.2:  tts_synthesizer.py — implement Coqui XTTS v2 backend
+R-4.3:  stt_transcriber.py — implement Whisper large-v3 backend
+R-4.4:  active_learning.py — uncertainty sampling → Label Studio export
+Step 10: generative_view.py — 6 tabs: Sentiment/TTS/STT/Translate/Diacritize/NER
+         + GenerativeWorker(QRunnable) + model lazy loading
+Step 11: annotation_view.py — LS projects + pre-annotate + AL queue
+Step 12: tests/ui/test_generative.py + test_annotation.py
+```
+
+### T5 Steps (pending)
+
+```
+R-5.1:  keyphrase_extractor.py — YAKE! backend
+R-5.2:  grammar_corrector.py — Dicta-LM backend via llm/service.py
+R-5.3:  summarizer.py — Dicta-LM / mT5 backend
+Step 13: widgets/chat_widget.py + nlp_tools_view.py — Grammar/Keyphrase/Summarize tabs
+Step 14: llm_view.py — chat + presets + context selector
+Step 15: tests/ui/test_nlp_tools.py + test_llm.py
+```
+
+### T4 GenerativeView Layout Spec (Step 10)
+
+```
+GenerativeView — QTabWidget with 6 tabs, each tab pattern:
+┌────────────────────────────────────┐
+│ BackendSelector (backend + device) │
+├────────────────────────────────────┤
+│ Input RTLTextEdit                  │
+│ [▶ Run]  [🔄 Clear]                │
+├────────────────────────────────────┤
+│ Result QTextEdit (read-only, RTL)  │
+│ [📋 Copy]  [📥 Export]             │
+├────────────────────────────────────┤
+│ Status: "Ready"  VRAM: N MB        │
+└────────────────────────────────────┘
+
+Tab-specific:
+  Sentiment  → hebert/rules  → colored QLabel "Positive (0.92)"
+  TTS        → xtts/mms      → AudioPlayer widget + voice selector
+  STT        → whisper       → QFileDialog + editable transcript
+  Translate  → mbart/opus    → lang selector HE↔EN toggle
+  Diacritize → phonikud/dicta/rules → RTLTextEdit with nikud
+  NER        → neodictabert/heq_ner/rules → EntityTable widget
+
+GenerativeWorker(QRunnable) — one per tab, uses QThreadPool.
+objectName format: "generative_{tab}_{zone}" e.g. "generative_sentiment_input"
+Signal: generative_finished_signal = pyqtSignal(str, object)  # (tab_name, result)
 ```
 
 ### UI Architecture Rules
@@ -710,7 +768,8 @@ except ImportError:
 | Phase 1 | Tier 1 генеративные: M22, M21, M13, M17, M14; generative router (5 endpoints) | **DONE** |
 | T1 | Transformer backbone: spacy-transformers, KadimaTransformer, pipeline builder, config.cfg | **DONE** |
 | T2 | Embeddings+data: NP chunker emb mode, NER neodictabert, NER training pipeline, KB emb search, term clusterer, SA ORM, async SA, model download script | **DONE** |
-| T3 | Desktop UI: MainWindow + 6 full views (Dashboard/Pipeline/Results/Validation/KB/Corpora) + 5 widgets + app.qss dark theme + smoke tests | **DONE** |
+| T3 | Desktop UI: MainWindow + 6 full views + 9 widgets + app.qss dark theme + 28 smoke tests | **DONE** |
+| pre-T4 | D8 cross-view wiring, D9 engine stubs M15/M16/M18/M20, D10 T4 widgets | **DONE** |
 
 ### Текущий план (по ТЗ углубления)
 
@@ -739,16 +798,14 @@ except ImportError:
 | | | Step 7: `corpora_view.py` — import + statistics + pipeline trigger | **DONE** | 3–4 |
 | | | Step 8: `styles/app.qss` — design tokens, dark theme | **DONE** | 2–3 |
 | | | Step 9: `tests/ui/test_main_window.py` — 29 pytest-qt smoke tests (skip if no PyQt6) | **DONE** | 4–6 |
-| **pre-T4** | T3 wiring + stubs | D8: MainWindow signal wiring (7 connections: pipeline→results, corpus→pipeline, results→KB, validation run, dashboard actions) | **NOW** | 1–2 |
-| | | D9: Engine stubs M15/M16/M18/M20 + orchestrator registration + config sections | **NOW** | 0.5 |
-| | | D10: T4 widgets — `backend_selector.py`, `export_button.py`, `entity_table.py`, `audio_player.py` | **NOW** | 1 |
-| **T4** | Phase 2 + UI | R-4.1 M18 Sentiment Classifier (heBERT) | Pending | 4–6 |
-| | | R-4.2 M15 TTS (Coqui XTTS v2) | Pending | 6–8 |
-| | | R-4.3 M16 STT (Whisper large-v3) | Pending | 6–8 |
-| | | R-4.4 M20 Active Learning (uncertainty sampling → LS) | Pending | 6–8 |
-| | | Step 10: `generative_view.py` — 6 tabs: Sentiment/TTS/STT/Translate/Diacritize/NER | Pending | 6–8 |
-| | | Step 11: `annotation_view.py` — LS projects + pre-annotate + AL queue | Pending | 4–6 |
-| | | Step 12: `tests/ui/test_generative.py` + `test_annotation.py` | Pending | 2–3 |
+| **pre-T4** | T3 wiring + stubs | D8/D9/D10 — все закрыты | **DONE** | — |
+| **T4** | Phase 2 + UI | R-4.1 M18 Sentiment Classifier (heBERT + rules fallback) | **NOW** | 4–6 |
+| | | R-4.2 M15 TTS (Coqui XTTS v2) | **NOW** | 6–8 |
+| | | R-4.3 M16 STT (Whisper large-v3) | **NOW** | 6–8 |
+| | | R-4.4 M20 Active Learning (uncertainty sampling → LS export) | **NOW** | 6–8 |
+| | | Step 10: `generative_view.py` — 6 tabs: Sentiment/TTS/STT/Translate/Diacritize/NER + GenerativeWorker | **NOW** | 6–8 |
+| | | Step 11: `annotation_view.py` — LS projects + pre-annotate + AL queue | **NOW** | 4–6 |
+| | | Step 12: `tests/ui/test_generative.py` + `test_annotation.py` | **NOW** | 2–3 |
 | **T5** | Phase 3 + UI | R-5.1 M24 Keyphrase (YAKE) | Pending | 3–4 |
 | | | R-5.2 M23 Grammar Checker (Dicta-LM) | Pending | 4–6 |
 | | | R-5.3 M25 Summarizer (Dicta-LM) | Pending | 4–6 |
