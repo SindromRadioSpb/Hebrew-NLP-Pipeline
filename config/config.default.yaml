@@ -1,11 +1,13 @@
 # config/config.default.yaml
-# Дефолтная конфигурация KADIMA
-# Скопируйте в ~/.kadima/config.yaml и настройте
+# Default KADIMA configuration
+# Copy to ~/.kadima/config.yaml and customize
 
+# ── NLP Pipeline ─────────────────────────────────────────────────────────────
 pipeline:
   language: he
   profile: balanced  # precise | balanced | recall
   modules:
+    # NLP pipeline (sequential)
     - sent_split
     - tokenizer
     - morph_analyzer
@@ -15,11 +17,24 @@ pipeline:
     - am
     - term_extract
     - noise
+    # Generative modules (on-demand) — uncomment as implemented
+    # - diacritizer
+    # - translator
+    # - tts
+    # - stt
+    # - ner
+    # - sentiment
+    # - summarizer
+    # - qa
+    # - morph_gen
+    # - transliterator
+    # - grammar
+    # - keyphrase
+    # - paraphrase
   thresholds:
     min_freq: 2
     pmi_threshold: 3.0
     hapax_filter: true
-    # Профиль-specific overrides
     precise:
       min_freq: 3
       pmi_threshold: 5.0
@@ -33,25 +48,89 @@ pipeline:
       pmi_threshold: 1.0
       hapax_filter: false
 
+# ── Generative Module Configs ────────────────────────────────────────────────
+# Each section configures a generative module (M13-M25).
+# These are read by PipelineConfig.get_module_config() when the module is enabled.
+
+diacritizer:
+  backend: phonikud   # phonikud (ONNX, fast) | dicta (transformers, accurate)
+  device: cuda
+
+translator:
+  backend: mbart       # mbart (50 langs) | opus (fast, HE-EN only) | nllb (200 langs)
+  device: cuda
+  default_tgt_lang: en
+
+tts:
+  backend: xtts        # xtts (voice cloning) | mms (fast) | piper (lightweight)
+  device: cuda
+  output_dir: ~/.kadima/audio
+
+stt:
+  backend: whisper     # whisper (OpenAI) | faster_whisper (CTranslate2)
+  device: cuda
+  model_size: large-v3
+
+ner:
+  backend: heq_ner     # heq_ner (dicta-il, best) | alephbert | hebert
+  device: cuda
+
+sentiment:
+  backend: hebert      # hebert (avichr/heBERT_sentiment_analysis)
+  device: cuda
+
+summarizer:
+  backend: mt5         # mt5 (google/mt5-base)
+  device: cuda
+  max_length: 150
+  min_length: 30
+
+qa:
+  backend: alephbert   # alephbert (onlplab/alephbert-base)
+  device: cuda
+
+morph_gen:
+  gender: masculine
+  binyan: paal
+
+transliterator:
+  mode: latin          # latin | male | haser | phonetic
+
+grammar:
+  backend: llm         # llm (via kadima/llm/) | mt5
+  device: cuda
+
+keyphrase:
+  backend: yake        # yake (no ML) | keybert (embeddings)
+  top_n: 10
+  language: he
+
+paraphrase:
+  backend: mt5         # mt5 | llm
+  device: cuda
+  num_variants: 3
+
+# ── Integration ──────────────────────────────────────────────────────────────
 annotation:
   label_studio_url: http://localhost:8080
-  label_studio_api_key: null  # или ${LS_API_KEY}
+  label_studio_api_key: null
   ml_backend_url: http://localhost:9090
 
-llm:  # v1.x
+llm:
   enabled: false
   server_url: http://localhost:8081
   model: dictalm-3.0-1.7b-instruct
   max_tokens: 512
   temperature: 0.7
 
-kb:  # v1.x
+kb:
   enabled: false
   embedding_model: neodictabert
   auto_generate_definitions: false
 
+# ── System ───────────────────────────────────────────────────────────────────
 logging:
-  level: INFO  # DEBUG | INFO | WARNING | ERROR
+  level: INFO          # DEBUG | INFO | WARNING | ERROR
   file: ~/.kadima/logs/kadima.log
 
 storage:

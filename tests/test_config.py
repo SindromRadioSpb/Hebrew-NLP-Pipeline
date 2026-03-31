@@ -5,6 +5,11 @@ from pydantic import ValidationError
 from kadima.pipeline.config import (
     PipelineConfig, ThresholdsConfig, LLMConfig, AnnotationConfig,
     KBConfig, LoggingConfig, StorageConfig, Profile, LogLevel,
+    VALID_MODULES, NLP_MODULES, GENERATIVE_MODULES,
+    DiacritizerConfig, TranslatorConfig, TTSConfig, STTConfig,
+    NERConfig, SentimentConfig, SummarizerConfig, QAConfig,
+    MorphGenConfig, TransliteratorConfig, GrammarConfig,
+    KeyphraseConfig, ParaphraseConfig,
     load_config,
 )
 
@@ -217,3 +222,203 @@ class TestGetModuleConfig:
         })
         cfg = c.get_module_config("term_extract")
         assert cfg["min_freq"] == 10  # precise override
+
+
+class TestValidModulesConstants:
+    def test_nlp_modules_count(self):
+        assert len(NLP_MODULES) == 9
+
+    def test_generative_modules_count(self):
+        assert len(GENERATIVE_MODULES) == 13
+
+    def test_valid_modules_is_union(self):
+        assert VALID_MODULES == NLP_MODULES | GENERATIVE_MODULES
+
+    def test_no_overlap(self):
+        assert NLP_MODULES & GENERATIVE_MODULES == set()
+
+    def test_generative_module_names(self):
+        expected = {
+            "diacritizer", "translator", "tts", "stt", "ner", "sentiment",
+            "summarizer", "qa", "morph_gen", "transliterator", "grammar",
+            "keyphrase", "paraphrase",
+        }
+        assert GENERATIVE_MODULES == expected
+
+
+class TestGenerativeModuleValidation:
+    def test_generative_modules_accepted(self):
+        """All generative module names pass validation in modules list."""
+        for mod in GENERATIVE_MODULES:
+            c = PipelineConfig(modules=["sent_split", mod])
+            assert mod in c.modules
+
+    def test_all_modules_combined(self):
+        c = PipelineConfig(modules=sorted(VALID_MODULES))
+        assert len(c.modules) == 22
+
+
+class TestDiacritizerConfig:
+    def test_defaults(self):
+        c = DiacritizerConfig()
+        assert c.backend == "phonikud"
+        assert c.device == "cuda"
+
+    def test_valid_backends(self):
+        for b in ("phonikud", "dicta"):
+            c = DiacritizerConfig(backend=b)
+            assert c.backend == b
+
+    def test_invalid_backend(self):
+        with pytest.raises(ValidationError):
+            DiacritizerConfig(backend="invalid")
+
+    def test_cpu_device(self):
+        c = DiacritizerConfig(device="cpu")
+        assert c.device == "cpu"
+
+    def test_extra_forbid(self):
+        with pytest.raises(ValidationError):
+            DiacritizerConfig(extra_field="bad")
+
+
+class TestTranslatorConfig:
+    def test_defaults(self):
+        c = TranslatorConfig()
+        assert c.backend == "mbart"
+        assert c.default_tgt_lang == "en"
+
+    def test_valid_backends(self):
+        for b in ("mbart", "opus", "nllb"):
+            c = TranslatorConfig(backend=b)
+            assert c.backend == b
+
+    def test_invalid_backend(self):
+        with pytest.raises(ValidationError):
+            TranslatorConfig(backend="deepl")
+
+
+class TestSTTConfig:
+    def test_defaults(self):
+        c = STTConfig()
+        assert c.backend == "whisper"
+        assert c.model_size == "large-v3"
+
+    def test_valid_model_sizes(self):
+        for s in ("tiny", "base", "small", "medium", "large-v2", "large-v3"):
+            c = STTConfig(model_size=s)
+            assert c.model_size == s
+
+    def test_invalid_model_size(self):
+        with pytest.raises(ValidationError):
+            STTConfig(model_size="huge")
+
+
+class TestSummarizerConfig:
+    def test_defaults(self):
+        c = SummarizerConfig()
+        assert c.max_length == 150
+        assert c.min_length == 30
+
+    def test_length_bounds(self):
+        with pytest.raises(ValidationError):
+            SummarizerConfig(max_length=5)
+        with pytest.raises(ValidationError):
+            SummarizerConfig(min_length=2)
+
+
+class TestMorphGenConfig:
+    def test_defaults(self):
+        c = MorphGenConfig()
+        assert c.gender == "masculine"
+        assert c.binyan == "paal"
+
+    def test_valid_binyanim(self):
+        for b in ("paal", "nifal", "piel", "pual", "hifil", "hufal", "hitpael"):
+            c = MorphGenConfig(binyan=b)
+            assert c.binyan == b
+
+    def test_invalid_binyan(self):
+        with pytest.raises(ValidationError):
+            MorphGenConfig(binyan="invalid")
+
+
+class TestKeyphraseConfig:
+    def test_defaults(self):
+        c = KeyphraseConfig()
+        assert c.top_n == 10
+        assert c.language == "he"
+
+    def test_top_n_bounds(self):
+        with pytest.raises(ValidationError):
+            KeyphraseConfig(top_n=0)
+        with pytest.raises(ValidationError):
+            KeyphraseConfig(top_n=200)
+
+
+class TestParaphraseConfig:
+    def test_defaults(self):
+        c = ParaphraseConfig()
+        assert c.num_variants == 3
+
+    def test_num_variants_bounds(self):
+        with pytest.raises(ValidationError):
+            ParaphraseConfig(num_variants=0)
+        with pytest.raises(ValidationError):
+            ParaphraseConfig(num_variants=20)
+
+
+class TestGetGenerativeModuleConfig:
+    def test_diacritizer_config(self):
+        c = PipelineConfig()
+        cfg = c.get_module_config("diacritizer")
+        assert cfg["backend"] == "phonikud"
+        assert "device" in cfg
+
+    def test_translator_config(self):
+        c = PipelineConfig()
+        cfg = c.get_module_config("translator")
+        assert cfg["backend"] == "mbart"
+        assert cfg["default_tgt_lang"] == "en"
+
+    def test_keyphrase_config(self):
+        c = PipelineConfig()
+        cfg = c.get_module_config("keyphrase")
+        assert cfg["backend"] == "yake"
+        assert cfg["top_n"] == 10
+
+    def test_custom_generative_config(self):
+        c = PipelineConfig(diacritizer={"backend": "dicta", "device": "cpu"})
+        cfg = c.get_module_config("diacritizer")
+        assert cfg["backend"] == "dicta"
+        assert cfg["device"] == "cpu"
+
+    def test_all_generative_return_nonempty(self):
+        c = PipelineConfig()
+        for mod in GENERATIVE_MODULES:
+            cfg = c.get_module_config(mod)
+            assert isinstance(cfg, dict)
+            assert len(cfg) > 0, f"{mod} returned empty config"
+
+
+class TestLoadConfigGenerative:
+    def test_load_default_yaml_with_generative(self):
+        config = load_config("config/config.default.yaml")
+        assert config.diacritizer.backend == "phonikud"
+        assert config.translator.backend == "mbart"
+        assert config.keyphrase.top_n == 10
+        assert config.paraphrase.num_variants == 3
+
+    def test_custom_yaml_with_generative(self, tmp_path):
+        import yaml
+        cfg_path = tmp_path / "test.yaml"
+        cfg_path.write_text(yaml.dump({
+            "pipeline": {"profile": "balanced"},
+            "diacritizer": {"backend": "dicta", "device": "cpu"},
+            "keyphrase": {"backend": "keybert", "top_n": 5, "language": "he"},
+        }))
+        config = load_config(str(cfg_path))
+        assert config.diacritizer.backend == "dicta"
+        assert config.diacritizer.device == "cpu"
+        assert config.keyphrase.backend == "keybert"
+        assert config.keyphrase.top_n == 5

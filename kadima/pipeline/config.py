@@ -51,10 +51,18 @@ class LogLevel(str, Enum):
     ERROR = "ERROR"
 
 
-VALID_MODULES = frozenset([
+NLP_MODULES = frozenset([
     "sent_split", "tokenizer", "morph_analyzer", "ngram", "np_chunk",
     "canonicalize", "am", "term_extract", "noise",
 ])
+
+GENERATIVE_MODULES = frozenset([
+    "diacritizer", "translator", "tts", "stt", "ner", "sentiment",
+    "summarizer", "qa", "morph_gen", "transliterator", "grammar",
+    "keyphrase", "paraphrase",
+])
+
+VALID_MODULES = NLP_MODULES | GENERATIVE_MODULES
 
 
 # ── Sub-configs ──────────────────────────────────────────────────────────────
@@ -125,6 +133,138 @@ class StorageConfig(BaseModel):
     auto_backup: bool = True
 
 
+# ── Generative module configs (M13-M25) ────────────────────────────────────
+
+class DeviceEnum(str, Enum):
+    """Устройство для инференса."""
+
+    CPU = "cpu"
+    CUDA = "cuda"
+
+
+class DiacritizerConfig(BaseModel):
+    """M13: Дикритизация (никуд). backend: phonikud (ONNX) | dicta (transformers)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    backend: str = Field(default="phonikud", pattern=r"^(phonikud|dicta)$")
+    device: DeviceEnum = DeviceEnum.CUDA
+
+
+class TranslatorConfig(BaseModel):
+    """M14: Перевод. backend: mbart | opus | nllb."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    backend: str = Field(default="mbart", pattern=r"^(mbart|opus|nllb)$")
+    device: DeviceEnum = DeviceEnum.CUDA
+    default_tgt_lang: str = "en"
+
+
+class TTSConfig(BaseModel):
+    """M15: Синтез речи. backend: xtts | mms | piper."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    backend: str = Field(default="xtts", pattern=r"^(xtts|mms|piper)$")
+    device: DeviceEnum = DeviceEnum.CUDA
+    output_dir: str = "~/.kadima/audio"
+
+
+class STTConfig(BaseModel):
+    """M16: Распознавание речи. backend: whisper | faster_whisper."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    backend: str = Field(default="whisper", pattern=r"^(whisper|faster_whisper)$")
+    device: DeviceEnum = DeviceEnum.CUDA
+    model_size: str = Field(default="large-v3", pattern=r"^(tiny|base|small|medium|large-v[23])$")
+
+
+class NERConfig(BaseModel):
+    """M17: NER. backend: heq_ner | alephbert | hebert."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    backend: str = Field(default="heq_ner", pattern=r"^(heq_ner|alephbert|hebert)$")
+    device: DeviceEnum = DeviceEnum.CUDA
+
+
+class SentimentConfig(BaseModel):
+    """M18: Анализ тональности. backend: hebert."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    backend: str = Field(default="hebert", pattern=r"^(hebert)$")
+    device: DeviceEnum = DeviceEnum.CUDA
+
+
+class SummarizerConfig(BaseModel):
+    """M19: Суммаризация. backend: mt5."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    backend: str = Field(default="mt5", pattern=r"^(mt5)$")
+    device: DeviceEnum = DeviceEnum.CUDA
+    max_length: int = Field(default=150, ge=10, le=1024)
+    min_length: int = Field(default=30, ge=5, le=512)
+
+
+class QAConfig(BaseModel):
+    """M20: Извлечение ответов. backend: alephbert."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    backend: str = Field(default="alephbert", pattern=r"^(alephbert)$")
+    device: DeviceEnum = DeviceEnum.CUDA
+
+
+class MorphGenConfig(BaseModel):
+    """M21: Генерация морфологических форм (правила, без ML)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    gender: str = Field(default="masculine", pattern=r"^(masculine|feminine)$")
+    binyan: str = Field(default="paal", pattern=r"^(paal|nifal|piel|pual|hifil|hufal|hitpael)$")
+
+
+class TransliteratorConfig(BaseModel):
+    """M22: Транслитерация (правила + lookup, без ML)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: str = Field(default="latin", pattern=r"^(latin|male|haser|phonetic)$")
+
+
+class GrammarConfig(BaseModel):
+    """M23: Грамматическая коррекция. backend: llm | mt5."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    backend: str = Field(default="llm", pattern=r"^(llm|mt5)$")
+    device: DeviceEnum = DeviceEnum.CUDA
+
+
+class KeyphraseConfig(BaseModel):
+    """M24: Извлечение ключевых фраз. backend: yake | keybert."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    backend: str = Field(default="yake", pattern=r"^(yake|keybert)$")
+    top_n: int = Field(default=10, ge=1, le=100)
+    language: str = "he"
+
+
+class ParaphraseConfig(BaseModel):
+    """M25: Парафраз. backend: mt5 | llm."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    backend: str = Field(default="mt5", pattern=r"^(mt5|llm)$")
+    device: DeviceEnum = DeviceEnum.CUDA
+    num_variants: int = Field(default=3, ge=1, le=10)
+
+
 # ── Profile thresholds ──────────────────────────────────────────────────────
 
 class ThresholdsOverrides(BaseModel):
@@ -187,6 +327,22 @@ class PipelineConfig(BaseModel):
         "canonicalize", "am", "term_extract", "noise",
     ])
     thresholds: ThresholdsConfig = Field(default_factory=ThresholdsConfig)
+    # Generative module configs (M13-M25)
+    diacritizer: DiacritizerConfig = Field(default_factory=DiacritizerConfig)
+    translator: TranslatorConfig = Field(default_factory=TranslatorConfig)
+    tts: TTSConfig = Field(default_factory=TTSConfig)
+    stt: STTConfig = Field(default_factory=STTConfig)
+    ner: NERConfig = Field(default_factory=NERConfig)
+    sentiment: SentimentConfig = Field(default_factory=SentimentConfig)
+    summarizer: SummarizerConfig = Field(default_factory=SummarizerConfig)
+    qa: QAConfig = Field(default_factory=QAConfig)
+    morph_gen: MorphGenConfig = Field(default_factory=MorphGenConfig)
+    transliterator: TransliteratorConfig = Field(default_factory=TransliteratorConfig)
+    grammar: GrammarConfig = Field(default_factory=GrammarConfig)
+    keyphrase: KeyphraseConfig = Field(default_factory=KeyphraseConfig)
+    paraphrase: ParaphraseConfig = Field(default_factory=ParaphraseConfig)
+
+    # Integration configs
     annotation: AnnotationConfig = Field(default_factory=AnnotationConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     kb: KBConfig = Field(default_factory=KBConfig)
@@ -266,7 +422,20 @@ class PipelineConfig(BaseModel):
             },
         }
 
-        return configs.get(module_name, {})
+        if module_name in configs:
+            return configs[module_name]
+
+        # Generative modules — return sub-config as dict
+        _generative_fields = {
+            "diacritizer", "translator", "tts", "stt", "ner", "sentiment",
+            "summarizer", "qa", "morph_gen", "transliterator", "grammar",
+            "keyphrase", "paraphrase",
+        }
+        if module_name in _generative_fields:
+            sub_config = getattr(self, module_name)
+            return sub_config.model_dump()
+
+        return {}
 
 
 # ── Loader ───────────────────────────────────────────────────────────────────
@@ -324,11 +493,18 @@ def load_config(path: Optional[str] = None) -> PipelineConfig:
 
     p = raw.get("pipeline", raw)  # support both nested and flat formats
 
+    # Collect generative module configs from top-level YAML sections
+    generative_kwargs = {}
+    for mod_name in GENERATIVE_MODULES:
+        if mod_name in raw:
+            generative_kwargs[mod_name] = raw[mod_name]
+
     config = PipelineConfig(
         language=p.get("language", "he"),
         profile=p.get("profile", "balanced"),
         modules=p.get("modules", PipelineConfig.model_fields["modules"].default),
         thresholds=p.get("thresholds", {}),
+        **generative_kwargs,
         annotation=raw.get("annotation", {}),
         llm=raw.get("llm", {}),
         kb=raw.get("kb", {}),
@@ -368,6 +544,19 @@ def export_json_schema(pretty: bool = True) -> str:
         "type": "object",
         "properties": {
             "pipeline": PipelineConfig.model_json_schema(),
+            "diacritizer": DiacritizerConfig.model_json_schema(),
+            "translator": TranslatorConfig.model_json_schema(),
+            "tts": TTSConfig.model_json_schema(),
+            "stt": STTConfig.model_json_schema(),
+            "ner": NERConfig.model_json_schema(),
+            "sentiment": SentimentConfig.model_json_schema(),
+            "summarizer": SummarizerConfig.model_json_schema(),
+            "qa": QAConfig.model_json_schema(),
+            "morph_gen": MorphGenConfig.model_json_schema(),
+            "transliterator": TransliteratorConfig.model_json_schema(),
+            "grammar": GrammarConfig.model_json_schema(),
+            "keyphrase": KeyphraseConfig.model_json_schema(),
+            "paraphrase": ParaphraseConfig.model_json_schema(),
             "annotation": AnnotationConfig.model_json_schema(),
             "llm": LLMConfig.model_json_schema(),
             "kb": KBConfig.model_json_schema(),
@@ -416,11 +605,17 @@ def validate_config_file(path: str) -> List[str]:
 
     try:
         p = raw.get("pipeline", raw)
+        generative_kwargs = {}
+        for mod_name in GENERATIVE_MODULES:
+            if mod_name in raw:
+                generative_kwargs[mod_name] = raw[mod_name]
+
         PipelineConfig(
             language=p.get("language", "he"),
             profile=p.get("profile", "balanced"),
             modules=p.get("modules", PipelineConfig.model_fields["modules"].default),
             thresholds=p.get("thresholds", {}),
+            **generative_kwargs,
             annotation=raw.get("annotation", {}),
             llm=raw.get("llm", {}),
             kb=raw.get("kb", {}),
