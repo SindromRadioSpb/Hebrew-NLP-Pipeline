@@ -74,9 +74,9 @@ make up-llm                 # + llama.cpp (GPU)
 | ID | Problem | Location |
 |----|---------|----------|
 | D4 | API routers: validation, annotation, kb, llm are empty stubs | `api/routers/` |
-| D5 | UI: all 7 widget files are 10-line stubs | `kadima/ui/` |
+| D5 | UI: main_window + 7 view files are 10-line stubs → being closed in T3 | `kadima/ui/` |
 | D6 | `Token` dataclass declared in 2 places with different fields | `data/models.py` and `engine/hebpipe_wrappers.py` |
-| D7 | SQLAlchemy ORM added alongside legacy sqlite3 — full migration to SA pending | `data/` — `repositories.py` still uses raw sqlite3 |
+| D7 | SQLAlchemy ORM added alongside legacy sqlite3 — UI uses legacy layer by design | `data/` — `repositories.py` still uses raw sqlite3 |
 
 ---
 
@@ -97,9 +97,13 @@ make up-llm                 # + llama.cpp (GPU)
 | DB / migrations | `kadima/data/` | `db.py`, `models.py`, `migrations/XXX.sql` |
 | REST API | `kadima/api/routers/` | `corpora.py`, `generative.py` |
 | API schemas | `kadima/api/schemas.py` | Pydantic models |
-| PyQt UI | `kadima/ui/` | `main_window.py`, `widgets/` |
+| PyQt UI views (T3) | `kadima/ui/*_view.py` | `dashboard_view.py`, `pipeline_view.py` |
+| PyQt UI widgets | `kadima/ui/widgets/` | `status_card.py`, `rtl_text_edit.py` |
+| UI entry point | `kadima/ui/main_window.py`, `kadima/app.py` | `kadima gui` → `app.main()` |
+| UI styles | `kadima/ui/styles/` | `app.qss`, `dark.qss` |
 | Utils | `kadima/utils/` | `hebrew.py`, `logging.py` |
 | Unit tests | `tests/<module>/test_<name>.py` | `tests/engine/test_term_extractor.py` |
+| UI tests | `tests/ui/test_*.py` | `test_dashboard_view.py` (pytest-qt) |
 | Integration tests | `tests/integration/` | `test_pipeline_e2e.py` |
 | Gold corpus fixtures | `tests/data/he_XX_*/` | `expected_counts.yaml`, `raw/*.txt` |
 | Label Studio templates | `templates/` | `hebrew_ner.xml` |
@@ -538,6 +542,123 @@ Scope: engine | pipeline | api | ui | data | config | docker | ci
 
 ---
 
+## Desktop UI (T3–T5)
+
+Full TZ: `Tasks/3. TZ_UI_desktop_KADIMA.md`
+
+### Entry Point
+
+```
+kadima gui  →  cli.py::run_gui()  →  app.py::main()  →  MainWindow (QStackedWidget)
+```
+
+`kadima/app.py` is already implemented. `main_window.py` is a stub — Step 1 of T3.
+
+### View Map
+
+| # | View file | Phase | Key data sources |
+|---|-----------|-------|-----------------|
+| 1 | `dashboard_view.py` | **T3** | `data/repositories.py` (runs), `corpus/statistics.py`, pipeline status |
+| 2 | `pipeline_view.py` | **T3** | `pipeline/orchestrator.py`, `pipeline/config.py`, `PipelineWorker(QRunnable)` |
+| 3 | `results_view.py` | **T3** | `PipelineResult` → `TermsTableModel(QAbstractTableModel)`, `corpus/exporter.py` (5 formats) |
+| 4 | `validation_view.py` | **T3** | `validation/check_engine.py`, `validation/report.py`, `ResultColorDelegate` |
+| 5 | `kb_view.py` | **T3** | `kb/repository.py`, `kb/search.py` (text + embedding + similar), `kb/generator.py` |
+| 6 | `corpora_view.py` | **T3** | `corpus/importer.py` (`.txt .csv .conllu .json`), `corpus/statistics.py` |
+| 7 | `generative_view.py` | T4 | M13/M14/M17/M18/M15/M16 via engine modules, `GenerativeWorker(QRunnable)` |
+| 8 | `annotation_view.py` | T4 | `annotation/project_manager.py`, `annotation/sync.py`, `annotation/ner_training.py` |
+| 9 | `nlp_tools_view.py` | T5 | M23/M24/M25 (Grammar/Keyphrase/Summarize) via engine modules |
+| 10 | `llm_view.py` | T5 | `llm/service.py` (define_term, explain_grammar, chat), `llm/client.py` (is_loaded) |
+
+### Widget Map
+
+| Widget file | New/Existing | Used by |
+|-------------|-------------|---------|
+| `widgets/error_dialog.py` | Exists | All views |
+| `widgets/progress_bar.py` | Exists | Pipeline view |
+| `widgets/term_table.py` | Exists | Results view |
+| `widgets/status_card.py` | **NEW T3** | Dashboard |
+| `widgets/rtl_text_edit.py` | **NEW T3** | Pipeline, KB, Generative, LLM |
+| `widgets/ngram_table.py` | **NEW T3** | Results |
+| `widgets/np_chunk_table.py` | **NEW T3** | Results |
+| `widgets/check_table.py` | **NEW T3** | Validation |
+| `widgets/backend_selector.py` | **NEW T3** | Pipeline, Generative |
+| `widgets/export_button.py` | **NEW T3** | Results, Validation, KB |
+| `widgets/entity_table.py` | NEW T4 | Generative (NER tab) |
+| `widgets/audio_player.py` | NEW T4 | Generative (TTS tab) |
+| `widgets/chat_widget.py` | NEW T5 | LLM view |
+
+### T3 Implementation Steps
+
+```
+Step 1:  main_window.py — QMainWindow + QStackedWidget + MenuBar + ToolBar + StatusBar + lazy view loading
+Step 2:  widgets/status_card.py + dashboard_view.py — 3 status cards + recent runs + quick actions
+Step 3:  widgets/rtl_text_edit.py + pipeline_view.py — module toggles + PipelineWorker(QRunnable)
+Step 4:  widgets/ngram_table.py + widgets/np_chunk_table.py + results_view.py — TermsTableModel + export
+Step 5:  widgets/check_table.py + validation_view.py — PASS/WARN/FAIL + ResultColorDelegate
+Step 6:  kb_view.py — text/embedding/similar search + definition editor + cluster view
+Step 7:  corpora_view.py — import + corpus table + statistics + pipeline trigger
+Step 8:  styles/app.qss + styles/dark.qss — design tokens, dark theme
+Step 9:  tests/ui/test_*.py — pytest-qt smoke tests for each view
+```
+
+### UI Architecture Rules
+
+**Threading** (non-negotiable):
+- Pipeline runs in `PipelineWorker(QRunnable)` → `QThreadPool`
+- Generative calls in `GenerativeWorker(QRunnable)` → `QThreadPool`
+- Never call `orchestrator.run*()` or engine modules from main thread
+
+**Data layer** (UI uses legacy layer):
+- UI reads/writes via `data/repositories.py` (sqlite3) + `pipeline/orchestrator.py`
+- SA ORM (`sa_db.py`) only for new queries needing type safety
+- Never mix two layers in one view
+
+**Layout** — layout managers only (QVBoxLayout/QHBoxLayout/QGridLayout/QSplitter):
+- No absolute positioning (`move()`, `setGeometry()`)
+- Min window: 1280×720
+- RTL: `setLayoutDirection(Qt.LayoutDirection.RightToLeft)` for Hebrew text inputs
+- All tables: `QHeaderView.Stretch` on main column
+
+**Naming** — `objectName` required for pytest-qt + QSS:
+- Format: `<view>_<zone>_<widget>_<purpose>`
+- Examples: `pipeline_run_button`, `results_terms_table`, `kb_search_input`
+
+**Signals** — format: `<noun>_<verb>_signal`:
+```python
+run_finished_signal = pyqtSignal(object)        # PipelineResult
+run_progress_signal = pyqtSignal(int, str)       # (percent, module_name)
+corpus_selected_signal = pyqtSignal(int)         # corpus_id
+term_selected_signal = pyqtSignal(object)        # KBTerm
+```
+
+**States** — every view must handle all 4:
+- Empty: explanatory message + icon
+- Loading: spinner + "Processing..."
+- Ready: data displayed
+- Error: `ErrorDialog` + red warning label
+
+**PyQt6 imports** — lazy, always wrapped:
+```python
+try:
+    from PyQt6.QtWidgets import ...
+except ImportError:
+    raise ImportError("PyQt6 required. Install with: pip install -e '.[gui]'")
+```
+
+**Export** — Results: 5 formats (CSV/JSON/TBX/TMX/CoNLL-U) via `corpus/exporter.py`; Validation: 2 formats (CSV/JSON) via `validation/report.py`
+
+**Hotkeys** (global):
+| Key | Action |
+|-----|--------|
+| F5 | Run pipeline |
+| Esc | Stop pipeline |
+| Ctrl+E | Export current table |
+| Ctrl+F | Focus filter/search |
+| Ctrl+1–6 | Switch view |
+| Ctrl+I | Import corpus |
+
+---
+
 ## Quality Targets (v1.0.0)
 
 | Metric | Target | How to measure |
@@ -587,17 +708,28 @@ Scope: engine | pipeline | api | ui | data | config | docker | ci
 | | | R-2.6 SQLAlchemy migration (sqlite3 → SA 2.x + Alembic) | **DONE** | 8–12 |
 | | | R-2.7 Async data layer (aiosqlite + SA async sessions) | **DONE** | 4–6 |
 | | | R-2.8 Model download script (`scripts/download_models.sh`) | **DONE** | 2–3 |
-| **T3** | Desktop UI | R-3.1 Dashboard (`ui/dashboard.py`, QMainWindow + QStackedWidget) | Pending | 16–24 |
-| | | R-3.2 Pipeline configuration UI | Pending | 8–12 |
-| | | R-3.3 Results View (terms/ngrams/NP tables, CSV export) | Pending | 8–12 |
-| | | R-3.4 Validation Report UI (PASS/WARN/FAIL) | Pending | 4–6 |
-| **T4** | Phase 2 модули | R-4.1 M18 Sentiment Classifier | Pending | 4–6 |
+| **T3** | Desktop UI | Step 1: `main_window.py` — QMainWindow + QStackedWidget + MenuBar + lazy views | Pending | 4–6 |
+| | | Step 2: `widgets/status_card.py` + `dashboard_view.py` | Pending | 3–4 |
+| | | Step 3: `widgets/rtl_text_edit.py` + `pipeline_view.py` + PipelineWorker | Pending | 4–6 |
+| | | Step 4: `widgets/ngram_table.py` + `widgets/np_chunk_table.py` + `results_view.py` | Pending | 4–6 |
+| | | Step 5: `widgets/check_table.py` + `validation_view.py` + ResultColorDelegate | Pending | 3–4 |
+| | | Step 6: `kb_view.py` — text/embedding/similar search + definition editor | Pending | 4–6 |
+| | | Step 7: `corpora_view.py` — import + statistics + pipeline trigger | Pending | 3–4 |
+| | | Step 8: `styles/app.qss` + `styles/dark.qss` — design tokens, dark theme | Pending | 2–3 |
+| | | Step 9: `tests/ui/test_*.py` — pytest-qt smoke + signal + table tests | Pending | 4–6 |
+| **T4** | Phase 2 + UI | R-4.1 M18 Sentiment Classifier | Pending | 4–6 |
 | | | R-4.2 M15 TTS (Coqui/OpenTTS) | Pending | 6–8 |
 | | | R-4.3 M16 STT (Whisper) | Pending | 6–8 |
 | | | R-4.4 M20 Active Learning (uncertainty sampling → LS) | Pending | 6–8 |
-| **T5** | Phase 3 модули | R-5.1 M24 Keyphrase (YAKE) | Pending | 3–4 |
+| | | Step 10: `generative_view.py` — 6 tabs: Sentiment/TTS/STT/Translate/Diacritize/NER | Pending | 6–8 |
+| | | Step 11: `annotation_view.py` — LS projects + pre-annotate + AL queue | Pending | 4–6 |
+| | | Step 12: `tests/ui/test_generative.py` + `test_annotation.py` | Pending | 2–3 |
+| **T5** | Phase 3 + UI | R-5.1 M24 Keyphrase (YAKE) | Pending | 3–4 |
 | | | R-5.2 M23 Grammar Checker (Dicta-LM) | Pending | 4–6 |
 | | | R-5.3 M25 Summarizer (Dicta-LM) | Pending | 4–6 |
+| | | Step 13: `widgets/chat_widget.py` + `nlp_tools_view.py` — Grammar/Keyphrase/Summarize | Pending | 3–4 |
+| | | Step 14: `llm_view.py` — chat + presets + context selector | Pending | 3–4 |
+| | | Step 15: `tests/ui/test_nlp_tools.py` + `test_llm.py` | Pending | 2–3 |
 | **T6** | Infrastructure | R-6.1 Docker Compose production-ready | Pending | 3–5 |
 | | | R-6.2 Документация синхронизация | Pending | 2–3 |
 
