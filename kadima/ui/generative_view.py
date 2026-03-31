@@ -1,44 +1,839 @@
 # kadima/ui/generative_view.py
-"""Generative view — placeholder (implemented in Step 10, T4).
+"""GenerativeView — 6-tab view for on-demand generative NLP modules.
 
-Full spec: Tasks/3. TZ_UI_desktop_KADIMA.md § 3.7
-Tabs: Sentiment · TTS · STT · Translate · Diacritize · NER
-Threading: GenerativeWorker(QRunnable) via QThreadPool
+Tabs: Sentiment (M18) · TTS (M15) · STT (M16) · Translate (M14) ·
+      Diacritize (M13) · NER (M17)
+
+Threading: GenerativeWorker(QRunnable) via QThreadPool.globalInstance().
+All engine imports are lazy and wrapped in try/except ImportError.
 """
 from __future__ import annotations
 
 import logging
-from typing import Optional
+import time
+import traceback
+from typing import Any, Optional
 
 try:
-    from PyQt6.QtCore import Qt
-    from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
+    from PyQt6.QtCore import QObject, QRunnable, Qt, QThreadPool, pyqtSignal, pyqtSlot
+    from PyQt6.QtWidgets import (
+        QApplication,
+        QComboBox,
+        QFileDialog,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QPushButton,
+        QSizePolicy,
+        QTabWidget,
+        QVBoxLayout,
+        QWidget,
+    )
+
     _HAS_QT = True
 except ImportError:
     _HAS_QT = False
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Engine module lazy imports — one block per module
+# ---------------------------------------------------------------------------
+
+try:
+    from kadima.engine.sentiment_analyzer import SentimentAnalyzer as _SentimentCls
+except ImportError:
+    _SentimentCls = None  # type: ignore[assignment,misc]
+
+try:
+    from kadima.engine.tts_synthesizer import TTSSynthesizer as _TTSCls
+except ImportError:
+    _TTSCls = None  # type: ignore[assignment,misc]
+
+try:
+    from kadima.engine.stt_transcriber import STTTranscriber as _STTCls
+except ImportError:
+    _STTCls = None  # type: ignore[assignment,misc]
+
+try:
+    from kadima.engine.translator import Translator as _TranslatorCls
+except ImportError:
+    _TranslatorCls = None  # type: ignore[assignment,misc]
+
+try:
+    from kadima.engine.diacritizer import Diacritizer as _DiacrCls
+except ImportError:
+    _DiacrCls = None  # type: ignore[assignment,misc]
+
+try:
+    from kadima.engine.ner_extractor import NERExtractor as _NERCls
+except ImportError:
+    _NERCls = None  # type: ignore[assignment,misc]
+
+# Widget imports — also lazy
+try:
+    from kadima.ui.widgets.backend_selector import BackendSelector
+    from kadima.ui.widgets.rtl_text_edit import RTLTextEdit
+    from kadima.ui.widgets.entity_table import EntityTable
+    from kadima.ui.widgets.audio_player import AudioPlayer
+
+    _HAS_WIDGETS = True
+except ImportError:
+    _HAS_WIDGETS = False
+
+
+# ---------------------------------------------------------------------------
+# GenerativeWorker
+# ---------------------------------------------------------------------------
+
+
+class _WorkerSignals(QObject):
+    """Signals emitted by GenerativeWorker.
+
+    Must be a QObject subclass — QRunnable cannot carry signals directly.
+    """
+
+    started = pyqtSignal(str)           # tab_name
+    finished = pyqtSignal(str, object)  # (tab_name, ProcessorResult)
+    failed = pyqtSignal(str, str)       # (tab_name, error_msg)
+
+
+class GenerativeWorker(QRunnable):
+    """Runs a single generative module in QThreadPool.
+
+    Args:
+        tab_name: Identifier used in all emitted signals.
+        module_cls: Engine class to instantiate (e.g. SentimentAnalyzer).
+        module_config: Dict passed to module constructor.
+        input_data: Input value forwarded to ``module.process()``.
+        runtime_config: Dict forwarded as the second arg to ``module.process()``.
+    """
+
+    def __init__(
+        self,
+        tab_name: str,
+        module_cls: Any,
+        module_config: dict[str, Any],
+        input_data: Any,
+        runtime_config: dict[str, Any],
+    ) -> None:
+        super().__init__()
+        self.setAutoDelete(True)
+        self.tab_name = tab_name
+        self._module_cls = module_cls
+        self._module_config = module_config
+        self._input_data = input_data
+        self._runtime_config = runtime_config
+        self.signals = _WorkerSignals()
+
+    @pyqtSlot()
+    def run(self) -> None:
+        """Entry point — executed in a worker thread by QThreadPool."""
+        self.signals.started.emit(self.tab_name)
+        try:
+            module = self._module_cls(self._module_config)
+            result = module.process(self._input_data, self._runtime_config)
+            self.signals.finished.emit(self.tab_name, result)
+        except Exception as exc:
+            logger.error(
+                "GenerativeWorker[%s] error: %s\n%s",
+                self.tab_name,
+                exc,
+                traceback.format_exc(),
+            )
+            self.signals.failed.emit(self.tab_name, str(exc))
+
+
+# ---------------------------------------------------------------------------
+# GenerativeView
+# ---------------------------------------------------------------------------
+
 
 class GenerativeView(QWidget):
-    """Generative tools view — 6 tabs for ML generative modules.
+    """Six-tab view for generative NLP modules (M13/M14/M15/M16/M17/M18).
 
-    Stub placeholder. Full implementation: T4 Step 10.
+    Signals:
+        generative_finished_signal(str, object):
+            Forwarded from any worker's finished signal.
+            Arguments: (tab_name, ProcessorResult).
     """
+
+    generative_finished_signal = pyqtSignal(str, object)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         if not _HAS_QT:
             raise ImportError("PyQt6 required. Install with: pip install -e '.[gui]'")
         super().__init__(parent)
         self.setObjectName("generative_view")
-        layout = QVBoxLayout(self)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl = QLabel(
-            "🧪  Generative  [T4]\n\n"
-            "Sentiment · TTS · STT · Translate · Diacritize · NER\n"
-            "GenerativeWorker(QRunnable) · Model lazy loading\n\n"
-            "Coming in T4 Step 10"
+        self._pool = QThreadPool.globalInstance()
+        self._build_ui()
+
+    # ------------------------------------------------------------------
+    # UI construction
+    # ------------------------------------------------------------------
+
+    def _build_ui(self) -> None:
+        root = QVBoxLayout(self)
+        root.setContentsMargins(12, 12, 12, 12)
+        root.setSpacing(8)
+
+        title = QLabel("Generative Modules")
+        title.setObjectName("generative_title")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #e0e0e0;")
+        root.addWidget(title)
+
+        self._tabs = QTabWidget()
+        self._tabs.setObjectName("generative_tabs")
+        self._tabs.setStyleSheet(
+            "QTabWidget::pane { border: 1px solid #3d3d5c; border-radius: 4px; }"
+            "QTabBar::tab { background: #2d2d44; color: #a0a0c0; padding: 6px 14px; }"
+            "QTabBar::tab:selected { background: #1e1e2e; color: #e0e0e0; }"
+            "QTabBar::tab:hover { color: #c0c0e0; }"
         )
-        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet("font-size: 16px; color: #888; line-height: 1.8;")
-        layout.addWidget(lbl)
+        root.addWidget(self._tabs)
+
+        self._tabs.addTab(self._build_sentiment_tab(), "Sentiment")
+        self._tabs.addTab(self._build_tts_tab(), "TTS")
+        self._tabs.addTab(self._build_stt_tab(), "STT")
+        self._tabs.addTab(self._build_translate_tab(), "Translate")
+        self._tabs.addTab(self._build_diacritize_tab(), "Diacritize")
+        self._tabs.addTab(self._build_ner_tab(), "NER")
+
+    # ------------------------------------------------------------------
+    # Shared helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _make_tab_container() -> tuple[QWidget, QVBoxLayout]:
+        """Return (widget, layout) for a tab page."""
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(8, 8, 8, 8)
+        lay.setSpacing(6)
+        return w, lay
+
+    @staticmethod
+    def _make_button_row(
+        run_label: str = "Run",
+        clear_label: str = "Clear",
+        copy_label: str | None = "Copy",
+        export_label: str | None = None,
+    ) -> tuple[QHBoxLayout, QPushButton, QPushButton, QPushButton | None, QPushButton | None]:
+        """Build a standard button row and return (layout, run, clear, copy, export)."""
+        row = QHBoxLayout()
+        run_btn = QPushButton(run_label)
+        run_btn.setFixedHeight(30)
+        clear_btn = QPushButton(clear_label)
+        clear_btn.setFixedHeight(30)
+        row.addWidget(run_btn)
+        row.addWidget(clear_btn)
+        row.addStretch()
+
+        copy_btn: QPushButton | None = None
+        if copy_label:
+            copy_btn = QPushButton(copy_label)
+            copy_btn.setFixedHeight(30)
+            row.addWidget(copy_btn)
+
+        export_btn: QPushButton | None = None
+        if export_label:
+            export_btn = QPushButton(export_label)
+            export_btn.setFixedHeight(30)
+            row.addWidget(export_btn)
+
+        return row, run_btn, clear_btn, copy_btn, export_btn
+
+    @staticmethod
+    def _make_status_label(initial: str = "Ready") -> QLabel:
+        lbl = QLabel(initial)
+        lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        return lbl
+
+    @staticmethod
+    def _copy_text_to_clipboard(text: str) -> None:
+        cb = QApplication.clipboard()
+        if cb is not None:
+            cb.setText(text)
+
+    # ------------------------------------------------------------------
+    # Tab 0 — Sentiment
+    # ------------------------------------------------------------------
+
+    def _build_sentiment_tab(self) -> QWidget:
+        w, lay = self._make_tab_container()
+
+        self._sentiment_backend = BackendSelector(
+            backends=["rules", "hebert"], default_backend="rules"
+        )
+        self._sentiment_backend.setObjectName("generative_sentiment_backend")
+        lay.addWidget(self._sentiment_backend)
+
+        self._sentiment_input = RTLTextEdit(placeholder="הכנס טקסט...")
+        self._sentiment_input.setObjectName("generative_sentiment_input")
+        self._sentiment_input.setMaximumHeight(120)
+        lay.addWidget(self._sentiment_input)
+
+        btn_row, run_btn, clear_btn, copy_btn, _ = self._make_button_row(
+            run_label="Analyze Sentiment", copy_label=None
+        )
+        run_btn.setObjectName("generative_sentiment_run_btn")
+        clear_btn.setObjectName("generative_sentiment_clear_btn")
+        if _SentimentCls is None:
+            run_btn.setEnabled(False)
+            run_btn.setToolTip("SentimentAnalyzer not available (install [ml] extras)")
+        lay.addLayout(btn_row)
+
+        self._sentiment_result_lbl = QLabel("—")
+        self._sentiment_result_lbl.setObjectName("generative_sentiment_result")
+        self._sentiment_result_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._sentiment_result_lbl.setStyleSheet(
+            "font-size: 24px; font-weight: bold; color: #a0a0c0; padding: 12px;"
+        )
+        lay.addWidget(self._sentiment_result_lbl)
+        lay.addStretch()
+
+        self._sentiment_status = self._make_status_label()
+        self._sentiment_status.setObjectName("generative_sentiment_status")
+        lay.addWidget(self._sentiment_status)
+
+        # Connections
+        run_btn.clicked.connect(self._on_sentiment_run)
+        clear_btn.clicked.connect(self._on_sentiment_clear)
+
+        return w
+
+    def _on_sentiment_run(self) -> None:
+        text = self._sentiment_input.toPlainText().strip()
+        if not text or _SentimentCls is None:
+            return
+        backend = self._sentiment_backend.backend
+        device = self._sentiment_backend.device
+        worker = GenerativeWorker(
+            tab_name="sentiment",
+            module_cls=_SentimentCls,
+            module_config={},
+            input_data=text,
+            runtime_config={"backend": backend, "device": device},
+        )
+        worker.signals.started.connect(
+            lambda t: self._sentiment_status.setText("Running...")
+        )
+        worker.signals.finished.connect(self._on_sentiment_result)
+        worker.signals.failed.connect(
+            lambda t, e: self._sentiment_status.setText(f"Error: {e}")
+        )
+        self._pool.start(worker)
+
+    def _on_sentiment_result(self, tab_name: str, result: Any) -> None:
+        self._sentiment_status.setText("Done")
+        self.generative_finished_signal.emit(tab_name, result)
+        try:
+            label = getattr(result.data, "label", "unknown") if result.data else "unknown"
+            score = getattr(result.data, "score", 0.0) if result.data else 0.0
+            text = f"{label.capitalize()} ({score:.2f})"
+            colour_map = {
+                "positive": "#22c55e",
+                "negative": "#ef4444",
+                "neutral": "#a0a0c0",
+            }
+            colour = colour_map.get(label.lower(), "#a0a0c0")
+            self._sentiment_result_lbl.setText(text)
+            self._sentiment_result_lbl.setStyleSheet(
+                f"font-size: 24px; font-weight: bold; color: {colour}; padding: 12px;"
+            )
+        except Exception as exc:
+            logger.warning("sentiment result display error: %s", exc)
+            self._sentiment_status.setText(f"Display error: {exc}")
+
+    def _on_sentiment_clear(self) -> None:
+        self._sentiment_input.clear()
+        self._sentiment_result_lbl.setText("—")
+        self._sentiment_result_lbl.setStyleSheet(
+            "font-size: 24px; font-weight: bold; color: #a0a0c0; padding: 12px;"
+        )
+        self._sentiment_status.setText("Ready")
+
+    # ------------------------------------------------------------------
+    # Tab 1 — TTS
+    # ------------------------------------------------------------------
+
+    def _build_tts_tab(self) -> QWidget:
+        w, lay = self._make_tab_container()
+
+        self._tts_backend = BackendSelector(
+            backends=["xtts", "mms"], default_backend="xtts"
+        )
+        self._tts_backend.setObjectName("generative_tts_backend")
+        lay.addWidget(self._tts_backend)
+
+        self._tts_input = RTLTextEdit(placeholder="הכנס טקסט לסינתזה...")
+        self._tts_input.setObjectName("generative_tts_input")
+        self._tts_input.setMaximumHeight(120)
+        lay.addWidget(self._tts_input)
+
+        btn_row, run_btn, clear_btn, _, _ = self._make_button_row(
+            run_label="Synthesize", copy_label=None
+        )
+        run_btn.setObjectName("generative_tts_run_btn")
+        clear_btn.setObjectName("generative_tts_clear_btn")
+        if _TTSCls is None:
+            run_btn.setEnabled(False)
+            run_btn.setToolTip("TTSSynthesizer not available (install [gpu] extras)")
+        lay.addLayout(btn_row)
+
+        self._tts_audio_player = AudioPlayer()
+        self._tts_audio_player.setObjectName("generative_tts_audio_player")
+        lay.addWidget(self._tts_audio_player)
+        lay.addStretch()
+
+        self._tts_status = self._make_status_label()
+        self._tts_status.setObjectName("generative_tts_status")
+        lay.addWidget(self._tts_status)
+
+        run_btn.clicked.connect(self._on_tts_run)
+        clear_btn.clicked.connect(self._on_tts_clear)
+
+        return w
+
+    def _on_tts_run(self) -> None:
+        text = self._tts_input.toPlainText().strip()
+        if not text or _TTSCls is None:
+            return
+        backend = self._tts_backend.backend
+        device = self._tts_backend.device
+        worker = GenerativeWorker(
+            tab_name="tts",
+            module_cls=_TTSCls,
+            module_config={},
+            input_data=text,
+            runtime_config={"backend": backend, "device": device},
+        )
+        worker.signals.started.connect(
+            lambda t: self._tts_status.setText("Running...")
+        )
+        worker.signals.finished.connect(self._on_tts_result)
+        worker.signals.failed.connect(
+            lambda t, e: self._tts_status.setText(f"Error: {e}")
+        )
+        self._pool.start(worker)
+
+    def _on_tts_result(self, tab_name: str, result: Any) -> None:
+        self._tts_status.setText("Done")
+        self.generative_finished_signal.emit(tab_name, result)
+        try:
+            audio_path = getattr(result.data, "audio_path", None) if result.data else None
+            if audio_path:
+                self._tts_audio_player.load(audio_path)
+            else:
+                self._tts_status.setText("Error: no audio_path in result")
+        except Exception as exc:
+            logger.warning("tts result display error: %s", exc)
+            self._tts_status.setText(f"Display error: {exc}")
+
+    def _on_tts_clear(self) -> None:
+        self._tts_input.clear()
+        self._tts_audio_player.clear()
+        self._tts_status.setText("Ready")
+
+    # ------------------------------------------------------------------
+    # Tab 2 — STT
+    # ------------------------------------------------------------------
+
+    def _build_stt_tab(self) -> QWidget:
+        w, lay = self._make_tab_container()
+
+        self._stt_backend = BackendSelector(
+            backends=["whisper", "faster_whisper"], default_backend="whisper"
+        )
+        self._stt_backend.setObjectName("generative_stt_backend")
+        lay.addWidget(self._stt_backend)
+
+        file_row = QHBoxLayout()
+        self._stt_file_input = QLineEdit()
+        self._stt_file_input.setObjectName("generative_stt_file_input")
+        self._stt_file_input.setPlaceholderText("Path to .wav or .mp3 file...")
+        self._stt_file_input.setReadOnly(True)
+        file_row.addWidget(self._stt_file_input, stretch=1)
+        self._stt_browse_btn = QPushButton("Browse...")
+        self._stt_browse_btn.setObjectName("generative_stt_browse_btn")
+        self._stt_browse_btn.setFixedWidth(80)
+        self._stt_browse_btn.clicked.connect(self._on_stt_browse)
+        file_row.addWidget(self._stt_browse_btn)
+        lay.addLayout(file_row)
+
+        btn_row, run_btn, clear_btn, _, _ = self._make_button_row(
+            run_label="Transcribe", copy_label=None
+        )
+        run_btn.setObjectName("generative_stt_run_btn")
+        clear_btn.setObjectName("generative_stt_clear_btn")
+        if _STTCls is None:
+            run_btn.setEnabled(False)
+            run_btn.setToolTip("STTTranscriber not available (install [gpu] extras)")
+        lay.addLayout(btn_row)
+
+        result_lbl = QLabel("Transcript:")
+        result_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        lay.addWidget(result_lbl)
+
+        self._stt_result = RTLTextEdit(placeholder="Transcript will appear here...")
+        self._stt_result.setObjectName("generative_stt_result")
+        lay.addWidget(self._stt_result)
+
+        copy_btn = QPushButton("Copy Transcript")
+        copy_btn.setObjectName("generative_stt_copy_btn")
+        copy_btn.setFixedHeight(28)
+        copy_btn.clicked.connect(
+            lambda: self._copy_text_to_clipboard(self._stt_result.toPlainText())
+        )
+        lay.addWidget(copy_btn)
+
+        self._stt_status = self._make_status_label()
+        self._stt_status.setObjectName("generative_stt_status")
+        lay.addWidget(self._stt_status)
+
+        run_btn.clicked.connect(self._on_stt_run)
+        clear_btn.clicked.connect(self._on_stt_clear)
+
+        return w
+
+    def _on_stt_browse(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select audio file",
+            "",
+            "Audio files (*.wav *.mp3);;All files (*)",
+        )
+        if path:
+            self._stt_file_input.setText(path)
+
+    def _on_stt_run(self) -> None:
+        path = self._stt_file_input.text().strip()
+        if not path or _STTCls is None:
+            return
+        backend = self._stt_backend.backend
+        device = self._stt_backend.device
+        worker = GenerativeWorker(
+            tab_name="stt",
+            module_cls=_STTCls,
+            module_config={},
+            input_data=path,
+            runtime_config={"backend": backend, "device": device},
+        )
+        worker.signals.started.connect(
+            lambda t: self._stt_status.setText("Running...")
+        )
+        worker.signals.finished.connect(self._on_stt_result)
+        worker.signals.failed.connect(
+            lambda t, e: self._stt_status.setText(f"Error: {e}")
+        )
+        self._pool.start(worker)
+
+    def _on_stt_result(self, tab_name: str, result: Any) -> None:
+        self._stt_status.setText("Done")
+        self.generative_finished_signal.emit(tab_name, result)
+        try:
+            text = ""
+            if result.data:
+                text = str(getattr(result.data, "text", result.data))
+            self._stt_result.setPlainText(text)
+        except Exception as exc:
+            logger.warning("stt result display error: %s", exc)
+            self._stt_status.setText(f"Display error: {exc}")
+
+    def _on_stt_clear(self) -> None:
+        self._stt_file_input.clear()
+        self._stt_result.clear()
+        self._stt_status.setText("Ready")
+
+    # ------------------------------------------------------------------
+    # Tab 3 — Translate
+    # ------------------------------------------------------------------
+
+    def _build_translate_tab(self) -> QWidget:
+        w, lay = self._make_tab_container()
+
+        self._translate_backend = BackendSelector(
+            backends=["mbart", "opus", "dict"], default_backend="dict"
+        )
+        self._translate_backend.setObjectName("generative_translate_backend")
+        lay.addWidget(self._translate_backend)
+
+        direction_row = QHBoxLayout()
+        dir_lbl = QLabel("Direction:")
+        dir_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        direction_row.addWidget(dir_lbl)
+        self._translate_direction = QComboBox()
+        self._translate_direction.setObjectName("generative_translate_direction")
+        self._translate_direction.addItems(["HE → EN", "HE → RU", "EN → HE"])
+        direction_row.addWidget(self._translate_direction)
+        direction_row.addStretch()
+        lay.addLayout(direction_row)
+
+        self._translate_input = RTLTextEdit(placeholder="הכנס טקסט לתרגום...")
+        self._translate_input.setObjectName("generative_translate_input")
+        self._translate_input.setMaximumHeight(120)
+        lay.addWidget(self._translate_input)
+
+        btn_row, run_btn, clear_btn, copy_btn, _ = self._make_button_row(
+            run_label="Translate", copy_label="Copy Result"
+        )
+        run_btn.setObjectName("generative_translate_run_btn")
+        clear_btn.setObjectName("generative_translate_clear_btn")
+        if _TranslatorCls is None:
+            run_btn.setEnabled(False)
+            run_btn.setToolTip("Translator not available (install [ml] extras)")
+        lay.addLayout(btn_row)
+
+        result_lbl = QLabel("Translation:")
+        result_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        lay.addWidget(result_lbl)
+
+        self._translate_result = RTLTextEdit(placeholder="Translation will appear here...")
+        self._translate_result.setObjectName("generative_translate_result")
+        self._translate_result.setReadOnly(True)
+        lay.addWidget(self._translate_result)
+
+        self._translate_status = self._make_status_label()
+        self._translate_status.setObjectName("generative_translate_status")
+        lay.addWidget(self._translate_status)
+
+        run_btn.clicked.connect(self._on_translate_run)
+        clear_btn.clicked.connect(self._on_translate_clear)
+        if copy_btn is not None:
+            copy_btn.clicked.connect(
+                lambda: self._copy_text_to_clipboard(
+                    self._translate_result.toPlainText()
+                )
+            )
+
+        return w
+
+    def _tgt_lang_from_direction(self) -> str:
+        mapping = {"HE → EN": "en", "HE → RU": "ru", "EN → HE": "he"}
+        return mapping.get(self._translate_direction.currentText(), "en")
+
+    def _on_translate_run(self) -> None:
+        text = self._translate_input.toPlainText().strip()
+        if not text or _TranslatorCls is None:
+            return
+        backend = self._translate_backend.backend
+        device = self._translate_backend.device
+        tgt_lang = self._tgt_lang_from_direction()
+        worker = GenerativeWorker(
+            tab_name="translate",
+            module_cls=_TranslatorCls,
+            module_config={},
+            input_data=text,
+            runtime_config={"backend": backend, "device": device, "tgt_lang": tgt_lang},
+        )
+        worker.signals.started.connect(
+            lambda t: self._translate_status.setText("Running...")
+        )
+        worker.signals.finished.connect(self._on_translate_result)
+        worker.signals.failed.connect(
+            lambda t, e: self._translate_status.setText(f"Error: {e}")
+        )
+        self._pool.start(worker)
+
+    def _on_translate_result(self, tab_name: str, result: Any) -> None:
+        self._translate_status.setText("Done")
+        self.generative_finished_signal.emit(tab_name, result)
+        try:
+            text = ""
+            if result.data:
+                text = str(getattr(result.data, "translation", result.data))
+            self._translate_result.setPlainText(text)
+        except Exception as exc:
+            logger.warning("translate result display error: %s", exc)
+            self._translate_status.setText(f"Display error: {exc}")
+
+    def _on_translate_clear(self) -> None:
+        self._translate_input.clear()
+        self._translate_result.clear()
+        self._translate_status.setText("Ready")
+
+    # ------------------------------------------------------------------
+    # Tab 4 — Diacritize
+    # ------------------------------------------------------------------
+
+    def _build_diacritize_tab(self) -> QWidget:
+        w, lay = self._make_tab_container()
+
+        self._diacritize_backend = BackendSelector(
+            backends=["rules", "phonikud", "dicta"], default_backend="rules"
+        )
+        self._diacritize_backend.setObjectName("generative_diacritize_backend")
+        lay.addWidget(self._diacritize_backend)
+
+        self._diacritize_input = RTLTextEdit(placeholder="הכנס טקסט ללא ניקוד")
+        self._diacritize_input.setObjectName("generative_diacritize_input")
+        self._diacritize_input.setMaximumHeight(120)
+        lay.addWidget(self._diacritize_input)
+
+        btn_row, run_btn, clear_btn, copy_btn, _ = self._make_button_row(
+            run_label="Diacritize", copy_label="Copy Result"
+        )
+        run_btn.setObjectName("generative_diacritize_run_btn")
+        clear_btn.setObjectName("generative_diacritize_clear_btn")
+        if _DiacrCls is None:
+            run_btn.setEnabled(False)
+            run_btn.setToolTip("Diacritizer not available (install [ml] extras)")
+        lay.addLayout(btn_row)
+
+        result_lbl = QLabel("Diacritized text:")
+        result_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        lay.addWidget(result_lbl)
+
+        self._diacritize_result = RTLTextEdit(placeholder="Diacritized text will appear here...")
+        self._diacritize_result.setObjectName("generative_diacritize_result")
+        self._diacritize_result.setReadOnly(True)
+        lay.addWidget(self._diacritize_result)
+
+        self._diacritize_status = self._make_status_label()
+        self._diacritize_status.setObjectName("generative_diacritize_status")
+        lay.addWidget(self._diacritize_status)
+
+        run_btn.clicked.connect(self._on_diacritize_run)
+        clear_btn.clicked.connect(self._on_diacritize_clear)
+        if copy_btn is not None:
+            copy_btn.clicked.connect(
+                lambda: self._copy_text_to_clipboard(
+                    self._diacritize_result.toPlainText()
+                )
+            )
+
+        return w
+
+    def _on_diacritize_run(self) -> None:
+        text = self._diacritize_input.toPlainText().strip()
+        if not text or _DiacrCls is None:
+            return
+        backend = self._diacritize_backend.backend
+        device = self._diacritize_backend.device
+        worker = GenerativeWorker(
+            tab_name="diacritize",
+            module_cls=_DiacrCls,
+            module_config={},
+            input_data=text,
+            runtime_config={"backend": backend, "device": device},
+        )
+        worker.signals.started.connect(
+            lambda t: self._diacritize_status.setText("Running...")
+        )
+        worker.signals.finished.connect(self._on_diacritize_result)
+        worker.signals.failed.connect(
+            lambda t, e: self._diacritize_status.setText(f"Error: {e}")
+        )
+        self._pool.start(worker)
+
+    def _on_diacritize_result(self, tab_name: str, result: Any) -> None:
+        self._diacritize_status.setText("Done")
+        self.generative_finished_signal.emit(tab_name, result)
+        try:
+            text = ""
+            if result.data:
+                text = str(getattr(result.data, "text", result.data))
+            self._diacritize_result.setPlainText(text)
+        except Exception as exc:
+            logger.warning("diacritize result display error: %s", exc)
+            self._diacritize_status.setText(f"Display error: {exc}")
+
+    def _on_diacritize_clear(self) -> None:
+        self._diacritize_input.clear()
+        self._diacritize_result.clear()
+        self._diacritize_status.setText("Ready")
+
+    # ------------------------------------------------------------------
+    # Tab 5 — NER
+    # ------------------------------------------------------------------
+
+    def _build_ner_tab(self) -> QWidget:
+        w, lay = self._make_tab_container()
+
+        self._ner_backend = BackendSelector(
+            backends=["rules", "heq_ner", "neodictabert"], default_backend="rules"
+        )
+        self._ner_backend.setObjectName("generative_ner_backend")
+        lay.addWidget(self._ner_backend)
+
+        self._ner_input = RTLTextEdit(placeholder="הכנס טקסט לזיהוי ישויות...")
+        self._ner_input.setObjectName("generative_ner_input")
+        self._ner_input.setMaximumHeight(100)
+        lay.addWidget(self._ner_input)
+
+        btn_row, run_btn, clear_btn, _, _ = self._make_button_row(
+            run_label="Extract Entities", copy_label=None
+        )
+        run_btn.setObjectName("generative_ner_run_btn")
+        clear_btn.setObjectName("generative_ner_clear_btn")
+        if _NERCls is None:
+            run_btn.setEnabled(False)
+            run_btn.setToolTip("NERExtractor not available (install [ml] extras)")
+        lay.addLayout(btn_row)
+
+        result_lbl = QLabel("Entities:")
+        result_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        lay.addWidget(result_lbl)
+
+        self._ner_entity_table = EntityTable()
+        self._ner_entity_table.setObjectName("generative_ner_entity_table")
+        lay.addWidget(self._ner_entity_table)
+
+        self._ner_status = self._make_status_label()
+        self._ner_status.setObjectName("generative_ner_status")
+        lay.addWidget(self._ner_status)
+
+        run_btn.clicked.connect(self._on_ner_run)
+        clear_btn.clicked.connect(self._on_ner_clear)
+
+        return w
+
+    def _on_ner_run(self) -> None:
+        text = self._ner_input.toPlainText().strip()
+        if not text or _NERCls is None:
+            return
+        backend = self._ner_backend.backend
+        device = self._ner_backend.device
+        worker = GenerativeWorker(
+            tab_name="ner",
+            module_cls=_NERCls,
+            module_config={},
+            input_data=text,
+            runtime_config={"backend": backend, "device": device},
+        )
+        worker.signals.started.connect(
+            lambda t: self._ner_status.setText("Running...")
+        )
+        worker.signals.finished.connect(self._on_ner_result)
+        worker.signals.failed.connect(
+            lambda t, e: self._ner_status.setText(f"Error: {e}")
+        )
+        self._pool.start(worker)
+
+    def _on_ner_result(self, tab_name: str, result: Any) -> None:
+        self._ner_status.setText("Done")
+        self.generative_finished_signal.emit(tab_name, result)
+        try:
+            entities: list[Any] = []
+            if result.data:
+                entities = list(
+                    getattr(result.data, "entities", result.data)
+                )
+            self._ner_entity_table.load(entities)
+        except Exception as exc:
+            logger.warning("ner result display error: %s", exc)
+            self._ner_status.setText(f"Display error: {exc}")
+
+    def _on_ner_clear(self) -> None:
+        self._ner_input.clear()
+        self._ner_entity_table.clear()
+        self._ner_status.setText("Ready")
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def refresh(self) -> None:
+        """No-op refresh hook (called by MainWindow on view switch)."""
+        logger.debug("GenerativeView.refresh() called")
