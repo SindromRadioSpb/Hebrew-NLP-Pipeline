@@ -79,6 +79,10 @@ class PipelineService:
             "diacritizer": ("kadima.engine.diacritizer", "Diacritizer"),
             "ner": ("kadima.engine.ner_extractor", "NERExtractor"),
             "translator": ("kadima.engine.translator", "Translator"),
+            "tts": ("kadima.engine.tts_synthesizer", "TTSSynthesizer"),
+            "stt": ("kadima.engine.stt_transcriber", "STTTranscriber"),
+            "sentiment": ("kadima.engine.sentiment_analyzer", "SentimentAnalyzer"),
+            "qa": ("kadima.engine.qa_extractor", "QAExtractor"),
         }
         for mod_name, (mod_path, cls_name) in _optional.items():
             if mod_name not in self.config.modules:
