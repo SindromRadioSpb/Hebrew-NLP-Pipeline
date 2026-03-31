@@ -74,7 +74,7 @@ make up-llm                 # + llama.cpp (GPU)
 | ID | Problem | Location |
 |----|---------|----------|
 | D4 | API routers: validation, annotation, kb, llm are empty stubs | `api/routers/` |
-| D5 | UI: main_window + 7 view files are 10-line stubs → being closed in T3 | `kadima/ui/` |
+| D5 | ~~UI: main_window + 7 view files are 10-line stubs~~ **CLOSED in T3** | `kadima/ui/` |
 | D6 | `Token` dataclass declared in 2 places with different fields | `data/models.py` and `engine/hebpipe_wrappers.py` |
 | D7 | SQLAlchemy ORM added alongside legacy sqlite3 — UI uses legacy layer by design | `data/` — `repositories.py` still uses raw sqlite3 |
 
@@ -689,6 +689,7 @@ except ImportError:
 | Phase 1 | Tier 1 генеративные: M22, M21, M13, M17, M14; generative router (5 endpoints) | **DONE** |
 | T1 | Transformer backbone: spacy-transformers, KadimaTransformer, pipeline builder, config.cfg | **DONE** |
 | T2 | Embeddings+data: NP chunker emb mode, NER neodictabert, NER training pipeline, KB emb search, term clusterer, SA ORM, async SA, model download script | **DONE** |
+| T3 | Desktop UI: MainWindow + 6 full views (Dashboard/Pipeline/Results/Validation/KB/Corpora) + 5 widgets + app.qss dark theme + smoke tests | **DONE** |
 
 ### Текущий план (по ТЗ углубления)
 
@@ -708,15 +709,15 @@ except ImportError:
 | | | R-2.6 SQLAlchemy migration (sqlite3 → SA 2.x + Alembic) | **DONE** | 8–12 |
 | | | R-2.7 Async data layer (aiosqlite + SA async sessions) | **DONE** | 4–6 |
 | | | R-2.8 Model download script (`scripts/download_models.sh`) | **DONE** | 2–3 |
-| **T3** | Desktop UI | Step 1: `main_window.py` — QMainWindow + QStackedWidget + MenuBar + lazy views | Pending | 4–6 |
-| | | Step 2: `widgets/status_card.py` + `dashboard_view.py` | Pending | 3–4 |
-| | | Step 3: `widgets/rtl_text_edit.py` + `pipeline_view.py` + PipelineWorker | Pending | 4–6 |
-| | | Step 4: `widgets/ngram_table.py` + `widgets/np_chunk_table.py` + `results_view.py` | Pending | 4–6 |
-| | | Step 5: `widgets/check_table.py` + `validation_view.py` + ResultColorDelegate | Pending | 3–4 |
-| | | Step 6: `kb_view.py` — text/embedding/similar search + definition editor | Pending | 4–6 |
-| | | Step 7: `corpora_view.py` — import + statistics + pipeline trigger | Pending | 3–4 |
-| | | Step 8: `styles/app.qss` + `styles/dark.qss` — design tokens, dark theme | Pending | 2–3 |
-| | | Step 9: `tests/ui/test_*.py` — pytest-qt smoke + signal + table tests | Pending | 4–6 |
+| **T3** | Desktop UI | Step 1: `main_window.py` — QMainWindow + QStackedWidget + MenuBar + lazy views | **DONE** | 4–6 |
+| | | Step 2: `widgets/status_card.py` + `dashboard_view.py` | **DONE** | 3–4 |
+| | | Step 3: `widgets/rtl_text_edit.py` + `pipeline_view.py` + PipelineWorker | **DONE** | 4–6 |
+| | | Step 4: `widgets/ngram_table.py` + `widgets/np_chunk_table.py` + `results_view.py` | **DONE** | 4–6 |
+| | | Step 5: `widgets/check_table.py` + `validation_view.py` + ResultColorDelegate | **DONE** | 3–4 |
+| | | Step 6: `kb_view.py` — text/embedding/similar search + definition editor | **DONE** | 4–6 |
+| | | Step 7: `corpora_view.py` — import + statistics + pipeline trigger | **DONE** | 3–4 |
+| | | Step 8: `styles/app.qss` — design tokens, dark theme | **DONE** | 2–3 |
+| | | Step 9: `tests/ui/test_main_window.py` — 29 pytest-qt smoke tests (skip if no PyQt6) | **DONE** | 4–6 |
 | **T4** | Phase 2 + UI | R-4.1 M18 Sentiment Classifier | Pending | 4–6 |
 | | | R-4.2 M15 TTS (Coqui/OpenTTS) | Pending | 6–8 |
 | | | R-4.3 M16 STT (Whisper) | Pending | 6–8 |
