@@ -72,6 +72,26 @@ class PipelineService:
             "noise": NoiseClassifier(),
         }
 
+        # Generative modules: lazy-loaded, skip if unavailable
+        _optional = {
+            "transliterator": ("kadima.engine.transliterator", "Transliterator"),
+            "morph_gen": ("kadima.engine.morph_generator", "MorphGenerator"),
+            "diacritizer": ("kadima.engine.diacritizer", "Diacritizer"),
+            "ner": ("kadima.engine.ner_extractor", "NERExtractor"),
+            "translator": ("kadima.engine.translator", "Translator"),
+        }
+        for mod_name, (mod_path, cls_name) in _optional.items():
+            if mod_name not in self.config.modules:
+                continue
+            try:
+                import importlib
+                mod = importlib.import_module(mod_path)
+                cls = getattr(mod, cls_name)
+                self.modules[mod_name] = cls()
+                logger.info("Loaded generative module: %s", mod_name)
+            except ImportError as e:
+                logger.warning("Module %s unavailable: %s", mod_name, e)
+
     def _get_module_config(self, module_name: str) -> Dict[str, Any]:
         """Получить конфигурацию модуля с учётом профиля."""
         base = self.config.get_module_config(module_name)
