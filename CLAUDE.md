@@ -547,18 +547,61 @@ Scope: engine | pipeline | api | ui | data | config | docker | ci
 
 ---
 
-## Phased Roadmap
+## Roadmap (TZ: углубление функционала)
 
-Detailed plan with patch series, VRAM budgets, and exit criteria:
-**`Tasks/Kadima_v2.md`**
+Полный план — `Tasks/TZ_uglublenie_funkcionala_KADIMA.md`.
+Источники аудита — `Tasks/Источники/`.
 
-| Phase | Scope | Key deliverables | Status |
-|-------|-------|-----------------|--------|
-| 0 | Stabilization | Fix B1-B4, add CI, harden Docker, add [ml] deps | **DONE** |
-| 1 | Tier 1 modules | M22, M21, M13, M17, M14 (rules + small ML) | **DONE** |
-| 2 | Tier 2 modules | M18, M20, M19, M15, M16 (heavy ML + VRAM mgmt) | Pending |
-| 3 | Tier 3 + infra | M24, M23, M25, full API, UI | Pending |
-| 4 | v1.0.0 release | Regression suite, load testing, security audit, docs | Pending |
+### Завершённые фазы
+
+| Фаза | Содержание | Статус |
+|------|-----------|--------|
+| Phase 0 | Стабилизация: B1–B4, CI, Docker, deps | **DONE** |
+| Phase 1 | Tier 1 генеративные: M22, M21, M13, M17, M14; generative router (5 endpoints) | **DONE** |
+
+### Текущий план (по ТЗ углубления)
+
+| Tier | Набор | Требования | Статус | Часов |
+|------|-------|-----------|--------|-------|
+| **T1** | Transformer backbone | R-1.1 spacy-transformers в core deps | Pending | 1 |
+| | | R-1.2 NeoDictaBERT component (`nlp/components/transformer_component.py`) | Pending | 8–12 |
+| | | R-1.3 Pipeline builder с `use_transformer` flag | Pending | 4–6 |
+| | | R-1.4 Graceful degradation (no VRAM / no model) | Pending | 2–3 |
+| | | R-1.5 pyproject.toml — hebpipe/numpy/scipy/pandas в core | Pending | 2 |
+| | | R-1.6 spaCy `config/config.cfg` с transformer backbone | Pending | 3–4 |
+| **T2** | Embeddings + data | R-2.1 M5 NP Chunker — transformer embeddings mode | Pending | 6–8 |
+| | | R-2.2 M17 NER — NeoDictaBERT backend + fallback chain | Pending | 8–10 |
+| | | R-2.3 NER training pipeline (Label Studio → spaCy) | Pending | 4–6 |
+| | | R-2.4 KB embedding search (cosine similarity) | Pending | 4–6 |
+| | | R-2.5 Term clustering (k-means / HDBSCAN) | Pending | 3–4 |
+| | | R-2.6 SQLAlchemy migration (sqlite3 → SA 2.x + Alembic) | Pending | 8–12 |
+| | | R-2.7 Async data layer (aiosqlite + SA async sessions) | Pending | 4–6 |
+| | | R-2.8 Model download script (`scripts/download_models.sh`) | Pending | 2–3 |
+| **T3** | Desktop UI | R-3.1 Dashboard (`ui/dashboard.py`, QMainWindow + QStackedWidget) | Pending | 16–24 |
+| | | R-3.2 Pipeline configuration UI | Pending | 8–12 |
+| | | R-3.3 Results View (terms/ngrams/NP tables, CSV export) | Pending | 8–12 |
+| | | R-3.4 Validation Report UI (PASS/WARN/FAIL) | Pending | 4–6 |
+| **T4** | Phase 2 модули | R-4.1 M18 Sentiment Classifier | Pending | 4–6 |
+| | | R-4.2 M15 TTS (Coqui/OpenTTS) | Pending | 6–8 |
+| | | R-4.3 M16 STT (Whisper) | Pending | 6–8 |
+| | | R-4.4 M20 Active Learning (uncertainty sampling → LS) | Pending | 6–8 |
+| **T5** | Phase 3 модули | R-5.1 M24 Keyphrase (YAKE) | Pending | 3–4 |
+| | | R-5.2 M23 Grammar Checker (Dicta-LM) | Pending | 4–6 |
+| | | R-5.3 M25 Summarizer (Dicta-LM) | Pending | 4–6 |
+| **T6** | Infrastructure | R-6.1 Docker Compose production-ready | Pending | 3–5 |
+| | | R-6.2 Документация синхронизация | Pending | 2–3 |
+
+**Порядок выполнения:**
+```
+T1 (R-1.1→R-1.6) → T2-embeddings (R-2.1→R-2.5) → T2-data (R-2.6→R-2.8) [параллельно с T2-emb]
+→ T3 (R-3.1→R-3.4) → T4 (R-4.1→R-4.4) → T5 (R-5.1→R-5.3) → T6
+```
+
+**Зависимости:**
+- T2 embeddings (R-2.1–R-2.5) требует R-1.2 (NeoDictaBERT)
+- T2 data (R-2.6–R-2.7) независим от T1
+- T3 требует R-2.6 (SQLAlchemy)
+- T4/T5 независимы от T1–T3 (кроме R-4.4 → R-2.2)
 
 ---
 
