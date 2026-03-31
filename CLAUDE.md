@@ -69,6 +69,7 @@ make up-llm                 # + llama.cpp (GPU)
 | D4 | API routers: validation, annotation, kb, llm are empty stubs | `api/routers/` |
 | D5 | UI: all 7 widget files are 10-line stubs | `kadima/ui/` |
 | D6 | `Token` dataclass declared in 2 places with different fields | `data/models.py` and `engine/hebpipe_wrappers.py` |
+| D7 | SQLAlchemy ORM added alongside legacy sqlite3 — full migration to SA pending | `data/` — `repositories.py` still uses raw sqlite3 |
 
 ---
 
@@ -563,19 +564,19 @@ Scope: engine | pipeline | api | ui | data | config | docker | ci
 
 | Tier | Набор | Требования | Статус | Часов |
 |------|-------|-----------|--------|-------|
-| **T1** | Transformer backbone | R-1.1 spacy-transformers в core deps | Pending | 1 |
-| | | R-1.2 NeoDictaBERT component (`nlp/components/transformer_component.py`) | Pending | 8–12 |
-| | | R-1.3 Pipeline builder с `use_transformer` flag | Pending | 4–6 |
-| | | R-1.4 Graceful degradation (no VRAM / no model) | Pending | 2–3 |
-| | | R-1.5 pyproject.toml — hebpipe/numpy/scipy/pandas в core | Pending | 2 |
-| | | R-1.6 spaCy `config/config.cfg` с transformer backbone | Pending | 3–4 |
+| **T1** | Transformer backbone | R-1.1 spacy-transformers в core deps | **DONE** | 1 |
+| | | R-1.2 NeoDictaBERT component (`nlp/components/transformer_component.py`) | **DONE** | 8–12 |
+| | | R-1.3 Pipeline builder с `use_transformer` flag | **DONE** | 4–6 |
+| | | R-1.4 Graceful degradation (no VRAM / no model) | **DONE** | 2–3 |
+| | | R-1.5 pyproject.toml — hebpipe/numpy/scipy/pandas в core | **DONE** | 2 |
+| | | R-1.6 spaCy `config/config.cfg` с transformer backbone | **DONE** | 3–4 |
 | **T2** | Embeddings + data | R-2.1 M5 NP Chunker — transformer embeddings mode | Pending | 6–8 |
 | | | R-2.2 M17 NER — NeoDictaBERT backend + fallback chain | Pending | 8–10 |
 | | | R-2.3 NER training pipeline (Label Studio → spaCy) | Pending | 4–6 |
 | | | R-2.4 KB embedding search (cosine similarity) | Pending | 4–6 |
 | | | R-2.5 Term clustering (k-means / HDBSCAN) | Pending | 3–4 |
-| | | R-2.6 SQLAlchemy migration (sqlite3 → SA 2.x + Alembic) | Pending | 8–12 |
-| | | R-2.7 Async data layer (aiosqlite + SA async sessions) | Pending | 4–6 |
+| | | R-2.6 SQLAlchemy migration (sqlite3 → SA 2.x + Alembic) | **DONE** | 8–12 |
+| | | R-2.7 Async data layer (aiosqlite + SA async sessions) | **DONE** | 4–6 |
 | | | R-2.8 Model download script (`scripts/download_models.sh`) | Pending | 2–3 |
 | **T3** | Desktop UI | R-3.1 Dashboard (`ui/dashboard.py`, QMainWindow + QStackedWidget) | Pending | 16–24 |
 | | | R-3.2 Pipeline configuration UI | Pending | 8–12 |
