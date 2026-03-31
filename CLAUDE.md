@@ -49,8 +49,9 @@ make up-llm                 # + llama.cpp (GPU)
 | Data layer | Working | WAL, FK, 4 migrations, parameterized queries |
 | Validation | Working | 26 gold corpus sets, check_engine |
 | Annotation client | Working | Label Studio REST client, sync, project manager |
-| API (corpora, pipeline) | Working | FastAPI, 2 of 6 routers functional |
-| Tests | 350+ functions | Engine, config, corpus, data, validation, E2E covered |
+| API (corpora, pipeline, generative) | Working | FastAPI, 3 of 6 routers functional |
+| Generative M13, M14, M17, M21, M22 | Working | Rules + ML fallback, API endpoints live |
+| Tests | 500+ functions | Engine, config, corpus, data, validation, E2E covered |
 
 ### Resolved blockers (Phase 0)
 
@@ -65,9 +66,6 @@ make up-llm                 # + llama.cpp (GPU)
 
 | ID | Problem | Location |
 |----|---------|----------|
-| D1 | Docker: `LABEL_STUDIO_PASSWORD` hardcoded | `docker-compose.yml` |
-| D2 | Docker: images unpinned (`:latest`) | `docker-compose.yml` |
-| D3 | Docker: `service_started` instead of `service_healthy` | `docker-compose.yml` |
 | D4 | API routers: validation, annotation, kb, llm are empty stubs | `api/routers/` |
 | D5 | UI: all 7 widget files are 10-line stubs | `kadima/ui/` |
 | D6 | `Token` dataclass declared in 2 places with different fields | `data/models.py` and `engine/hebpipe_wrappers.py` |
@@ -109,7 +107,7 @@ make up-llm                 # + llama.cpp (GPU)
 |----|--------|------|-----|--------|
 | M1 | Sentence Splitter | `hebpipe_wrappers.py` | `str -> SentenceSplitResult` | Working (regex, no HebPipe) |
 | M2 | Tokenizer | `hebpipe_wrappers.py` | `str -> TokenizeResult` | Working (str.split, no HebPipe) |
-| M3 | Morph Analyzer | `hebpipe_wrappers.py` | `List[Token] -> MorphResult` | **STUB**: lemma=surface, POS="NOUN" |
+| M3 | Morph Analyzer | `hebpipe_wrappers.py` | `List[Token] -> MorphResult` | Working (rule-based: prefix strip + POS heuristics; hebpipe fallback) |
 | M4 | N-gram Extractor | `ngram_extractor.py` | `List[List[Token]] -> NgramResult` | Working |
 | M5 | NP Chunker | `np_chunker.py` | `List[MorphAnalysis] -> NPChunkResult` | Working |
 | M6 | Canonicalizer | `canonicalizer.py` | `List[str] -> CanonicalResult` | Working |
@@ -119,23 +117,24 @@ make up-llm                 # + llama.cpp (GPU)
 
 ### Generative Modules (on-demand, NOT sequential)
 
-| ID | Module | File | Model | VRAM | I/O | Tier |
-|----|--------|------|-------|------|-----|------|
-| M13 | Diacritizer | `diacritizer.py` | phonikud-onnx / DictaBERT | <1GB | `str -> str` | 1 |
-| M14 | Translator | `translator.py` | mBART-50 / OPUS-MT | 3GB | `str,lang -> str` | 1 |
-| M15 | TTS Synthesizer | `tts_synthesizer.py` | XTTS v2 (Coqui) | 4GB | `str -> Path(WAV)` | 2 |
-| M16 | STT Transcriber | `stt_transcriber.py` | Whisper large-v3 | 3-6GB | `Path(WAV) -> str` | 2 |
-| M17 | NER Extractor | `ner_extractor.py` | HeQ-NER (dicta-il) | <1GB | `str -> List[Entity]` | 1 |
-| M18 | Sentiment Analyzer | `sentiment_analyzer.py` | heBERT | <1GB | `str -> {label,score}` | 2 |
-| M19 | Summarizer | `summarizer.py` | mT5-base | 2GB | `str -> str` | 2 |
-| M20 | QA Extractor | `qa_extractor.py` | AlephBERT | <1GB | `{q,ctx} -> {answer,score}` | 2 |
-| M21 | Morph Generator | `morph_generator.py` | Rules (no ML) | 0 | `lemma,pos -> List[MorphForm]` | 1 |
-| M22 | Transliterator | `transliterator.py` | Rules + lookup | 0 | `str <-> str` | 1 |
-| M23 | Grammar Corrector | `grammar_corrector.py` | T5-hebrew / LLM | 2-4GB | `str -> str` | 3 |
-| M24 | Keyphrase Extractor | `keyphrase_extractor.py` | YAKE! / KeyBERT | <1GB | `str -> List[str]` | 3 |
-| M25 | Paraphraser | `paraphraser.py` | mT5 / LLM | 2-4GB | `str -> List[str]` | 3 |
+| ID | Module | File | Model | VRAM | I/O | Tier | Status |
+|----|--------|------|-------|------|-----|------|--------|
+| M13 | Diacritizer | `diacritizer.py` | phonikud-onnx / DictaBERT | <1GB | `str -> str` | 1 | **Working** (rules + ML fallback) |
+| M14 | Translator | `translator.py` | mBART-50 / OPUS-MT | 3GB | `str,lang -> str` | 1 | **Working** (dict + ML fallback) |
+| M15 | TTS Synthesizer | `tts_synthesizer.py` | XTTS v2 (Coqui) | 4GB | `str -> Path(WAV)` | 2 | Stub |
+| M16 | STT Transcriber | `stt_transcriber.py` | Whisper large-v3 | 3-6GB | `Path(WAV) -> str` | 2 | Stub |
+| M17 | NER Extractor | `ner_extractor.py` | HeQ-NER (dicta-il) | <1GB | `str -> List[Entity]` | 1 | **Working** (gazetteer + ML fallback) |
+| M18 | Sentiment Analyzer | `sentiment_analyzer.py` | heBERT | <1GB | `str -> {label,score}` | 2 | Stub |
+| M19 | Summarizer | `summarizer.py` | mT5-base | 2GB | `str -> str` | 2 | Stub |
+| M20 | QA Extractor | `qa_extractor.py` | AlephBERT | <1GB | `{q,ctx} -> {answer,score}` | 2 | Stub |
+| M21 | Morph Generator | `morph_generator.py` | Rules (no ML) | 0 | `lemma,pos -> List[MorphForm]` | 1 | **Working** (7 binyanim, noun/adj inflection) |
+| M22 | Transliterator | `transliterator.py` | Rules + lookup | 0 | `str <-> str` | 1 | **Working** (Academy + IPA + reverse) |
+| M23 | Grammar Corrector | `grammar_corrector.py` | T5-hebrew / LLM | 2-4GB | `str -> str` | 3 | Stub |
+| M24 | Keyphrase Extractor | `keyphrase_extractor.py` | YAKE! / KeyBERT | <1GB | `str -> List[str]` | 3 | Stub |
+| M25 | Paraphraser | `paraphraser.py` | mT5 / LLM | 2-4GB | `str -> List[str]` | 3 | Stub |
 
-**All M13-M25 are NOT YET IMPLEMENTED.** See `Tasks/Kadima_v2.md` for phased plan.
+**Phase 1 (Tier 1) complete:** M13, M14, M17, M21, M22 implemented with rules + ML fallback.
+**Remaining:** M15, M16, M18, M19, M20 (Tier 2); M23, M24, M25 (Tier 3). See `Tasks/Kadima_v2.md`.
 
 **Tier meaning:** 1 = first to implement (rules-only or <1GB), 2 = ML-heavy, 3 = LLM-dependent.
 
@@ -405,26 +404,24 @@ deploy:
 | `GET` | `/api/v1/corpora` | Working |
 | `POST` | `/api/v1/corpora` | Working |
 | `POST` | `/api/v1/pipeline/run-text` | Working |
-| `POST` | `/api/v1/pipeline/run/{corpus_id}` | **Stub** (B2) |
+| `POST` | `/api/v1/pipeline/run/{corpus_id}` | Working |
+| `POST` | `/api/v1/generative/transliterate` | Working (M22) |
+| `POST` | `/api/v1/generative/morph-gen` | Working (M21) |
+| `POST` | `/api/v1/generative/diacritize` | Working (M13) |
+| `POST` | `/api/v1/generative/ner` | Working (M17) |
+| `POST` | `/api/v1/generative/translate` | Working (M14) |
 
-### Planned (generative router)
-
-`kadima/api/routers/generative.py`:
+### Planned (generative router — Tier 2/3)
 
 ```
-POST /api/v1/generative/diacritize    {text} -> {result}
-POST /api/v1/generative/translate     {text, tgt_lang} -> {result}
-POST /api/v1/generative/tts           {text} -> {audio_url}
-POST /api/v1/generative/stt           {audio_url} -> {text}
-POST /api/v1/generative/ner           {text} -> {entities}
-POST /api/v1/generative/sentiment     {text} -> {label, score}
-POST /api/v1/generative/summarize     {text} -> {summary}
-POST /api/v1/generative/qa            {question, context} -> {answer}
-POST /api/v1/generative/morph-gen     {lemma, pos} -> {forms}
-POST /api/v1/generative/transliterate {text, mode} -> {result}
-POST /api/v1/generative/grammar       {text} -> {corrected}
-POST /api/v1/generative/keyphrase     {text} -> {keyphrases}
-POST /api/v1/generative/paraphrase    {text} -> {paraphrases}
+POST /api/v1/generative/tts           {text} -> {audio_url}      (M15, Tier 2)
+POST /api/v1/generative/stt           {audio_url} -> {text}      (M16, Tier 2)
+POST /api/v1/generative/sentiment     {text} -> {label, score}   (M18, Tier 2)
+POST /api/v1/generative/summarize     {text} -> {summary}        (M19, Tier 2)
+POST /api/v1/generative/qa            {question, context} -> {answer} (M20, Tier 2)
+POST /api/v1/generative/grammar       {text} -> {corrected}      (M23, Tier 3)
+POST /api/v1/generative/keyphrase     {text} -> {keyphrases}     (M24, Tier 3)
+POST /api/v1/generative/paraphrase    {text} -> {paraphrases}    (M25, Tier 3)
 ```
 
 ### Stub routers (need implementation)
@@ -529,7 +526,6 @@ Scope: engine | pipeline | api | ui | data | config | docker | ci
 - Do not use CUDA without checking `torch.cuda.is_available()`
 - Do not mix fixtures with real data
 - Do not load all ML models simultaneously — respect VRAM budget
-- Do not start M13-M25 work until blockers B1-B4 are resolved
 - Do not break existing tests to add new features
 
 ---
@@ -556,13 +552,13 @@ Scope: engine | pipeline | api | ui | data | config | docker | ci
 Detailed plan with patch series, VRAM budgets, and exit criteria:
 **`Tasks/Kadima_v2.md`**
 
-| Phase | Scope | Key deliverables |
-|-------|-------|-----------------|
-| 0 | Stabilization | Fix B1-B4, add CI, harden Docker, add [ml] deps |
-| 1 | Tier 1 modules | M22, M21, M13, M17, M14 (rules + small ML) |
-| 2 | Tier 2 modules | M18, M20, M19, M15, M16 (heavy ML + VRAM mgmt) |
-| 3 | Tier 3 + infra | M24, M23, M25, full API, UI, PipelineService.run() |
-| 4 | v1.0.0 release | Regression suite, load testing, security audit, docs |
+| Phase | Scope | Key deliverables | Status |
+|-------|-------|-----------------|--------|
+| 0 | Stabilization | Fix B1-B4, add CI, harden Docker, add [ml] deps | **DONE** |
+| 1 | Tier 1 modules | M22, M21, M13, M17, M14 (rules + small ML) | **DONE** |
+| 2 | Tier 2 modules | M18, M20, M19, M15, M16 (heavy ML + VRAM mgmt) | Pending |
+| 3 | Tier 3 + infra | M24, M23, M25, full API, UI | Pending |
+| 4 | v1.0.0 release | Regression suite, load testing, security audit, docs | Pending |
 
 ---
 
