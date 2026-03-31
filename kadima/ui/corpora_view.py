@@ -1,9 +1,10 @@
-# kadima/ui/validation_view.py
-"""Validation view — placeholder (implemented in Step 5).
+# kadima/ui/corpora_view.py
+"""Corpora view — placeholder (implemented in Step 7).
 
-Full spec: Tasks/3. TZ_UI_desktop_KADIMA.md § 3.4
-Data sources: validation/check_engine.py, validation/report.py
-Widgets: ResultColorDelegate (PASS=green, WARN=yellow, FAIL=red)
+Full spec: Tasks/3. TZ_UI_desktop_KADIMA.md § 3.6
+Data sources: corpus/importer.py (.txt .csv .conllu .json),
+              corpus/statistics.py (compute_statistics),
+              data/repositories.py (corpus list)
 """
 from __future__ import annotations
 
@@ -20,28 +21,28 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class ValidationView(QWidget):
-    """Validation report view — PASS/WARN/FAIL checks table + review editor.
+class CorporaView(QWidget):
+    """Corpora management view — import, list, statistics, pipeline trigger.
 
-    Stub placeholder. Full implementation: Step 5.
+    Stub placeholder. Full implementation: Step 7.
     """
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         if not _HAS_QT:
             raise ImportError("PyQt6 required. Install with: pip install -e '.[gui]'")
         super().__init__(parent)
-        self.setObjectName("validation_view")
+        self.setObjectName("corpora_view")
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl = QLabel(
-            "✅  Validation\n\n"
-            "PASS / WARN / FAIL summary cards\n"
-            "Checks table · ResultColorDelegate · Review editor\n\n"
-            "Coming in Step 5"
+            "🗂  Corpora\n\n"
+            "Import (.txt / .csv / .conllu / .json)\n"
+            "Corpus table · Statistics · Run pipeline\n\n"
+            "Coming in Step 7"
         )
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl.setStyleSheet("font-size: 16px; color: #888; line-height: 1.8;")
         layout.addWidget(lbl)
 
     def refresh(self) -> None:
-        """Reload validation results (no-op until Step 5)."""
+        """Reload corpus list from DB (no-op until Step 7)."""
