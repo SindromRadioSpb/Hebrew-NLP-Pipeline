@@ -20,6 +20,10 @@ dependencies = [
     "numpy>=1.26,<2.0",
     "scipy>=1.12,<2.0",
     "pandas>=2.1,<3.0",
+    # Data layer — SQLAlchemy (R-2.6) + async (R-2.7)
+    "sqlalchemy>=2.0,<3",
+    "alembic>=1.13,<2",
+    "aiosqlite>=0.20",
     # HTTP clients (annotation + LLM backends)
     "httpx>=0.27,<1",
     # API server
