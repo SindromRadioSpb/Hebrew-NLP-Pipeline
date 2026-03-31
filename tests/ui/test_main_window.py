@@ -15,7 +15,7 @@ import pytest
 pytest.importorskip("PyQt6", reason="PyQt6 not installed")
 
 from PyQt6.QtCore import Qt  # noqa: E402
-from PyQt6.QtWidgets import QComboBox, QLabel, QListWidget, QStackedWidget  # noqa: E402
+from PyQt6.QtWidgets import QComboBox, QFrame, QLabel, QListWidget, QStackedWidget, QToolBar  # noqa: E402
 
 from kadima.ui.main_window import MainWindow, _PROFILES, _VIEW_REGISTRY  # noqa: E402
 
@@ -134,7 +134,7 @@ def test_set_pipeline_status_updates_label(window):
 
 def test_has_toolbar(window):
     """Main toolbar is registered and visible."""
-    tb = window.findChild(None, "main_toolbar")  # QToolBar
+    tb = window.findChild(QToolBar, "main_toolbar")
     assert tb is not None
 
 
@@ -246,7 +246,7 @@ def test_central_widget_object_name(window):
 
 
 def test_nav_panel_object_name(window):
-    panel = window.findChild(None, "nav_panel")
+    panel = window.findChild(QFrame, "nav_panel")
     assert panel is not None
 
 

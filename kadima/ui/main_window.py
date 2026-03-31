@@ -149,6 +149,7 @@ class MainWindow(QMainWindow):
 
         self._view_cache: Dict[int, QWidget] = {}
         self._current_index: int = -1
+        self._wired: set[str] = set()
 
         self._setup_window()
         self._create_menubar()
@@ -328,6 +329,104 @@ class MainWindow(QMainWindow):
         self.pipeline_run_requested.connect(self._on_run_requested)
         self.pipeline_stop_requested.connect(self._on_stop_requested)
 
+    # ── Cross-view wiring ─────────────────────────────────────────────────────
+
+    def _wire_all(self) -> None:
+        """Connect cross-view signals whenever new views become available.
+
+        Called every time a view is created; idempotent via _wired set.
+        """
+        cache = self._view_cache
+
+        # Pipeline(1) → statusbar + Results(2)
+        if 1 in cache and "pipe_signals" not in self._wired:
+            pipe = cache[1]
+            if hasattr(pipe, "run_started_signal"):
+                pipe.run_started_signal.connect(lambda: self.set_pipeline_status("running"))
+                pipe.run_finished_signal.connect(self._on_pipeline_finished)
+                pipe.run_failed_signal.connect(self._on_pipeline_failed)
+            self._wired.add("pipe_signals")
+
+        # Corpora(5) → Pipeline(1)
+        if 5 in cache and 1 in cache and "corpora_pipe" not in self._wired:
+            if hasattr(cache[5], "pipeline_run_requested"):
+                cache[5].pipeline_run_requested.connect(self._on_corpora_run_pipeline)
+            self._wired.add("corpora_pipe")
+
+        # Results(2) → KB(4)
+        if 2 in cache and 4 in cache and "results_kb" not in self._wired:
+            if hasattr(cache[2], "kb_open_requested"):
+                cache[2].kb_open_requested.connect(self._on_results_open_kb)
+            self._wired.add("results_kb")
+
+        # Validation(3) run + upload
+        if 3 in cache and "validation" not in self._wired:
+            v = cache[3]
+            if hasattr(v, "run_validation_requested"):
+                v.run_validation_requested.connect(self._run_validation)
+                v.upload_corpus_requested.connect(self._upload_gold_corpus)
+            self._wired.add("validation")
+
+        # Dashboard(0) quick actions
+        if 0 in cache and "dashboard" not in self._wired:
+            d = cache[0]
+            if hasattr(d, "quick_run_clicked"):
+                d.quick_run_clicked.connect(lambda: self._switch_view(1))
+                d.results_clicked.connect(lambda: self._switch_view(2))
+                d.kb_clicked.connect(lambda: self._switch_view(4))
+                d.import_clicked.connect(lambda: self._switch_view(5))
+            self._wired.add("dashboard")
+
+        # Corpora(5) → Dashboard(0) refresh after any run
+        if 0 in cache and 5 in cache and "corpora_dashboard" not in self._wired:
+            dash = cache[0]
+            if hasattr(dash, "refresh") and hasattr(cache[5], "pipeline_run_requested"):
+                cache[5].pipeline_run_requested.connect(lambda _: dash.refresh())
+            self._wired.add("corpora_dashboard")
+
+    # ── Cross-view handlers ───────────────────────────────────────────────────
+
+    def _on_pipeline_finished(self, result: object) -> None:
+        """Forward pipeline result to ResultsView and update status."""
+        self.set_pipeline_status("idle")
+        self._status_pipeline.setStyleSheet("")
+        results_view = self._get_or_create_view(2)
+        if hasattr(results_view, "load_results"):
+            results_view.load_results(result)
+        self._switch_view(2)
+        # Refresh dashboard stats if loaded
+        dash = self._view_cache.get(0)
+        if dash and hasattr(dash, "refresh"):
+            dash.refresh()
+
+    def _on_pipeline_failed(self, error: str) -> None:
+        """Update status bar on pipeline failure."""
+        self.set_pipeline_status("error")
+        self._status_pipeline.setStyleSheet("color: #ef4444;")
+        logger.warning("Pipeline failed: %s", error)
+
+    def _on_corpora_run_pipeline(self, corpus_id: int) -> None:
+        """Switch to Pipeline view and run it for the given corpus."""
+        self._switch_view(1)
+        pipe = self._view_cache.get(1)
+        if pipe and hasattr(pipe, "trigger_run_for_corpus"):
+            pipe.trigger_run_for_corpus(corpus_id)
+
+    def _on_results_open_kb(self, surface: str) -> None:
+        """Open KB view and search for the given term surface."""
+        kb_view = self._get_or_create_view(4)
+        self._switch_view(4)
+        if hasattr(kb_view, "search"):
+            kb_view.search(surface, "surface")
+
+    def _run_validation(self) -> None:
+        """Trigger validation run (stub — wired to ValidationView signal)."""
+        logger.info("Run validation requested")
+
+    def _upload_gold_corpus(self) -> None:
+        """Trigger gold corpus upload (stub — wired to ValidationView signal)."""
+        logger.info("Upload gold corpus requested")
+
     # ── View switching ────────────────────────────────────────────────────────
 
     def _switch_view(self, index: int) -> None:
@@ -368,6 +467,7 @@ class MainWindow(QMainWindow):
 
         self._view_cache[index] = widget
         self._stack.addWidget(widget)
+        self._wire_all()
         return widget
 
     def _make_error_placeholder(self, name: str, error: str) -> QWidget:

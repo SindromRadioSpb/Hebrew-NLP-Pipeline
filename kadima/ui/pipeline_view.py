@@ -466,6 +466,16 @@ class PipelineView(QWidget):
 
         self._pool.start(self._worker)
 
+    def trigger_run_for_corpus(self, corpus_id: int) -> None:
+        """Switch to Corpus mode, select corpus_id, and start the pipeline."""
+        self.refresh()  # ensure corpus list is current
+        self._mode_combo.setCurrentIndex(1)  # Corpus mode
+        for i in range(self._corpus_combo.count()):
+            if self._corpus_combo.itemData(i) == corpus_id:
+                self._corpus_combo.setCurrentIndex(i)
+                break
+        self.trigger_run()
+
     def trigger_stop(self) -> None:
         """Request pipeline cancellation."""
         if self._worker:
