@@ -1,0 +1,42 @@
+ ``
+   You are working on the Kadima project at E:\projects\Project_Vibe\Kadima\.
+
+   READ CLAUDE.md first — it contains the full project map, module list (M1–M25),
+   architecture, conventions, and integration points.
+
+   YOUR FIRST TASK:
+   1. Read CLAUDE.md completely
+   2. Read kadima/engine/contracts.py — understand ProcessorProtocol
+   3. Read kadima/pipeline/orchestrator.py — understand how M1–M8, M12 are registered                                      
+   4. Read config/config.default.yaml — understand configuration structure
+   5. Run existing tests: pytest tests/ -v — all must pass before you change anything
+
+   THEN:
+   Pick ONE module from the "Новые модули (M13–M25)" table in CLAUDE.md.
+   Start with M13 (Diacritizer) — it's the simplest and most proven.
+
+   For M13, do this IN ORDER:
+   1. Create kadima/engine/diacritizer.py implementing ProcessorProtocol
+   2. Add unit tests: tests/engine/test_diacritizer.py
+   3. Add config section to config/config.default.yaml
+   4. Register in kadima/pipeline/orchestrator.py _register_modules()
+   5. Add CLI command to kadima/cli.py
+   6. Run: pytest tests/ -v — must be 100% PASS before committing
+
+   CONSTRAINTS:
+   - Never break existing tests
+   - Follow ProcessorProtocol exactly (name, module_id, process())
+   - Handle ImportError gracefully (phonikud-onnx is optional)
+   - Check torch.cuda.is_available() before .to("cuda")
+   - Use logging, not print()
+   - Google-style docstrings on all public methods
+   - Commit after each working module
+   - Target hardware: RTX 3060 (12GB VRAM)
+
+   DO NOT touch M14–M25 until M13 is fully done and committed.
+
+   For implementation reference, the prototype code is described in CLAUDE.md
+   section "Детализация новых модулей" with class signatures, backends,
+   and metrics for each module M13–M25. Use these as specification,                                                        
+   not copy-paste — adapt to ProcessorProtocol architecture.
+ ```

@@ -1,39 +1,53 @@
-# Dockerfile — KADIMA API server
+# Dockerfile — KADIMA API server (multi-stage)
 # Build: docker build -t kadima-api .
 # Run:   docker run -p 8501:8501 -v kadima-data:/data kadima-api
 
-FROM python:3.12-slim AS base
+# ── Stage 1: install dependencies ────────────────────────────────────────────
+FROM python:3.12-slim AS builder
 
-# Prevent Python from writing .pyc and enable unbuffered output
+ENV PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /build
+
+COPY pyproject.toml ./
+COPY kadima/ ./kadima/
+COPY config/ ./config/
+COPY templates/ ./templates/
+
+RUN pip install --no-cache-dir --prefix=/install .
+
+# ── Stage 2: minimal runtime ─────────────────────────────────────────────────
+FROM python:3.12-slim AS runtime
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# System deps
+# curl for healthchecks
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        curl \
-    && rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# ── Copy project files ──────────────────────────────────────────────────────
-COPY pyproject.toml ./
+# Copy installed packages from builder
+COPY --from=builder /install /usr/local
+
+# Copy application code
 COPY config/ ./config/
 COPY templates/ ./templates/
 COPY kadima/ ./kadima/
 
-# ── Install ──────────────────────────────────────────────────────────────────
-RUN pip install --no-cache-dir .
+# Non-root user
+RUN useradd --no-create-home --uid 1000 appuser
+USER appuser
 
-# ── Runtime ──────────────────────────────────────────────────────────────────
 # Data volume: /data holds kadima.db, logs, models, backups
 ENV KADIMA_HOME=/data
 VOLUME /data
 
 EXPOSE 8501
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8501/health || exit 1
 
 ENTRYPOINT ["kadima"]

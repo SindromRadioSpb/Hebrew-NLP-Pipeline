@@ -2,8 +2,11 @@
 # Usage:
 #   docker compose up -d                  — API + Label Studio
 #   docker compose --profile llm up -d    — + llama.cpp LLM server
+#   docker compose --profile gpu up -d    — API with GPU (for M13-M25)
 #   docker compose down                   — stop all
 #   docker compose down -v                — stop + delete volumes
+#
+# Required: copy .env.example to .env and fill in secrets
 
 services:
   # ── KADIMA API ─────────────────────────────────────────────────────────────
@@ -14,24 +17,61 @@ services:
       - "8501:8501"
     volumes:
       - kadima-data:/data
+    env_file:
+      - .env
     environment:
       - KADIMA_HOME=/data
-      - KADIMA_LOG_LEVEL=INFO
+      - KADIMA_LOG_LEVEL=${KADIMA_LOG_LEVEL:-INFO}
       - LS_URL=http://label-studio:8080
       - LS_API_KEY=${LS_API_KEY:-}
     restart: unless-stopped
     depends_on:
       label-studio:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8501/health"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 15s
+
+  # ── KADIMA API with GPU (for generative modules M13-M25) ──────────────────
+  api-gpu:
+    build: .
+    container_name: kadima-api-gpu
+    profiles: ["gpu"]
+    ports:
+      - "8501:8501"
+    volumes:
+      - kadima-data:/data
+    env_file:
+      - .env
+    environment:
+      - KADIMA_HOME=/data
+      - KADIMA_LOG_LEVEL=${KADIMA_LOG_LEVEL:-INFO}
+      - LS_URL=http://label-studio:8080
+      - LS_API_KEY=${LS_API_KEY:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    depends_on:
+      label-studio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   # ── Label Studio (annotation) ──────────────────────────────────────────────
   label-studio:
-    image: heartexlabs/label-studio:latest
+    image: heartexlabs/label-studio:1.14.0
     container_name: kadima-label-studio
     ports:
       - "8080:8080"
@@ -40,8 +80,8 @@ services:
     environment:
       - LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=false
       - LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK=true
-      - LABEL_STUDIO_USERNAME=admin
-      - LABEL_STUDIO_PASSWORD=kadima2024
+      - LABEL_STUDIO_USERNAME=${LABEL_STUDIO_USERNAME:-admin}
+      - LABEL_STUDIO_PASSWORD=${LABEL_STUDIO_PASSWORD:?Set LABEL_STUDIO_PASSWORD in .env}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -61,7 +101,7 @@ services:
       - kadima-data:/data
     environment:
       - KADIMA_HOME=/data
-      - KADIMA_LOG_LEVEL=INFO
+      - KADIMA_LOG_LEVEL=${KADIMA_LOG_LEVEL:-INFO}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
@@ -70,9 +110,8 @@ services:
       retries: 3
 
   # ── llama.cpp LLM server (optional — requires GPU) ─────────────────────────
-  #   docker compose --profile llm up -d
   llm:
-    image: ghcr.io/ggerganov/llama.cpp:server
+    image: ghcr.io/ggerganov/llama.cpp:server-b4547
     container_name: kadima-llm
     profiles: ["llm"]
     ports:
@@ -91,11 +130,6 @@ services:
               count: 1
               capabilities: [gpu]
     restart: unless-stopped
-    # NOTE: Download model manually:
-    #   docker compose run --rm llm-download
-    # Or mount your local models:
-    #   volumes:
-    #     - /mnt/c/models:/models:ro
 
 volumes:
   kadima-data:

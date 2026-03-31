@@ -1,8 +1,13 @@
 # .dockerignore — exclude from Docker build context
 
-# Python
+# Git
+.git/
+.gitignore
+
+# Python caches
 __pycache__/
 *.py[cod]
+*.pyo
 *.egg-info/
 dist/
 build/
@@ -19,32 +24,50 @@ env/
 *.swp
 *.swo
 
-# Git
-.git/
-.gitignore
-
 # Tests & validation data (not needed in image)
 tests/
-validation_text_test/
 .pytest_cache/
 .coverage
 htmlcov/
+coverage.xml
+
+# Linter / type caches
+.mypy_cache/
+.ruff_cache/
+
+# Secrets — never bake into image
+.env
+.env.*
+!.env.example
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Large data
-hebrew-nlp-resources/
+# Large data / models
 *.db
 *.sqlite
+*.sqlite3
 *.gguf
 *.bin
-
-# Docker
-docker-compose*.yml
-.dockerignore
+*.onnx
+models/
+hebrew-nlp-resources/
 
 # Docs (not needed in runtime)
+doc/
 *.md
+!config/*.md
 LICENSE
+
+# Docker meta
+docker-compose*.yml
+.dockerignore
+Makefile
+
+# Tasks / dev planning
+Tasks/
+
+# CI
+.github/
