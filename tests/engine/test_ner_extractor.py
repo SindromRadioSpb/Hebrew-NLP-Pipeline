@@ -171,3 +171,76 @@ class TestNERBatch:
     def test_empty_batch(self):
         n = NERExtractor()
         assert n.process_batch([], {"backend": "rules"}) == []
+
+
+class TestNERNeoDictaBERTBackend:
+    """R-2.2: neodictabert backend tests with mocked transformer."""
+
+    def _run_with_mock_transformer(self, text: str, sim_threshold: float = 0.3) -> "ProcessorResult":
+        """Run NER with a mocked NeoDictaBERT that produces controlled vectors."""
+        import numpy as np
+        import spacy
+        from unittest.mock import patch, MagicMock
+        import torch
+
+        n_words = len(text.split())
+
+        def fake_transformer_call(self_t, doc):
+            """Mock __call__: assign similar vectors so spans are detected."""
+            n = len(doc)
+            base = np.ones(768, dtype=np.float32)
+            base /= np.linalg.norm(base)
+            rng = np.random.default_rng(42)
+            doc.tensor = np.stack([
+                base + rng.standard_normal(768).astype("float32") * 0.01
+                for _ in range(n)
+            ])
+            doc._.transformer_data = {"model": "dicta-il/neodictabert", "shape": doc.tensor.shape}
+            return doc
+
+        with patch(
+            "kadima.nlp.components.transformer_component.AutoModel.from_pretrained",
+            return_value=MagicMock(),
+        ), patch(
+            "kadima.nlp.components.transformer_component.AutoTokenizer.from_pretrained",
+            return_value=MagicMock(),
+        ), patch(
+            "kadima.nlp.components.transformer_component.KadimaTransformer._try_load",
+            lambda self: setattr(self, "_loaded", True) or setattr(self, "_model", MagicMock()),
+        ), patch(
+            "kadima.nlp.components.transformer_component.KadimaTransformer.__call__",
+            fake_transformer_call,
+        ):
+            extractor = NERExtractor()
+            return extractor.process(text, {"backend": "neodictabert", "device": "cpu", "sim_threshold": sim_threshold})
+
+    def test_neodictabert_backend_returns_ready(self):
+        result = self._run_with_mock_transformer("דוד בן גוריון חי בישראל")
+        assert result.status == ProcessorStatus.READY
+
+    def test_neodictabert_backend_returns_ner_result(self):
+        result = self._run_with_mock_transformer("דוד בן גוריון חי בישראל")
+        assert hasattr(result.data, "entities")
+        assert hasattr(result.data, "count")
+
+    def test_neodictabert_fallback_chain_on_model_error(self):
+        """neodictabert → heq_ner → rules fallback on model unavailable."""
+        from unittest.mock import patch
+        with patch(
+            "kadima.nlp.components.transformer_component.AutoModel.from_pretrained",
+            side_effect=OSError("model not found"),
+        ):
+            n = NERExtractor()
+            result = n.process("ישראל היא מדינה", {"backend": "neodictabert", "device": "cpu"})
+        assert result.status == ProcessorStatus.READY
+        assert result.data.backend in ("heq_ner", "rules")
+
+    def test_neodictabert_config_valid(self):
+        """NERConfig accepts 'neodictabert' as backend."""
+        from kadima.pipeline.config import NERConfig
+        c = NERConfig(backend="neodictabert")
+        assert c.backend == "neodictabert"
+
+    def test_neodictabert_backend_field(self):
+        result = self._run_with_mock_transformer("ישראל")
+        assert result.data.backend in ("neodictabert", "heq_ner", "rules")

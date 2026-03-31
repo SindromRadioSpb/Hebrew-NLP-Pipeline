@@ -1,9 +1,10 @@
 # kadima/engine/ner_extractor.py
 """M17: Named Entity Recognition for Hebrew text.
 
-Backends:
+Backends (fallback chain: neodictabert → heq_ner → rules):
+- neodictabert: KadimaTransformer + cosine-similarity NE detection (R-2.2)
 - heq_ner: dicta-il/HeQ-NER (transformers token-classification, <1GB)
-- rules: Rule-based pattern matching fallback (always available)
+- rules: Rule-based gazetteer + date patterns (always available)
 
 Example:
     >>> n = NERExtractor()
@@ -228,6 +229,8 @@ class NERExtractor(Processor):
     def process(self, input_data: str, config: Dict[str, Any]) -> ProcessorResult:
         """Extract named entities from text.
 
+        Fallback chain: neodictabert → heq_ner → rules.
+
         Args:
             input_data: Hebrew text.
             config: {"backend": str, "device": str}.
@@ -239,7 +242,27 @@ class NERExtractor(Processor):
         try:
             backend = config.get("backend", "heq_ner")
 
-            if backend == "heq_ner" and _TRANSFORMERS_AVAILABLE:
+            # ── neodictabert backend (R-2.2) ─────────────────────────────
+            if backend == "neodictabert":
+                try:
+                    entities = self._process_neodictabert(input_data, config)
+                    used_backend = "neodictabert"
+                except Exception as e:
+                    logger.warning("NeoDictaBERT NER failed, falling back to heq_ner: %s", e)
+                    if _TRANSFORMERS_AVAILABLE:
+                        try:
+                            entities = self._process_heq_ner(input_data, config)
+                            used_backend = "heq_ner"
+                        except Exception as e2:
+                            logger.warning("HeQ-NER fallback failed, using rules: %s", e2)
+                            entities = _ner_rules(input_data)
+                            used_backend = "rules"
+                    else:
+                        entities = _ner_rules(input_data)
+                        used_backend = "rules"
+
+            # ── heq_ner backend ──────────────────────────────────────────
+            elif backend == "heq_ner" and _TRANSFORMERS_AVAILABLE:
                 try:
                     entities = self._process_heq_ner(input_data, config)
                     used_backend = "heq_ner"
@@ -312,3 +335,120 @@ class NERExtractor(Processor):
                 score=ent.get("score", 0.0),
             ))
         return entities
+
+    def _process_neodictabert(self, text: str, config: Dict[str, Any]) -> List[Entity]:
+        """NER via NeoDictaBERT transformer (R-2.2).
+
+        Strategy:
+        1. Run KadimaTransformer on text to get token vectors (768-dim)
+        2. Use cosine similarity between consecutive token vectors to detect
+           semantically coherent spans (potential named entities)
+        3. Classify spans using gazetteer overlap + POS-heuristics
+        4. Supplement with rule-based results (gazetteer / dates)
+
+        This approach does NOT require a fine-tuned NER head — it leverages
+        the transformer's contextual embeddings for better span boundary
+        detection than pure rule-matching.
+
+        Args:
+            text: Hebrew text.
+            config: {"device": str, "sim_threshold": float}.
+
+        Returns:
+            List of Entity objects.
+        """
+        import numpy as np
+        import spacy
+        from kadima.nlp.components.transformer_component import KadimaTransformer
+
+        device = config.get("device", "cpu")
+        # Resolve CUDA availability
+        try:
+            import torch
+            if device == "cuda" and not torch.cuda.is_available():
+                device = "cpu"
+        except ImportError:
+            device = "cpu"
+
+        nlp = spacy.blank("he")
+        transformer = KadimaTransformer(
+            nlp=nlp,
+            name="kadima_transformer",
+            model_name="dicta-il/neodictabert",
+            device=device,
+        )
+
+        if not transformer.is_available:
+            raise RuntimeError("NeoDictaBERT model not available")
+
+        doc = nlp(text)
+        doc = transformer(doc)
+
+        tensor = doc.tensor
+        if tensor is None or tensor.shape[0] != len(doc):
+            raise RuntimeError("Transformer returned invalid tensor")
+
+        # Step 1: Get rule-based entities as baseline
+        rule_entities = _ner_rules(text)
+
+        # Step 2: Embedding-based span detection
+        # Find consecutive spans where cosine(tok[i], tok[i+1]) > threshold
+        sim_threshold = config.get("sim_threshold", 0.6)
+        _SKIP_POS = {"PUNCT", "SPACE", "ADP", "CCONJ", "SCONJ", "DET"}
+
+        def _cosine_sim(a: "np.ndarray", b: "np.ndarray") -> float:
+            na, nb = np.linalg.norm(a), np.linalg.norm(b)
+            if na == 0 or nb == 0:
+                return 0.0
+            return float(np.dot(a, b) / (na * nb))
+
+        embedding_entities: List[Entity] = []
+        n = len(doc)
+        used = [False] * n
+
+        for i in range(n):
+            tok = doc[i]
+            if tok.pos_ in _SKIP_POS or used[i]:
+                continue
+
+            span_end = i
+            for j in range(i + 1, min(i + 6, n)):
+                if doc[j].pos_ in _SKIP_POS:
+                    break
+                sim = _cosine_sim(tensor[i], tensor[j])
+                if sim < sim_threshold:
+                    break
+                span_end = j
+
+            if span_end == i:
+                continue  # single token — skip (rules cover single-word GPE/ORG)
+
+            span_text = doc[i : span_end + 1].text
+            # Heuristic label: check against known gazetteers
+            label = "NE"  # generic named entity
+            for loc in _KNOWN_LOCATIONS:
+                if loc in span_text:
+                    label = "GPE"
+                    break
+            for org in _KNOWN_ORGS:
+                if org in span_text:
+                    label = "ORG"
+                    break
+
+            avg_sim = float(np.mean([
+                _cosine_sim(tensor[i], tensor[k])
+                for k in range(i + 1, span_end + 1)
+            ]))
+            embedding_entities.append(Entity(
+                text=span_text,
+                label=label,
+                start=doc[i].idx,
+                end=doc[span_end].idx + len(doc[span_end].text),
+                score=avg_sim,
+            ))
+            for k in range(i, span_end + 1):
+                used[k] = True
+
+        # Merge: embedding spans take priority, fill in with rule-based
+        all_entities = embedding_entities + rule_entities
+        return _deduplicate_spans(all_entities)

@@ -182,11 +182,11 @@ class STTConfig(BaseModel):
 
 
 class NERConfig(BaseModel):
-    """M17: NER. backend: heq_ner | alephbert | hebert."""
+    """M17: NER. backend: neodictabert | heq_ner | alephbert | hebert | rules."""
 
     model_config = ConfigDict(extra="forbid")
 
-    backend: str = Field(default="heq_ner", pattern=r"^(heq_ner|alephbert|hebert)$")
+    backend: str = Field(default="heq_ner", pattern=r"^(neodictabert|heq_ner|alephbert|hebert|rules)$")
     device: DeviceEnum = DeviceEnum.CUDA
 
 
