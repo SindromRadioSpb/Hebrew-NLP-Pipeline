@@ -53,13 +53,15 @@ class KadimaMorphAnalyzer:
         return doc
 
     @staticmethod
-    def _map_pos(pos: str) -> int:
-        """Map Hebrew POS tag to spaCy POS tag."""
-        from spacy.symbols import NOUN, VERB, ADJ, ADV, DET, ADP, CCONJ, SCONJ, PRON, NUM, PUNCT, PROPN, AUX
-        mapping = {
-            "NOUN": NOUN, "VERB": VERB, "ADJ": ADJ, "ADV": ADV,
-            "DET": DET, "ADP": ADP, "CCONJ": CCONJ, "SCONJ": SCONJ,
-            "PRON": PRON, "NUM": NUM, "PUNCT": PUNCT, "PROPN": PROPN,
-            "AUX": AUX,
+    def _map_pos(pos: str) -> str:
+        """Map Hebrew POS tag to spaCy UD POS string.
+
+        spaCy pos_ expects a Universal Dependencies string tag,
+        not a numeric symbol ID.
+        """
+        _VALID_UD = {
+            "ADJ", "ADP", "ADV", "AUX", "CCONJ", "DET", "INTJ",
+            "NOUN", "NUM", "PART", "PRON", "PROPN", "PUNCT", "SCONJ",
+            "SYM", "VERB", "X",
         }
-        return mapping.get(pos, NOUN)
+        return pos if pos in _VALID_UD else "NOUN"
