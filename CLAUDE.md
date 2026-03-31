@@ -43,15 +43,22 @@ make up-llm                 # + llama.cpp (GPU)
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Engine M1-M8, M12 | Working | M3 rule-based fallback + hebpipe integration |
+| NP Chunker M5 | Working | Rules + transformer embeddings mode (R-2.1) |
 | Pipeline `run_on_text()` | Working | Sequential M1->M8->M12 |
 | Pipeline `run(corpus_id)` | Working | DB load + process + save pipeline_runs/terms |
 | Pipeline config | Working | Pydantic v2, profiles, JSON Schema, M13-M25 sub-configs |
 | Data layer | Working | WAL, FK, 4 migrations, parameterized queries |
+| SQLAlchemy ORM | Working | 18 models, sync+async sessions, SA 2.x (R-2.6, R-2.7) |
 | Validation | Working | 26 gold corpus sets, check_engine |
 | Annotation client | Working | Label Studio REST client, sync, project manager |
+| NER training pipeline | Working | LS JSON → CoNLL-U → spaCy Examples (R-2.3) |
+| KB embedding search | Working | Cosine similarity over float32 BLOB vectors (R-2.4) |
+| Term clusterer | Working | k-means / HDBSCAN / greedy on NeoDictaBERT vectors (R-2.5) |
 | API (corpora, pipeline, generative) | Working | FastAPI, 3 of 6 routers functional |
 | Generative M13, M14, M17, M21, M22 | Working | Rules + ML fallback, API endpoints live |
-| Tests | 500+ functions | Engine, config, corpus, data, validation, E2E covered |
+| NER M17 | Working | neodictabert → heq_ner → rules fallback chain (R-2.2) |
+| Transformer backbone | Working | KadimaTransformer, doc.tensor, spaCy pipeline builder (T1) |
+| Tests | 600+ functions | Engine, config, corpus, data, validation, KB, E2E covered |
 
 ### Resolved blockers (Phase 0)
 
@@ -559,6 +566,8 @@ Scope: engine | pipeline | api | ui | data | config | docker | ci
 |------|-----------|--------|
 | Phase 0 | Стабилизация: B1–B4, CI, Docker, deps | **DONE** |
 | Phase 1 | Tier 1 генеративные: M22, M21, M13, M17, M14; generative router (5 endpoints) | **DONE** |
+| T1 | Transformer backbone: spacy-transformers, KadimaTransformer, pipeline builder, config.cfg | **DONE** |
+| T2 | Embeddings+data: NP chunker emb mode, NER neodictabert, NER training pipeline, KB emb search, term clusterer, SA ORM, async SA, model download script | **DONE** |
 
 ### Текущий план (по ТЗ углубления)
 
@@ -570,14 +579,14 @@ Scope: engine | pipeline | api | ui | data | config | docker | ci
 | | | R-1.4 Graceful degradation (no VRAM / no model) | **DONE** | 2–3 |
 | | | R-1.5 pyproject.toml — hebpipe/numpy/scipy/pandas в core | **DONE** | 2 |
 | | | R-1.6 spaCy `config/config.cfg` с transformer backbone | **DONE** | 3–4 |
-| **T2** | Embeddings + data | R-2.1 M5 NP Chunker — transformer embeddings mode | Pending | 6–8 |
-| | | R-2.2 M17 NER — NeoDictaBERT backend + fallback chain | Pending | 8–10 |
-| | | R-2.3 NER training pipeline (Label Studio → spaCy) | Pending | 4–6 |
-| | | R-2.4 KB embedding search (cosine similarity) | Pending | 4–6 |
-| | | R-2.5 Term clustering (k-means / HDBSCAN) | Pending | 3–4 |
+| **T2** | Embeddings + data | R-2.1 M5 NP Chunker — transformer embeddings mode | **DONE** | 6–8 |
+| | | R-2.2 M17 NER — NeoDictaBERT backend + fallback chain | **DONE** | 8–10 |
+| | | R-2.3 NER training pipeline (Label Studio → spaCy) | **DONE** | 4–6 |
+| | | R-2.4 KB embedding search (cosine similarity) | **DONE** | 4–6 |
+| | | R-2.5 Term clustering (k-means / HDBSCAN) | **DONE** | 3–4 |
 | | | R-2.6 SQLAlchemy migration (sqlite3 → SA 2.x + Alembic) | **DONE** | 8–12 |
 | | | R-2.7 Async data layer (aiosqlite + SA async sessions) | **DONE** | 4–6 |
-| | | R-2.8 Model download script (`scripts/download_models.sh`) | Pending | 2–3 |
+| | | R-2.8 Model download script (`scripts/download_models.sh`) | **DONE** | 2–3 |
 | **T3** | Desktop UI | R-3.1 Dashboard (`ui/dashboard.py`, QMainWindow + QStackedWidget) | Pending | 16–24 |
 | | | R-3.2 Pipeline configuration UI | Pending | 8–12 |
 | | | R-3.3 Results View (terms/ngrams/NP tables, CSV export) | Pending | 8–12 |
