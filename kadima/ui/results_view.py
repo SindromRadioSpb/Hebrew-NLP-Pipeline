@@ -128,7 +128,10 @@ class TermsTableModel(QAbstractTableModel):
 
     def _cell_text(self, row: int, col: int) -> str:
         t = self._terms[row]
-        attrs = ["rank", "surface", "canonical", "kind", "freq", "doc_freq", "pmi", "llr", "dice"]
+        # Rank is dynamic (row position + 1), matching N-grams and NP Chunks behavior
+        if col == 0:
+            return str(row + 1)
+        attrs = ["_skip", "surface", "canonical", "kind", "freq", "doc_freq", "pmi", "llr", "dice"]
         val = self._get_val(t, attrs[col], "")
         if isinstance(val, float):
             return f"{val:.4f}"
@@ -409,22 +412,49 @@ class ResultsView(QWidget):
                 writer.writerow(row)
 
     def _export_ngrams_csv(self, path: str) -> None:
-        rows = self._ngram_table._model._ngrams
+        rows = self._ngram_table._model.all_ngrams()
         with open(path, "w", newline="", encoding="utf-8-sig") as fh:
             writer = csv.writer(fh)
-            writer.writerow(["N-gram", "N", "Freq", "Doc Freq"])
-            for ng in rows:
+            writer.writerow(["Rank", "N-gram", "N", "Freq", "Doc Freq"])
+            for i, ng in enumerate(rows):
+                rank = str(i + 1)
                 if isinstance(ng, dict):
-                    writer.writerow([ng.get("text", ""), ng.get("n", ""), ng.get("freq", ""), ng.get("doc_freq", "")])
+                    tokens = ng.get("text", ng.get("tokens", []))
+                    n = ng.get("n", "")
+                    freq = ng.get("freq", "")
+                    doc_freq = ng.get("doc_freq", "")
+                else:
+                    tokens = getattr(ng, "tokens", [])
+                    n = getattr(ng, "n", "")
+                    freq = getattr(ng, "freq", "")
+                    doc_freq = getattr(ng, "doc_freq", "")
+                if isinstance(tokens, list):
+                    tokens = " ".join(str(t) for t in tokens)
+                writer.writerow([rank, tokens, n, freq, doc_freq])
 
     def _export_np_csv(self, path: str) -> None:
-        rows = self._np_table._model._chunks
+        rows = self._np_table._model.all_chunks()
         with open(path, "w", newline="", encoding="utf-8-sig") as fh:
             writer = csv.writer(fh)
-            writer.writerow(["Chunk", "Kind", "Freq", "Tokens"])
-            for ch in rows:
+            writer.writerow(["Rank", "Chunk", "Pattern", "Score", "Tokens"])
+            for i, ch in enumerate(rows):
+                rank = str(i + 1)
                 if isinstance(ch, dict):
-                    writer.writerow([ch.get("text", ""), ch.get("kind", ""), ch.get("freq", ""), ch.get("tokens", "")])
+                    writer.writerow([
+                        rank,
+                        ch.get("surface", ch.get("text", "")),
+                        ch.get("pattern", ch.get("kind", "")),
+                        ch.get("score", ch.get("freq", "")),
+                        ch.get("tokens", "")
+                    ])
+                else:
+                    writer.writerow([
+                        rank,
+                        getattr(ch, "surface", ""),
+                        getattr(ch, "pattern", ""),
+                        getattr(ch, "score", ""),
+                        getattr(ch, "tokens", "")
+                    ])
 
     # ── Public API ────────────────────────────────────────────────────────────
 
