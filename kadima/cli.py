@@ -8,12 +8,16 @@
     kadima api                    — запустить FastAPI сервер
     kadima --init                 — инициализация (~/.kadima/ с config и DB)
     kadima --version              — версия
+    kadima --self-check import    — проверить импорты всех модулей → JSON
+    kadima --self-check db_open   — открыть/закрыть DB → JSON
+    kadima --self-check health    — проверить модели и провайдеры → JSON
+    kadima --self-check migrations — проверить версию схемы → JSON
 """
 
+import argparse
+import logging
 import os
 import sys
-import logging
-import argparse
 from pathlib import Path
 
 import yaml
@@ -103,9 +107,123 @@ def run_api(args: argparse.Namespace) -> None:
     )
 
 
+_SELF_CHECK_MODULES = [
+    "kadima.engine.hebpipe_wrappers",
+    "kadima.engine.ngram_extractor",
+    "kadima.engine.np_chunker",
+    "kadima.engine.canonicalizer",
+    "kadima.engine.association_measures",
+    "kadima.engine.term_extractor",
+    "kadima.engine.noise_classifier",
+    "kadima.pipeline.orchestrator",
+    "kadima.pipeline.config",
+    "kadima.data.db",
+    "kadima.data.repositories",
+    "kadima.validation.check_engine",
+    "kadima.validation.gold_importer",
+    "kadima.kb.repository",
+    "kadima.llm.client",
+    "kadima.annotation.ls_client",
+]
+
+
+def _sc_import() -> dict[str, object]:
+    """Check all core module imports."""
+    failed: list[str] = []
+    imported: list[str] = []
+    for mod in _SELF_CHECK_MODULES:
+        try:
+            __import__(mod)
+            imported.append(mod)
+        except ImportError as exc:
+            failed.append(f"{mod}: {exc}")
+        except Exception as exc:  # noqa: BLE001
+            failed.append(f"{mod}: unexpected {type(exc).__name__}: {exc}")
+    status = "error" if failed else "ok"
+    return {"status": status, "details": {"imported": len(imported), "failed": failed}}
+
+
+def _sc_db_open() -> dict[str, object]:
+    """Open a temporary DB, run migrations, return result."""
+    import tempfile
+
+    from kadima.data.db import run_migrations
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_db = os.path.join(tmpdir, "self_check.db")
+        try:
+            count = run_migrations(test_db)
+            return {"status": "ok", "details": {"migrations_applied": count}}
+        except Exception as exc:  # noqa: BLE001
+            return {"status": "error", "details": {"error": str(exc)}}
+
+
+def _sc_health() -> dict[str, object]:
+    """Check DB reachability, config load, CUDA availability."""
+    checks: dict[str, str] = {}
+    status = "ok"
+    try:
+        from kadima.data.db import get_schema_version
+
+        checks["db"] = f"ok (schema v{get_schema_version(DB_PATH)})"
+    except Exception as exc:  # noqa: BLE001
+        checks["db"] = f"error: {exc}"
+        status = "error"
+    try:
+        from kadima.pipeline.config import load_config
+
+        load_config(CONFIG_PATH if os.path.exists(CONFIG_PATH) else None)
+        checks["config"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        checks["config"] = f"error: {exc}"
+        status = "error"
+    try:
+        import torch
+
+        checks["cuda"] = f"available (devices={torch.cuda.device_count()})"
+    except ImportError:
+        checks["cuda"] = "torch not installed"
+    return {"status": status, "details": checks}
+
+
+def _sc_migrations() -> dict[str, object]:
+    """Report current schema version."""
+    try:
+        from kadima.data.db import get_schema_version
+
+        version = get_schema_version(DB_PATH)
+        return {"status": "ok", "details": {"schema_version": version, "db_path": DB_PATH}}
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "error", "details": {"error": str(exc)}}
+
+
+_SC_HANDLERS = {
+    "import": _sc_import,
+    "db_open": _sc_db_open,
+    "health": _sc_health,
+    "migrations": _sc_migrations,
+}
+
+
+def run_self_check(mode: str) -> None:
+    """Self-check для CI: проверяет состояние системы и выводит JSON результат."""
+    import json
+
+    handler = _SC_HANDLERS.get(mode)
+    if handler is None:
+        res: dict[str, object] = {"mode": mode, "status": "error",
+                                  "details": {"error": f"Unknown mode: {mode!r}"}}
+    else:
+        res = {"mode": mode, **handler()}  # type: ignore[arg-type]
+
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    if res.get("status") != "ok":
+        sys.exit(1)
+
+
 def run_migrate(args: argparse.Namespace) -> None:
     """Управление миграциями."""
-    from kadima.data.db import run_migrations, get_schema_version, generate_migration
+    from kadima.data.db import generate_migration, get_schema_version, run_migrations
 
     if args.new:
         path = generate_migration(args.new)
@@ -124,6 +242,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="kadima", description="KADIMA — Hebrew NLP Platform")
     parser.add_argument("--version", action="version", version="%(prog)s " + __import__("kadima").__version__)
     parser.add_argument("--init", action="store_true", help="Initialize KADIMA")
+    parser.add_argument(
+        "--self-check",
+        metavar="MODE",
+        choices=["import", "db_open", "health", "migrations"],
+        help="Run self-check: import | db_open | health | migrations",
+    )
     parser.add_argument("--config", type=str, help="Config file path")
     parser.add_argument("--db", type=str, help="Database path")
     parser.add_argument("--log-level", type=str, default="INFO", help="Log level")
@@ -161,6 +285,10 @@ def main() -> None:
 
     if args.init:
         init_kadima()
+        return
+
+    if args.self_check:
+        run_self_check(args.self_check)
         return
 
     if args.command == "gui":
