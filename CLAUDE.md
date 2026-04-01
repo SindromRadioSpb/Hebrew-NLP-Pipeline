@@ -29,6 +29,12 @@ mypy kadima/ --ignore-missing-imports
 # Run API
 kadima api --host 0.0.0.0 --port 8501
 
+# Self-check (CI gate — run before any commit)
+kadima --self-check import      # → JSON: all core imports OK
+kadima --self-check db_open     # → JSON: DB + migrations OK
+kadima --self-check health      # → JSON: DB, config, CUDA status
+kadima --self-check migrations  # → JSON: current schema version
+
 # Docker
 make up                     # API + Label Studio
 make up-llm                 # + llama.cpp (GPU)
@@ -81,7 +87,7 @@ make up-llm                 # + llama.cpp (GPU)
 
 | ID | Problem | Location | Priority |
 |----|---------|----------|----------|
-| D4 | API routers: validation, annotation, kb, llm are empty stubs (16 TODO endpoints) | `api/routers/` | T5 |
+| D4 | API routers: validation, annotation, kb, llm are empty stubs (16 TODO endpoints) | `api/routers/` | T6 |
 | D5 | ~~UI: main_window + 7 view files are 10-line stubs~~ **CLOSED in T3** | `kadima/ui/` | — |
 | D6 | `Token` dataclass declared in 2 places with different fields (different layers, no conflict) | `data/models.py` + `engine/hebpipe_wrappers.py` | Low |
 | D7 | SQLAlchemy ORM added alongside legacy sqlite3 — UI uses legacy layer by design | `data/repositories.py` | Won't fix |
@@ -249,6 +255,36 @@ for name, (mod_path, cls_name) in _optional.items():
     except ImportError as e:
         logger.warning("Module %s unavailable: %s", name, e)
 ```
+
+### Target Architecture v2.0 (KADIMA_MASTER_PLAN_v2.md)
+
+Авторитетный план: `Tasks/KADIMA_MASTER_PLAN_v2.md` (синтез Claude Code + Qwen3.6PlusPreview + MiMoV2Pro).
+
+Текущая структура `kadima/` будет расширена новыми слоями (не переписывать, а добавлять):
+
+```
+kadima/
+├── domain/       ← НОВЫЙ (Фаза F) — чистая бизнес-логика: dto.py, hebrew_utils.py, kwic.py, scoring.py
+├── engine/       ← БЕЗ ИЗМЕНЕНИЙ — M1-M25 процессоры (engine-first)
+├── infra/        ← НОВЫЙ (Фаза F) — db.py+write_gate, fts_manager, settings, security/, reliability/
+├── services/     ← НОВЫЙ (Фаза S) — project_service, corpus_service, tm_service, audio_service, study_service
+├── data/         ← СУЩЕСТВУЮЩИЙ — расширяется миграциями 005-020 (backward compatible)
+├── pipeline/     ← БЕЗ ИЗМЕНЕНИЙ
+├── api/          ← заполнить stub роутеры D4 (16 endpoints)
+└── ui/           ← добавить nlp_tools_view, llm_view, first_run_wizard
+```
+
+**Принципы (из мастер-плана):**
+1. НЕ ПЕРЕПИСЫВАТЬ — АДАПТИРОВАТЬ: `engine/` нетронут, добавляем слои
+2. PIPELINE-FIRST: все фичи доступны через API, CLI и UI одновременно
+3. EVIDENCE-FIRST (Qwen): каждый фикс производительности = before/after метрики
+4. ИНКРЕМЕНТАЛЬНО: каждый патч независимо buildable + testable
+
+**DoD и Cold-Audit инфраструктура (P0 DONE):**
+- `Tasks/DEFINITION_OF_DONE.md` — чек-лист P1/P2/P3 критериев для каждого патча
+- `Tasks/COLD_AUDIT_FRAMEWORK.md` — 7-волновая методология (≤500ms first-paint contract)
+- `kadima --self-check import|db_open|health|migrations` — CI gate
+- `.github/workflows/test.yml` — self-check шаги перед pytest
 
 ---
 
@@ -616,26 +652,22 @@ Step 9:  tests/ui/test_main_window.py — 28 pytest-qt smoke tests              
 pre-T4: D8 _wire_all() cross-view signals | D9 stubs M15/M16/M18/M20 | D10 T4 widgets                       ✅
 ```
 
-### T4 Steps (NOW — active)
+### T4 Steps (DONE)
 
 ```
-R-4.1:  sentiment_analyzer.py — implement heBERT backend + rules fallback  ← NEXT
-R-4.2:  tts_synthesizer.py — implement Coqui XTTS v2 backend
-R-4.3:  stt_transcriber.py — implement Whisper large-v3 backend
-R-4.4:  active_learning.py — uncertainty sampling → Label Studio export
-Step 10: generative_view.py — 6 tabs: Sentiment/TTS/STT/Translate/Diacritize/NER
-         + GenerativeWorker(QRunnable) + model lazy loading
-Step 11: annotation_view.py — LS projects + pre-annotate + AL queue
-Step 12: tests/ui/test_generative.py + test_annotation.py
+R-4.1:  sentiment_analyzer.py ✅  R-4.2:  tts_synthesizer.py ✅
+R-4.3:  stt_transcriber.py ✅    R-4.4:  qa_extractor.py (active learning) ✅
+Step 10: generative_view.py ✅   Step 11: annotation_view.py ✅
+Step 12: tests/ui/test_generative.py + test_annotation.py ✅
 ```
 
-### T5 Steps (pending)
+### T5 Steps (ML engines DONE, UI pending)
 
 ```
-R-5.1:  keyphrase_extractor.py — YAKE! backend
-R-5.2:  grammar_corrector.py — Dicta-LM backend via llm/service.py
-R-5.3:  summarizer.py — Dicta-LM / mT5 backend
-Step 13: widgets/chat_widget.py + nlp_tools_view.py — Grammar/Keyphrase/Summarize tabs
+R-5.1:  keyphrase_extractor.py ✅ (YAKE!+TF-IDF, 36 tests)
+R-5.2:  grammar_corrector.py ✅  (Dicta-LM+rules, 33 tests)
+R-5.3:  summarizer.py ✅         (LLM+mT5+extractive, 34 tests)
+Step 13: widgets/chat_widget.py + nlp_tools_view.py — Grammar/Keyphrase/Summarize ← NEXT
 Step 14: llm_view.py — chat + presets + context selector
 Step 15: tests/ui/test_nlp_tools.py + test_llm.py
 ```
@@ -761,10 +793,10 @@ except ImportError:
 
 ---
 
-## Roadmap (TZ: углубление функционала)
+## Roadmap
 
-Полный план — `Tasks/TZ_uglublenie_funkcionala_KADIMA.md`.
-Источники аудита — `Tasks/Источники/`.
+Мастер-план v2.0 (синтез трёх стратегических планов): `Tasks/KADIMA_MASTER_PLAN_v2.md`
+Детализация по ТЗ углубления: `Tasks/TZ_uglublenie_funkcionala_KADIMA.md`
 
 ### Завершённые фазы
 
@@ -776,6 +808,9 @@ except ImportError:
 | T2 | Embeddings+data: NP chunker emb mode, NER neodictabert, NER training pipeline, KB emb search, term clusterer, SA ORM, async SA, model download script | **DONE** |
 | T3 | Desktop UI: MainWindow + 6 full views + 9 widgets + app.qss dark theme + 28 smoke tests | **DONE** |
 | pre-T4 | D8 cross-view wiring, D9 engine stubs M15/M16/M18/M20, D10 T4 widgets | **DONE** |
+| **P0** | **Инженерная дисциплина** (из KADIMA_MASTER_PLAN_v2): DoD чек-лист, Cold-Audit Framework, self-check CLI, CI gate | **DONE** |
+| **T4** | Phase 2 ML + UI: M15 TTS, M16 STT, M18 Sentiment, M20 QA; GenerativeView + AnnotationView | **DONE** |
+| **T5 (ML)** | Phase 3 ML: M24 Keyphrase (YAKE+TF-IDF), M23 Grammar (Dicta-LM+rules), M19 Summarizer (LLM+mT5+extractive); API endpoints | **DONE** |
 
 ### Текущий план (по ТЗ углубления)
 
@@ -818,13 +853,28 @@ except ImportError:
 | | | Step 13: `widgets/chat_widget.py` + `nlp_tools_view.py` — Grammar/Keyphrase/Summarize | Pending | 3–4 |
 | | | Step 14: `llm_view.py` — chat + presets + context selector | Pending | 3–4 |
 | | | Step 15: `tests/ui/test_nlp_tools.py` + `test_llm.py` | Pending | 2–3 |
-| **T6** | Infrastructure | R-6.1 Docker Compose production-ready | Pending | 3–5 |
+| **T5 (UI)** | T5 UI | Step 13: `chat_widget.py` + `nlp_tools_view.py` (Grammar/Keyphrase/Summarize) | **← NEXT** | 3–4 |
+| | | Step 14: `llm_view.py` — chat + presets + context selector | Pending | 3–4 |
+| | | Step 15: `tests/ui/test_nlp_tools.py` + `test_llm.py` | Pending | 2–3 |
+| **T6** | Infrastructure | D4: stub routers (validation 5ep, annotation 4ep, kb 5ep, llm 5ep) | Pending | 4–6 |
+| | | R-6.1 Docker Compose production-ready | Pending | 3–5 |
 | | | R-6.2 Документация синхронизация | Pending | 2–3 |
 
-**Порядок выполнения:**
+### Следующие фазы (из KADIMA_MASTER_PLAN_v2.md)
+
+| Фаза | Ключевые компоненты | Источник | Приоритет |
+|------|-------------------|----------|----------|
+| **F** Фундамент | `kadima/infra/db.py` (WAL PRAGMAs + Write Gate), FTS5 (sentence_fts, term_fts, annotation_fts), SettingsService (QSettings), Domain layer (DTO, hebrew_utils, kwic, scoring) | V_book + Qwen | 🔴 Блокирует S |
+| **S** Services | project_service, corpus_service, tm_service (Translation Memory), study_service (SM-2 SRS), audio_service (content-addressed cache), operations_center | V_book + Claude + MiMo | 🟠 После F |
+| **APP** UI polish | nlp_tools_view (Step 13-15), first_run_wizard, command_palette (Ctrl+K), concordance_view, cold-audit baseline | Claude Code | 🟡 После T5 UI |
+| **SEC** Security | `infra/security/` (path validation, FTS5 sanitizer, audit_log, AES-256-GCM для API keys), circuit_breaker (LS API, LLM), rate_limiter | V_book + MiMo | 🟡 Параллельно S |
+| **IO** Import/Export | Multi-format ingestion (DOCX, PDF+OCR, PPTX), TBX/TMX экспорт, SHA256 dedup, watch folders, .kadimaproj bundles | V_book + Claude | 🟢 После S |
+| **AUD** Quality | 800+ тестов, E2E gold corpus validation, security-auditor (0 critical), mypy strict | — | 🟢 Ongoing |
+| **UX** Polish | Сохранение geometry (QSettings), hotkeys (Ctrl+K, F5, Ctrl+1-6), cold-audit ≤500ms per view | Qwen + Claude | 🟢 После APP |
+
+**Критический путь (мастер-план):**
 ```
-T1 (R-1.1→R-1.6) → T2-embeddings (R-2.1→R-2.5) → T2-data (R-2.6→R-2.8) [параллельно с T2-emb]
-→ T3 (R-3.1→R-3.4) → T4 (R-4.1→R-4.4) → T5 (R-5.1→R-5.3) → T6
+P0 ✅ → T5 UI (Step 13-15) → T6 (D4 + Docker) → F (infra) → S (services) → APP/SEC (параллельно) → IO → AUD → UX
 ```
 
 **Зависимости:**
@@ -832,11 +882,17 @@ T1 (R-1.1→R-1.6) → T2-embeddings (R-2.1→R-2.5) → T2-data (R-2.6→R-2.8)
 - T2 data (R-2.6–R-2.7) независим от T1
 - T3 требует R-2.6 (SQLAlchemy)
 - T4/T5 независимы от T1–T3 (кроме R-4.4 → R-2.2)
+- Фаза F блокирует S; S блокирует IO
 
 ---
 
 ## Reference
 
+- **Мастер-план v2.0** (авторитетный): `Tasks/KADIMA_MASTER_PLAN_v2.md`
+- **Definition of Done** (P1/P2/P3 чек-лист): `Tasks/DEFINITION_OF_DONE.md`
+- **Cold-Audit Framework** (≤500ms договор): `Tasks/COLD_AUDIT_FRAMEWORK.md`
+- ТЗ углубления функционала: `Tasks/TZ_uglublenie_funkcionala_KADIMA.md`
+- ТЗ Desktop UI: `Tasks/3. TZ_UI_desktop_KADIMA.md`
 - Full technical spec: `doc/Техническое задание разработка KADIMA/`
 - Gold corpus methodology: `tests/data/README.md`
 - Validation strategy: `tests/data/VALIDATION_STRATEGY.md`
