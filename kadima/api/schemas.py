@@ -5,9 +5,9 @@ Defines all request/response schemas used by the KADIMA REST API endpoints.
 Covers corpora, pipeline, validation, annotation, KB, and LLM domains.
 """
 
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from typing import Any
 
+from pydantic import BaseModel, Field
 
 # === Corpora ===
 
@@ -36,7 +36,7 @@ class PipelineRunRequest(BaseModel):
     """Request body for starting a pipeline run on a corpus."""
 
     profile: str = "balanced"
-    modules: List[str] = Field(default_factory=lambda: [
+    modules: list[str] = Field(default_factory=lambda: [
         "sent_split", "morph_analyzer", "ngram", "np_chunk",
         "canonicalize", "am", "term_extract", "noise"
     ])
@@ -47,7 +47,7 @@ class TermResponse(BaseModel):
 
     surface: str
     canonical: str
-    kind: Optional[str] = None
+    kind: str | None = None
     freq: int = 0
     doc_freq: int = 0
     pmi: float = 0.0
@@ -63,7 +63,7 @@ class PipelineRunResponse(BaseModel):
     corpus_id: int
     profile: str
     status: str
-    terms: List[TermResponse] = []
+    terms: list[TermResponse] = []
     ngram_count: int = 0
     total_time_ms: float = 0.0
 
@@ -75,7 +75,7 @@ class GoldCorpusUpload(BaseModel):
 
     corpus_id: int
     version: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class ValidationReportResponse(BaseModel):
@@ -83,8 +83,8 @@ class ValidationReportResponse(BaseModel):
 
     corpus_id: int
     status: str  # PASS | WARN | FAIL
-    checks: List[Dict[str, Any]] = []
-    summary: Dict[str, int] = {}
+    checks: list[dict[str, Any]] = []
+    summary: dict[str, int] = {}
 
 
 class ReviewUpdateRequest(BaseModel):
@@ -92,8 +92,49 @@ class ReviewUpdateRequest(BaseModel):
 
     actual_value: str
     pass_fail: str  # PASS | WARN | FAIL
-    discrepancy_type: Optional[str] = None
-    notes: Optional[str] = None
+    discrepancy_type: str | None = None
+    notes: str | None = None
+
+
+class GoldCorpusInfo(BaseModel):
+    """Discovered gold corpus available for validation."""
+
+    corpus_name: str       # directory name, e.g. he_01_sentence_token_lemma_basics
+    language: str = "he"
+    text_count: int = 0
+    check_count: int = 0
+
+
+class CheckResultItem(BaseModel):
+    """Single check result within a validation run."""
+
+    index: int
+    check_type: str
+    file_id: str
+    item: str
+    expected: str
+    actual: str
+    result: str             # PASS | WARN | FAIL
+    expectation_type: str
+    discrepancy_type: str | None = None
+
+
+class ValidationRunRequest(BaseModel):
+    """Request body for running validation against a gold corpus."""
+
+    gold_corpus: str        # directory name, e.g. he_01_sentence_token_lemma_basics
+    db_path: str = "~/.kadima/kadima.db"
+
+
+class ValidationRunResponse(BaseModel):
+    """Response from a validation run with full check details."""
+
+    run_id: int
+    gold_corpus: str
+    status: str             # PASS | WARN | FAIL
+    checks: list[CheckResultItem] = []
+    summary: dict[str, int] = {}
+    total_checks: int = 0
 
 
 # === Annotation (v1.0) ===
@@ -103,7 +144,7 @@ class AnnotationProjectCreate(BaseModel):
 
     name: str
     type: str  # ner | term_review | pos
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class AnnotationProjectResponse(BaseModel):
@@ -112,8 +153,8 @@ class AnnotationProjectResponse(BaseModel):
     id: int
     name: str
     type: str
-    ls_project_id: Optional[int] = None
-    ls_url: Optional[str] = None
+    ls_project_id: int | None = None
+    ls_url: str | None = None
     task_count: int = 0
     completed_count: int = 0
 
@@ -132,9 +173,9 @@ class KBTermResponse(BaseModel):
     id: int
     surface: str
     canonical: str
-    lemma: Optional[str] = None
-    pos: Optional[str] = None
-    definition: Optional[str] = None
+    lemma: str | None = None
+    pos: str | None = None
+    definition: str | None = None
     freq: int = 0
     related_count: int = 0
 
@@ -142,7 +183,7 @@ class KBTermResponse(BaseModel):
 class KBTermUpdate(BaseModel):
     """Request body for updating a knowledge base term."""
 
-    definition: Optional[str] = None
+    definition: str | None = None
 
 
 class KBRelationResponse(BaseModel):
@@ -160,8 +201,8 @@ class LLMChatRequest(BaseModel):
     """Request body for chatting with the LLM assistant."""
 
     message: str
-    context_type: Optional[str] = None  # term_definition | grammar_qa
-    context_ref: Optional[str] = None
+    context_type: str | None = None  # term_definition | grammar_qa
+    context_ref: str | None = None
 
 
 class LLMChatResponse(BaseModel):
@@ -177,7 +218,7 @@ class LLMDefineRequest(BaseModel):
     """Request body for generating a term definition via LLM."""
 
     term: str
-    context: Optional[str] = None
+    context: str | None = None
 
 
 class LLMExplainRequest(BaseModel):
@@ -198,4 +239,4 @@ class LLMStatusResponse(BaseModel):
 
     loaded: bool
     server_url: str
-    model: Optional[str] = None
+    model: str | None = None
