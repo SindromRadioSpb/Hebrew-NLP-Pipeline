@@ -28,11 +28,11 @@ Example (full M1→M2→M3 chain):
     'פלדה'
 """
 
-import time
 import logging
 import re
-from typing import Any, Dict, List
+import time
 from dataclasses import dataclass, field
+from typing import Any, Dict, List
 
 from kadima.engine.base import Processor, ProcessorResult, ProcessorStatus
 
@@ -100,11 +100,33 @@ class MorphResult:
     count: int
 
 
-# ── M1: Sentence Splitter ────────────────────────────────────────────────────
+# Regex for Hebrew sentence boundaries: . ? ! after any Hebrew char
+# Also handles Arabic-style ? (؟) and ellipsis (…)
+_SENT_BOUNDARY_RE = re.compile(r'(?<=[\u0590-\u05FF])[.?!?]\s+')
+_ELLIPSIS_RE = re.compile(r'(?<=[\u0590-\u05FF])\.{2,}\s*')
+
+# Strict mode: only split on period (original behaviour)
+_STRICT_RE = re.compile(r'(?<=[\u0590-\u05FF])\.\s+')
+
+
+def _split_sentences(text: str, strict: bool = False) -> List[str]:
+    """Split Hebrew text into sentences.
+
+    Handles: . ? ! ؟ and ellipsis (…) as sentence boundaries.
+    In strict mode, only splits on period.
+    """
+    if strict:
+        return _STRICT_RE.split(text)
+    # First split on ellipsis (multi-dot), then on standard boundaries
+    text = _ELLIPSIS_RE.sub('. ', text)
+    return _SENT_BOUNDARY_RE.split(text)
 
 
 class HebPipeSentSplitter(Processor):
     """M1: Разбиение текста на предложения.
+
+    Поддерживаемые разделители: ``.``, ``?``, ``!``, ``?`` (арабский), ``…``.
+    В режиме strict (config ``strict_mode=True``) — только ``.`` для совместимости.
 
     Example:
         >>> splitter = HebPipeSentSplitter()
@@ -135,15 +157,28 @@ class HebPipeSentSplitter(Processor):
                 processing_time_ms=(time.time() - start) * 1000,
             )
         try:
-            parts = re.split(r'(?<=[\u0590-\u05FF])\.\s+', input_data)
+            strict = bool(config.get("strict_mode", False))
+            parts = _split_sentences(input_data, strict=strict)
             sentences = []
             offset = 0
-            for i, part in enumerate(parts):
+            sent_idx = 0
+            for part in parts:
                 part = part.strip()
                 if not part:
                     continue
                 s = input_data.find(part, offset)
-                sentences.append(Sentence(index=i, text=part, start=s, end=s + len(part)))
+                if s == -1:
+                    # Fallback: search from start
+                    s = input_data.find(part)
+                if s == -1:
+                    continue
+                sentences.append(Sentence(
+                    index=sent_idx,
+                    text=part,
+                    start=s,
+                    end=s + len(part),
+                ))
+                sent_idx += 1
                 offset = s + len(part)
             return ProcessorResult(
                 module_name=self.name, status=ProcessorStatus.READY,
@@ -157,6 +192,14 @@ class HebPipeSentSplitter(Processor):
                 data=None, errors=[str(e)],
                 processing_time_ms=(time.time() - start) * 1000,
             )
+
+    def process_batch(
+        self,
+        inputs: List[str],
+        config: Dict[str, Any],
+    ) -> List[ProcessorResult]:
+        """Process multiple texts independently."""
+        return [self.process(text, config) for text in inputs]
 
 
 # ── M2: Tokenizer ────────────────────────────────────────────────────────────

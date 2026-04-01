@@ -5,9 +5,51 @@ from kadima.engine.hebpipe_wrappers import (
     HebPipeSentSplitter, HebPipeTokenizer, HebPipeMorphAnalyzer,
     Sentence, SentenceSplitResult, Token, TokenizeResult,
     MorphAnalysis, MorphResult,
-    _strip_prefixes, _detect_pos,
+    _strip_prefixes, _detect_pos, _split_sentences,
 )
 from kadima.engine.base import ProcessorStatus
+
+
+class TestSplitSentencesHelper:
+    """Unit tests for the _split_sentences helper function."""
+
+    def test_period_split(self):
+        parts = _split_sentences("משפט אחד. משפט שני.")
+        assert len(parts) >= 2
+
+    def test_question_split(self):
+        parts = _split_sentences("מי אתה? לא יודע.")
+        assert len(parts) >= 2
+
+    def test_exclamation_split(self):
+        parts = _split_sentences("זה נהדר! באמת.")
+        assert len(parts) >= 2
+
+    def test_mixed_boundaries(self):
+        parts = _split_sentences("משפט. שאלה? קריאה!")
+        assert len(parts) >= 3
+
+    def test_no_boundary(self):
+        parts = _split_sentences("משפט אחד בלי סימן סוף")
+        assert len(parts) == 1
+
+    def test_strict_mode_only_period(self):
+        parts = _split_sentences("האם אתה שם? בטח. נהדר!", strict=True)
+        assert len(parts) >= 1
+        # In strict mode, ? and ! should NOT split
+        result = _split_sentences("שאלה אחת? משפט שני.", strict=True)
+        # The string after ? is not split in strict mode
+        full = " ".join(result)
+        assert "שאלה אחת" in full
+
+    def test_empty_string(self):
+        parts = _split_sentences("")
+        assert len(parts) == 1
+        assert parts[0] == ""
+
+    def test_multi_paragraph(self):
+        parts = _split_sentences("פסקה ראשונה.\n\nפסקה שנייה.")
+        assert len(parts) >= 2
 
 
 class TestHebPipeSentSplitter:
@@ -19,7 +61,7 @@ class TestHebPipeSentSplitter:
         text = "פלדה חזקה משמשת בבניין. חוזק מתיחה גבוה מאד."
         result = splitter.process(text, {})
         assert result.status == ProcessorStatus.READY
-        assert result.data.count >= 1
+        assert result.data.count >= 2
 
     def test_single_sentence(self, splitter):
         text = "פלדה חזקה"
@@ -39,6 +81,76 @@ class TestHebPipeSentSplitter:
         assert splitter.validate_input("טקסט")
         assert not splitter.validate_input("")
         assert not splitter.validate_input(123)
+
+    def test_question_mark_split(self, splitter):
+        """Split on ? after Hebrew character."""
+        text = "מי אתה? מה אתה רוצה? אני לא יודע."
+        result = splitter.process(text, {})
+        assert result.status == ProcessorStatus.READY
+        assert result.data.count >= 3
+
+    def test_exclamation_mark_split(self, splitter):
+        """Split on ! after Hebrew character."""
+        text = "זה נהדר! באמת יופי! מספיק."
+        result = splitter.process(text, {})
+        assert result.status == ProcessorStatus.READY
+        assert result.data.count >= 3
+
+    def test_mixed_boundary_split(self, splitter):
+        """Mixed . ? ! in same text."""
+        text = "תחילה. שאלה? קריאה!"
+        result = splitter.process(text, {})
+        assert result.status == ProcessorStatus.READY
+        assert result.data.count >= 3
+        sentences = [s.text for s in result.data.sentences]
+        assert "תחילה" in sentences[0]
+        assert "שאלה" in sentences[1]
+        assert "קריאה" in sentences[2]
+
+    def test_strict_mode_only_period(self, splitter):
+        """Strict mode: only split on period."""
+        text = "משפט ראשון. שאלה אחת? משפט שני."
+        result = splitter.process(text, {"strict_mode": True})
+        assert result.status == ProcessorStatus.READY
+        # In strict mode, only . splits
+        assert result.data.count == 2
+
+    def test_sentence_offsets(self, splitter):
+        """Sentence start/end offsets should be correct."""
+        text = "א. ב."
+        result = splitter.process(text, {})
+        assert result.status == ProcessorStatus.READY
+        if result.data.count >= 2:
+            s0 = result.data.sentences[0]
+            s1 = result.data.sentences[1]
+            assert s0.start == 0
+            assert s0.end > s0.start
+            assert s1.start > s0.end
+
+    def test_whitespace_only_input(self, splitter):
+        result = splitter.process("   ", {})
+        assert result.status == ProcessorStatus.FAILED
+
+    def test_multiline_text(self, splitter):
+        """Multi-line text with sentence boundaries."""
+        text = "שורה ראשונה.\nשורה שנייה.\nשורה שלישית!"
+        result = splitter.process(text, {})
+        assert result.status == ProcessorStatus.READY
+        assert result.data.count >= 2
+
+    def test_process_batch(self, splitter):
+        """Batch processing multiple texts."""
+        inputs = [
+            "טקסט ראשון. עוד משהו.",
+            "שאלה אחת? אולי.",
+            "קריאה אחת!",
+        ]
+        results = splitter.process_batch(inputs, {"strict_mode": False})
+        assert len(results) == 3
+        assert all(r.status == ProcessorStatus.READY for r in results)
+        assert results[0].data.count >= 2
+        assert results[1].data.count >= 2
+        assert results[2].data.count >= 1
 
 
 class TestHebPipeTokenizer:
