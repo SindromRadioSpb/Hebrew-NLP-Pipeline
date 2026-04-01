@@ -12,12 +12,12 @@ Example:
     'חוזק'
 """
 
-import sqlite3
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional
+import sqlite3
 from dataclasses import dataclass, field
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -26,15 +26,15 @@ logger = logging.getLogger(__name__)
 class KBTerm:
     """Термин Knowledge Base для репозитория."""
 
-    id: Optional[int]
+    id: int | None
     surface: str
     canonical: str
     lemma: str
     pos: str
-    features: Dict[str, Any] = field(default_factory=dict)
-    definition: Optional[str] = None
-    embedding: Optional[bytes] = None
-    source_corpus_id: Optional[int] = None
+    features: dict[str, Any] = field(default_factory=dict)
+    definition: str | None = None
+    embedding: bytes | None = None
+    source_corpus_id: int | None = None
     freq: int = 0
 
 
@@ -70,7 +70,7 @@ class KBRepository:
             logger.debug("Created KB term '%s' (id=%d)", term.surface, cur.lastrowid)
             return cur.lastrowid
 
-    def search(self, query: str, limit: int = 20) -> List[KBTerm]:
+    def search(self, query: str, limit: int = 20) -> list[KBTerm]:
         """Поиск терминов по surface, canonical или definition.
 
         Args:
@@ -89,7 +89,7 @@ class KBRepository:
                     features = json.loads(r[5] or "{}")
                 except (json.JSONDecodeError, TypeError):
                     features = {}
-                results.append(KBTerm(id=r[0], surface=r[1], canonical=r[2], lemma=r[3], pos=r[4], features=features, definition=r[6], embedding=r[7], source_corpus_id=r[8], freq=r[10]))
+                results.append(KBTerm(id=r[0], surface=r[1], canonical=r[2], lemma=r[3], pos=r[4], features=features, definition=r[6], embedding=r[7], source_corpus_id=r[8], freq=r[9]))
             logger.debug("KB search '%s' → %d results", query, len(results))
             return results
 
@@ -116,7 +116,7 @@ class KBRepository:
                 id=row[0], surface=row[1], canonical=row[2],
                 lemma=row[3], pos=row[4], features=features,
                 definition=row[6], embedding=row[7],
-                source_corpus_id=row[8], freq=row[10],
+                source_corpus_id=row[8], freq=row[9],
             )
 
     def update_embedding(self, term_id: int, embedding: bytes) -> None:
@@ -131,12 +131,12 @@ class KBRepository:
         """
         with self._conn() as c:
             c.execute(
-                "UPDATE kb_terms SET embedding=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                "UPDATE kb_terms SET embedding=? WHERE id=?",
                 (embedding, term_id),
             )
             logger.debug("Updated embedding for term id=%d (%d bytes)", term_id, len(embedding))
 
-    def get_all_with_embeddings(self) -> List["KBTerm"]:
+    def get_all_with_embeddings(self) -> list["KBTerm"]:
         """Вернуть все термины, у которых есть embedding.
 
         Returns:
@@ -156,7 +156,7 @@ class KBRepository:
                     id=row[0], surface=row[1], canonical=row[2],
                     lemma=row[3], pos=row[4], features=features,
                     definition=row[6], embedding=row[7],
-                    source_corpus_id=row[8], freq=row[10],
+                    source_corpus_id=row[8], freq=row[9],
                 ))
             logger.debug("Loaded %d terms with embeddings", len(results))
             return results
@@ -169,5 +169,5 @@ class KBRepository:
             definition: Новое определение.
         """
         with self._conn() as c:
-            c.execute("UPDATE kb_terms SET definition=?, updated_at=CURRENT_TIMESTAMP WHERE id=?", (definition, term_id))
+            c.execute("UPDATE kb_terms SET definition=? WHERE id=?", (definition, term_id))
             logger.debug("Updated definition for term id=%d", term_id)
