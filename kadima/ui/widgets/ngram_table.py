@@ -124,6 +124,13 @@ class NgramTableModel(QAbstractTableModel):
         self.layoutAboutToBeChanged.emit()
         self._apply_sort()
         self.layoutChanged.emit()
+        # Force refresh of Rank column (row index + 1) since it's dynamic
+        bottom_right = self.index(len(self._ngrams) - 1, 0)
+        self.dataChanged.emit(
+            self.index(0, 0),
+            bottom_right,
+            [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole],
+        )
 
     def ngram_at(self, row: int) -> Any:
         """Return raw ngram object at row index (for detail panel)."""
