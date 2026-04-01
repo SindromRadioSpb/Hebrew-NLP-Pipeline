@@ -1,7 +1,9 @@
 # kadima/ui/widgets/np_chunk_table.py
 """NP Chunk QTableView backed by a QAbstractTableModel.
 
-Accepts raw chunk dicts from NPChunkResult.chunks (keys: text, kind, freq, tokens).
+Accepts raw chunk dicts from NPChunkResult.chunks.
+Supports both dict keys (text/kind/freq/tokens) and NPChunk dataclass fields
+(surface/pattern/score/tokens/sentence_idx).
 """
 from __future__ import annotations
 
@@ -18,25 +20,67 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-_COLUMNS = ["Chunk", "Kind", "Freq", "Tokens"]
+_COLUMNS = ["Rank", "Chunk", "Pattern", "Score", "Tokens"]
+
+
+def _get_field(chunk: Any, key: str, dataclass_attr: str, default: Any = "") -> Any:
+    """Get field from dict key or dataclass attribute (NPChunk compatibility)."""
+    if isinstance(chunk, dict):
+        return chunk.get(key, chunk.get(dataclass_attr, default))
+    return getattr(chunk, dataclass_attr, getattr(chunk, key, default))
 
 
 class NPChunkTableModel(QAbstractTableModel):
     """Model for NP chunk data.
 
-    Args:
-        chunks: List of dicts with keys text/kind/freq/tokens.
+    Supports both dict and NPChunk dataclass inputs.
     """
 
     def __init__(self, chunks: Optional[List[Any]] = None, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._chunks: List[Any] = chunks or []
+        self._sort_col: int = 3  # Default sort by Score descending
+        self._sort_order: Qt.SortOrder = Qt.SortOrder.DescendingOrder
 
     def load(self, chunks: List[Any]) -> None:
         """Replace data and notify views."""
         self.beginResetModel()
         self._chunks = chunks or []
+        self._apply_sort()
         self.endResetModel()
+
+    def _apply_sort(self) -> None:
+        """Apply current sort settings to _chunks."""
+        def sort_key(ch: Any) -> tuple:
+            col = self._sort_col
+            if col == 0:  # Rank — sort by Score descending (original rank order)
+                score = _get_field(ch, "score", "score", _get_field(ch, "freq", "freq", 0))
+                return (0, self._numeric(score))
+            if col == 1:  # Chunk text
+                text = str(_get_field(ch, "text", "surface", ""))
+                return (1, text)
+            if col == 2:  # Pattern
+                pattern = str(_get_field(ch, "kind", "pattern", ""))
+                return (1, pattern)
+            if col == 3:  # Score
+                score = _get_field(ch, "score", "score", _get_field(ch, "freq", "freq", 0))
+                return (0, self._numeric(score))
+            if col == 4:  # Tokens
+                toks = _get_field(ch, "tokens", "tokens", [])
+                text = " / ".join(str(t) for t in toks) if isinstance(toks, list) else str(toks)
+                return (1, text)
+            return (0, 0)
+
+        reverse = self._sort_order == Qt.SortOrder.DescendingOrder
+        self._chunks.sort(key=sort_key, reverse=reverse)
+
+    @staticmethod
+    def _numeric(val: Any) -> float:
+        """Convert to float for sorting."""
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return 0.0
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return len(self._chunks)
@@ -49,17 +93,22 @@ class NPChunkTableModel(QAbstractTableModel):
             return None
         ch = self._chunks[index.row()]
         col = index.column()
-        if not isinstance(ch, dict):
-            return str(ch) if col == 0 else None
-        if col == 0:
-            return ch.get("text", "")
-        if col == 1:
-            return ch.get("kind", "")
-        if col == 2:
-            return str(ch.get("freq", ""))
-        if col == 3:
-            toks = ch.get("tokens", [])
-            return " / ".join(str(t) for t in toks) if toks else ""
+        if col == 0:  # Rank (1-based row index + 1)
+            return str(index.row() + 1)
+        if col == 1:  # Chunk (surface/text)
+            return str(_get_field(ch, "text", "surface", ""))
+        if col == 2:  # Pattern (kind/pattern)
+            return str(_get_field(ch, "kind", "pattern", ""))
+        if col == 3:  # Score (freq/score)
+            score = _get_field(ch, "score", "score", _get_field(ch, "freq", "freq", ""))
+            if isinstance(score, float):
+                return f"{score:.4f}"
+            return str(score)
+        if col == 4:  # Tokens
+            toks = _get_field(ch, "tokens", "tokens", [])
+            if isinstance(toks, list):
+                return " / ".join(str(t) for t in toks) if toks else ""
+            return str(toks)
         return None
 
     def headerData(
@@ -68,6 +117,23 @@ class NPChunkTableModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             return _COLUMNS[section]
         return None
+
+    def sort(self, column: int, order: Qt.SortOrder = Qt.SortOrder.AscendingOrder) -> None:
+        """Sort by column and order, re-emit dataChanged."""
+        self._sort_col = column
+        self._sort_order = order
+        self._apply_sort()
+        self.beginResetModel()
+        self.endResetModel()
+
+    def chunk_at(self, row: int) -> Any:
+        """Return raw chunk object at row index (for detail panel)."""
+        if 0 <= row < len(self._chunks):
+            return self._chunks[row]
+        return None
+
+    def all_chunks(self) -> List[Any]:
+        return list(self._chunks)
 
 
 class NPChunkTable(QTableView):
@@ -91,10 +157,12 @@ class NPChunkTable(QTableView):
         self.verticalHeader().hide()
         self.setShowGrid(False)
         hh = self.horizontalHeader()
-        hh.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        hh.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        hh.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        hh.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        hh.setStretchLastSection(False)
+        hh.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Rank
+        hh.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Chunk
+        hh.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # Pattern
+        hh.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # Score
+        hh.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # Tokens
         self._apply_style()
 
     def _apply_style(self) -> None:
