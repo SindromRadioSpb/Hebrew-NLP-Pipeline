@@ -37,10 +37,17 @@ class CorpusRepository:
             conn.close()
 
     def list_all(self) -> List[Dict[str, Any]]:
-        """List all active corpora."""
+        """List all active corpora with document count."""
         conn = get_connection(self.db_path)
         try:
-            rows = conn.execute("SELECT * FROM corpora WHERE status='active' ORDER BY created_at DESC").fetchall()
+            rows = conn.execute(
+                "SELECT c.*, COUNT(d.id) AS document_count "
+                "FROM corpora c "
+                "LEFT JOIN documents d ON d.corpus_id = c.id "
+                "WHERE c.status='active' "
+                "GROUP BY c.id "
+                "ORDER BY c.created_at DESC"
+            ).fetchall()
             logger.info("Listed %d active corpora", len(rows))
             return [dict(r) for r in rows]
         finally:

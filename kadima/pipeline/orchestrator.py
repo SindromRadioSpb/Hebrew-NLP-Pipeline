@@ -263,6 +263,7 @@ class PipelineService:
             all_tokens = []
 
             sentences = sentences_data.sentences if sentences_data else [type('S', (), {'text': text, 'index': 0})()]
+            proc_result = None
             for sent in sentences:
                 proc_result = proc.process(sent.text, self._get_module_config("tokenizer"))
                 if proc_result.status == ProcessorStatus.READY:
@@ -270,7 +271,8 @@ class PipelineService:
                     tokens_per_sentence.append(tok_result.tokens)
                     all_tokens.extend(tok_result.tokens)
 
-            result.module_results["tokenizer"] = proc_result
+            if proc_result is not None:
+                result.module_results["tokenizer"] = proc_result
             logger.debug("M2: %d tokens in %d sentences", len(all_tokens), len(tokens_per_sentence))
 
         # ── M3: Morphological Analysis (per sentence) ────────────────────
@@ -278,13 +280,15 @@ class PipelineService:
             proc = self.modules["morph_analyzer"]
             morph_per_sentence = []
 
+            proc_result = None
             for sent_tokens in tokens_per_sentence:
                 proc_result = proc.process(sent_tokens, self._get_module_config("morph_analyzer"))
                 if proc_result.status == ProcessorStatus.READY:
                     morph_result: MorphResult = proc_result.data
                     morph_per_sentence.append(morph_result.analyses)
 
-            result.module_results["morph_analyzer"] = proc_result
+            if proc_result is not None:
+                result.module_results["morph_analyzer"] = proc_result
             logger.debug("M3: %d sentences morphed", len(morph_per_sentence))
 
         # ── M4: N-gram Extraction ────────────────────────────────────────

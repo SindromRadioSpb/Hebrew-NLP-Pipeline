@@ -457,6 +457,10 @@ class PipelineView(QWidget):
             return
 
         config_dict = self._get_config_dict()
+        if not config_dict.get("modules"):
+            # Fall back to all NLP modules if user unchecked everything
+            config_dict["modules"] = list(self._nlp_checks.keys())
+            self._append_log("No modules selected — using all NLP modules.")
         self._worker = PipelineWorker(text=text, corpus_id=corpus_id, config_dict=config_dict)
         self._worker.signals.started.connect(self._on_started)
         self._worker.signals.progress.connect(self._on_progress)

@@ -131,7 +131,12 @@ class GenerativeWorker(QRunnable):
         """Entry point — executed in a worker thread by QThreadPool."""
         self.signals.started.emit(self.tab_name)
         try:
-            module = self._module_cls(self._module_config)
+            import inspect
+            init_params = inspect.signature(self._module_cls.__init__).parameters
+            if len(init_params) > 1:  # has params beyond 'self'
+                module = self._module_cls(self._module_config)
+            else:
+                module = self._module_cls()
             result = module.process(self._input_data, self._runtime_config)
             self.signals.finished.emit(self.tab_name, result)
         except Exception as exc:

@@ -3,7 +3,7 @@
 > **Python 3.10+** | **Package:** `kadima/` | **DB:** SQLite WAL + migrations
 > **Conventions:** snake_case files/functions, PascalCase classes, UPPER_SNAKE constants
 > **Target HW:** RTX 3060 12GB (dev) / RTX 3070 8GB (CI)
-> **Version:** 0.9.x → 1.0.0 | **Current phase:** T4 (Phase 2 engine modules + GenerativeView)
+> **Version:** 0.9.x → 1.0.0 | **Current phase:** T5 (Phase 3: Keyphrase/Grammar/Summarizer + NLP Tools UI)
 
 ---
 
@@ -59,9 +59,14 @@ make up-llm                 # + llama.cpp (GPU)
 | NER M17 | Working | neodictabert → heq_ner → rules fallback chain (R-2.2) |
 | Transformer backbone | Working | KadimaTransformer, doc.tensor, spaCy pipeline builder (T1) |
 | Desktop UI (T3) | Working | MainWindow + 6 full views + 9 widgets + dark QSS theme + cross-view wiring |
-| Engine stubs M15/M16/M18/M20 | Files exist | D9: TTSSynthesizer, STTTranscriber, SentimentAnalyzer, QAExtractor — always return FAILED (Tier 2 pending) |
+| M15 TTSSynthesizer | **Working** (R-4.2) | XTTS v2 (Coqui) → MMS-TTS (facebook/mms-tts-heb) fallback; 30 tests |
+| M16 STTTranscriber | **Working** (R-4.3) | openai-whisper → faster-whisper fallback; WER metric; 34 tests |
+| M18 SentimentAnalyzer | **Working** (R-4.1) | heBERT → rules fallback; accuracy+macro_f1; 31 tests |
+| M20 QAExtractor | **Working** (R-4.4) | AlephBERT QA; uncertainty_sample() → Label Studio; exact_match+F1; 49 tests |
 | T4 widgets | Done | D10: BackendSelector, ExportButton, EntityTable, AudioPlayer created in `ui/widgets/` |
-| Tests | 672+ functions | Engine, config, corpus, data, validation, KB, E2E + 28 UI smoke tests |
+| GenerativeView (T4 Step 10) | **Working** | 6 tabs: Sentiment/TTS/STT/Translate/Diacritize/NER + GenerativeWorker |
+| AnnotationView (T4 Step 11) | **Working** | Projects table + Tasks + AL Queue + Sync/Pre-annotate/Retrain buttons |
+| Tests | 822 functions | Engine, config, corpus, data, validation, KB, E2E + 62 UI smoke tests |
 
 ### Resolved blockers (Phase 0)
 
@@ -140,12 +145,12 @@ make up-llm                 # + llama.cpp (GPU)
 |----|--------|------|-------|------|-----|------|--------|
 | M13 | Diacritizer | `diacritizer.py` | phonikud-onnx / DictaBERT | <1GB | `str -> str` | 1 | **Working** (rules + ML fallback) |
 | M14 | Translator | `translator.py` | mBART-50 / OPUS-MT | 3GB | `str,lang -> str` | 1 | **Working** (dict + ML fallback) |
-| M15 | TTS Synthesizer | `tts_synthesizer.py` | XTTS v2 (Coqui) | 4GB | `str -> Path(WAV)` | 2 | Stub file (R-4.2 pending) |
-| M16 | STT Transcriber | `stt_transcriber.py` | Whisper large-v3 | 3-6GB | `Path(WAV) -> str` | 2 | Stub file (R-4.3 pending) |
+| M15 | TTS Synthesizer | `tts_synthesizer.py` | XTTS v2 (Coqui) | 4GB | `str -> Path(WAV)` | 2 | **Working** (xtts → mms fallback, R-4.2) |
+| M16 | STT Transcriber | `stt_transcriber.py` | Whisper large-v3 | 3-6GB | `Path(WAV) -> str` | 2 | **Working** (whisper → faster-whisper fallback, R-4.3) |
 | M17 | NER Extractor | `ner_extractor.py` | HeQ-NER (dicta-il) | <1GB | `str -> List[Entity]` | 1 | **Working** (gazetteer + ML fallback) |
-| M18 | Sentiment Analyzer | `sentiment_analyzer.py` | heBERT | <1GB | `str -> {label,score}` | 2 | Stub file (R-4.1 **next**) |
+| M18 | Sentiment Analyzer | `sentiment_analyzer.py` | heBERT | <1GB | `str -> {label,score}` | 2 | **Working** (hebert → rules fallback, R-4.1) |
 | M19 | Summarizer | — | mT5-base | 2GB | `str -> str` | 2 | Not created (R-5.3) |
-| M20 | QA Extractor | `qa_extractor.py` | AlephBERT | <1GB | `{q,ctx} -> {answer,score}` | 2 | Stub file (R-4.4 pending) |
+| M20 | QA Extractor | `qa_extractor.py` | AlephBERT | <1GB | `{q,ctx} -> {answer,score}` | 2 | **Working** (alephbert + uncertainty sampling, R-4.4) |
 | M21 | Morph Generator | `morph_generator.py` | Rules (no ML) | 0 | `lemma,pos -> List[MorphForm]` | 1 | **Working** (7 binyanim, noun/adj inflection) |
 | M22 | Transliterator | `transliterator.py` | Rules + lookup | 0 | `str <-> str` | 1 | **Working** (Academy + IPA + reverse) |
 | M23 | Grammar Corrector | — | T5-hebrew / LLM | 2-4GB | `str -> str` | 3 | Not created (R-5.2) |
@@ -153,8 +158,8 @@ make up-llm                 # + llama.cpp (GPU)
 | M25 | Paraphraser | — | mT5 / LLM | 2-4GB | `str -> List[str]` | 3 | Not created |
 
 **Phase 1 (Tier 1) complete:** M13, M14, M17, M21, M22 implemented with rules + ML fallback.
-**T4 next (Tier 2):** R-4.1 M18 Sentiment (heBERT), R-4.2 M15 TTS (XTTS), R-4.3 M16 STT (Whisper), R-4.4 M20 Active Learning.
-**T5 later (Tier 3):** M24 Keyphrase (YAKE), M23 Grammar (Dicta-LM), M25 Summarizer (Dicta-LM).
+**Phase 2 (Tier 2) DONE:** M15 TTS (XTTS→MMS), M16 STT (Whisper→faster-whisper), M18 Sentiment (heBERT→rules), M20 QA (AlephBERT + uncertainty sampling).
+**T5 next (Tier 3):** M24 Keyphrase (YAKE), M23 Grammar (Dicta-LM), M19/M25 Summarizer/Paraphraser (Dicta-LM).
 
 **Tier meaning:** 1 = first to implement (rules-only or <1GB), 2 = ML-heavy, 3 = LLM-dependent.
 
@@ -799,13 +804,13 @@ except ImportError:
 | | | Step 8: `styles/app.qss` — design tokens, dark theme | **DONE** | 2–3 |
 | | | Step 9: `tests/ui/test_main_window.py` — 29 pytest-qt smoke tests (skip if no PyQt6) | **DONE** | 4–6 |
 | **pre-T4** | T3 wiring + stubs | D8/D9/D10 — все закрыты | **DONE** | — |
-| **T4** | Phase 2 + UI | R-4.1 M18 Sentiment Classifier (heBERT + rules fallback) | **NOW** | 4–6 |
-| | | R-4.2 M15 TTS (Coqui XTTS v2) | **NOW** | 6–8 |
-| | | R-4.3 M16 STT (Whisper large-v3) | **NOW** | 6–8 |
-| | | R-4.4 M20 Active Learning (uncertainty sampling → LS export) | **NOW** | 6–8 |
-| | | Step 10: `generative_view.py` — 6 tabs: Sentiment/TTS/STT/Translate/Diacritize/NER + GenerativeWorker | **NOW** | 6–8 |
-| | | Step 11: `annotation_view.py` — LS projects + pre-annotate + AL queue | **NOW** | 4–6 |
-| | | Step 12: `tests/ui/test_generative.py` + `test_annotation.py` | **NOW** | 2–3 |
+| **T4** | Phase 2 + UI | R-4.1 M18 Sentiment Classifier (heBERT + rules fallback) | **DONE** | 4–6 |
+| | | R-4.2 M15 TTS (Coqui XTTS v2 + MMS fallback) | **DONE** | 6–8 |
+| | | R-4.3 M16 STT (Whisper large-v3 + faster-whisper fallback) | **DONE** | 6–8 |
+| | | R-4.4 M20 Active Learning (uncertainty sampling → LS export) | **DONE** | 6–8 |
+| | | Step 10: `generative_view.py` — 6 tabs: Sentiment/TTS/STT/Translate/Diacritize/NER + GenerativeWorker | **DONE** | 6–8 |
+| | | Step 11: `annotation_view.py` — LS projects + pre-annotate + AL queue | **DONE** | 4–6 |
+| | | Step 12: `tests/ui/test_generative.py` + `tests/ui/test_annotation.py` | **DONE** | 2–3 |
 | **T5** | Phase 3 + UI | R-5.1 M24 Keyphrase (YAKE) | Pending | 3–4 |
 | | | R-5.2 M23 Grammar Checker (Dicta-LM) | Pending | 4–6 |
 | | | R-5.3 M25 Summarizer (Dicta-LM) | Pending | 4–6 |

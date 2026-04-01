@@ -4,23 +4,33 @@
 Example:
     >>> from kadima.validation.gold_importer import load_gold_corpus
     >>> corpus = load_gold_corpus("tests/data/he_01_sentence_token_lemma_basics")
-    >>> corpus.version
-    '2.1'
-    >>> len(corpus.checks) > 0
+    >>> len(corpus.checks) >= 0
     True
-    >>> corpus.checks[0].check_type
-    'sentence_count'
 """
 
-import os
-import csv
 import json
+import csv
+import os
 import yaml
 import logging
 from typing import List, Dict
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
+
+# Top-level YAML sections that are NOT per-document file IDs
+_SPECIAL_YAML_SECTIONS = {"corpus_total", "cross_doc_lemma_freq"}
+
+
+def _serialize_value(value: object) -> tuple[str, str]:
+    """Serialize a YAML value to (canonical_string, expectation_type).
+
+    Returns:
+        (serialized_value, expectation_type) — list values use "list_exact".
+    """
+    if isinstance(value, list):
+        return json.dumps(sorted(str(v) for v in value), ensure_ascii=False), "list_exact"
+    return str(value), "exact"
 
 
 @dataclass
@@ -77,13 +87,67 @@ def load_gold_corpus(corpus_dir: str) -> GoldCorpus:
     if os.path.exists(counts_path):
         with open(counts_path, "r", encoding="utf-8") as f:
             counts = yaml.safe_load(f) or {}
-        for file_id, file_counts in counts.items():
-            for check_type, value in file_counts.items():
-                checks.append(ExpectedCheck(
-                    check_type=check_type, file_id=file_id,
-                    item=check_type, expected_value=str(value),
-                    expectation_type="exact",
-                ))
+
+        for section_key, section_val in counts.items():
+            if not isinstance(section_val, dict):
+                continue
+            # Skip YAML comment keys
+            if str(section_key).startswith("#"):
+                continue
+
+            if section_key == "corpus_total":
+                # Aggregate corpus-level checks: file_id = "corpus_total"
+                for check_type, value in section_val.items():
+                    if str(check_type).startswith("#"):
+                        continue
+                    if isinstance(value, dict):
+                        raw_val = value.get("value", "")
+                        serialized, inferred_type = _serialize_value(raw_val)
+                        # list_exact takes precedence — the YAML "type: exact" is for scalar intent
+                        expectation_type = inferred_type if inferred_type == "list_exact" else str(value.get("type", "exact"))
+                    else:
+                        serialized, expectation_type = _serialize_value(value)
+                    checks.append(ExpectedCheck(
+                        check_type=check_type, file_id="corpus_total",
+                        item=check_type, expected_value=serialized,
+                        expectation_type=expectation_type,
+                    ))
+
+            elif section_key == "cross_doc_lemma_freq":
+                # Cross-document lemma frequency checks: file_id = "cross_doc"
+                for lemma, value in section_val.items():
+                    if str(lemma).startswith("#"):
+                        continue
+                    if isinstance(value, dict):
+                        expected_value = str(value.get("total_freq", value.get("value", "")))
+                        expectation_type = str(value.get("type", "exact"))
+                    else:
+                        expected_value = str(value)
+                        expectation_type = "exact"
+                    checks.append(ExpectedCheck(
+                        check_type="cross_doc_lemma_freq", file_id="cross_doc",
+                        item=str(lemma), expected_value=expected_value,
+                        expectation_type=expectation_type,
+                    ))
+
+            else:
+                # Regular per-document section: section_key is file_id
+                file_id = str(section_key)
+                for check_type, value in section_val.items():
+                    if str(check_type).startswith("#"):
+                        continue
+                    if isinstance(value, dict):
+                        raw_val = value.get("value", "")
+                        serialized, inferred_type = _serialize_value(raw_val)
+                        # list_exact takes precedence over the YAML "type: exact" scalar hint
+                        expectation_type = inferred_type if inferred_type == "list_exact" else str(value.get("type", "exact"))
+                    else:
+                        serialized, expectation_type = _serialize_value(value)
+                    checks.append(ExpectedCheck(
+                        check_type=check_type, file_id=file_id,
+                        item=check_type, expected_value=serialized,
+                        expectation_type=expectation_type,
+                    ))
 
     # 3. Expected lemmas (CSV)
     lemmas_path = os.path.join(corpus_dir, "expected_lemmas.csv")

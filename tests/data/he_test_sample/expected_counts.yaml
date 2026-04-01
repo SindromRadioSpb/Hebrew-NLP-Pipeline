@@ -1,0 +1,25 @@
+# he_test_sample — expected counts
+
+doc_01:
+  sentence_count:
+    value: 3
+    type: exact
+  token_count:
+    value: 14
+    type: exact
+
+doc_02:
+  sentence_count:
+    value: 3
+    type: exact
+  token_count:
+    value: 12
+    type: exact
+
+corpus_total:
+  total_sentences:
+    value: 6
+    type: exact
+  total_tokens:
+    value: 26
+    type: exact

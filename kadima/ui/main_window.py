@@ -30,7 +30,7 @@ import os
 from typing import Dict, List, Optional, Tuple
 
 try:
-    from PyQt6.QtCore import Qt, QSize, QTimer, pyqtSignal
+    from PyQt6.QtCore import QObject, Qt, QSize, QTimer, pyqtSignal
     from PyQt6.QtGui import QAction, QKeySequence
     from PyQt6.QtWidgets import (
         QApplication,
@@ -75,6 +75,151 @@ _VIEW_REGISTRY: List[Tuple[str, str, str, str, str]] = [
 _PROFILES = ["balanced", "precise", "recall"]
 _KADIMA_HOME = os.environ.get("KADIMA_HOME", os.path.expanduser("~/.kadima"))
 _DB_PATH = os.path.join(_KADIMA_HOME, "kadima.db")
+
+
+# ── Validation worker ─────────────────────────────────────────────────────────
+
+class _ValWorkerSignals(QObject):
+    finished = pyqtSignal(list)   # List[CheckResult]
+    failed = pyqtSignal(str)
+
+
+class _ValidationWorker:
+    """QRunnable-like callable that runs gold-corpus validation off the main thread.
+
+    Called via QTimer.singleShot(0, ...) inside a QRunnable to avoid QObject
+    threading restrictions.
+    """
+
+    def __init__(self, gold_corpus: object, db_path: str) -> None:
+        self._gold_corpus = gold_corpus
+        self._db_path = db_path
+        self.signals = _ValWorkerSignals()
+
+    def run(self) -> None:  # noqa: C901
+        """Run pipeline on each gold-corpus raw file and compare against checks."""
+        import json as _json
+
+        try:
+            from kadima.pipeline.config import PipelineConfig, ThresholdsConfig
+            from kadima.pipeline.orchestrator import PipelineService
+            from kadima.validation.check_engine import run_checks
+            from kadima.engine.hebpipe_wrappers import HebPipeTokenizer, HebPipeMorphAnalyzer
+
+            gc = self._gold_corpus
+            if not gc.raw_files:
+                self.signals.failed.emit("Gold corpus has no raw files.")
+                return
+
+            config = PipelineConfig(
+                modules=["sent_split", "tokenizer", "morph_analyzer",
+                         "ngram", "np_chunk", "canonicalize", "am", "term_extract", "noise"],
+                thresholds=ThresholdsConfig(min_freq=1, pmi_threshold=1.0, hapax_filter=False),
+            )
+            service = PipelineService(config=config, db_path=self._db_path)
+            _tokenizer = HebPipeTokenizer()
+            _morpher = HebPipeMorphAnalyzer()
+
+            actuals: dict[str, str] = {}
+
+            # Corpus-level accumulators for corpus_total checks
+            corpus_total_sentences = 0
+            corpus_total_tokens = 0
+            corpus_all_lemmas: set[str] = set()
+            corpus_total_det_surfaces = 0
+            # cross_doc lemma frequency: lemma → total count across all files
+            cross_doc_lemma_freq: dict[str, int] = {}
+
+            for fname, raw_text in gc.raw_files.items():
+                file_id = fname.replace(".txt", "")
+                result = service.run_on_text(raw_text)
+
+                # --- sentence_count ---
+                sent_res = result.module_results.get("sent_split")
+                sent_data = getattr(sent_res, "data", None) if sent_res else None
+                sentences = getattr(sent_data, "sentences", []) if sent_data else []
+                sentence_count = getattr(sent_data, "count", len(sentences)) if sent_data else 0
+                if not sentences:
+                    sentences = [type("S", (), {"text": raw_text})()]
+                    sentence_count = 1
+                actuals[f"sentence_count:{file_id}:sentence_count"] = str(sentence_count)
+                corpus_total_sentences += sentence_count
+
+                # --- token_count, unique_lemma_count, det_surface_count, det_surfaces ---
+                lemma_counts: dict[str, int] = {}
+                total_tokens = 0
+                det_surface_count = 0
+                det_surfaces_unique: set[str] = set()
+
+                for sent in sentences:
+                    t_res = _tokenizer.process(sent.text, {})
+                    if not t_res.data:
+                        continue
+                    tokens = t_res.data.tokens
+                    total_tokens += t_res.data.count
+
+                    m_res = _morpher.process(tokens, {})
+                    if m_res.data:
+                        analyses = getattr(m_res.data, "analyses", [])
+                        for i, analysis in enumerate(analyses):
+                            lemma = getattr(analysis, "lemma", None) or ""
+                            if lemma:
+                                lemma_counts[lemma] = lemma_counts.get(lemma, 0) + 1
+                            # Detect definite article surfaces: ה-prefixed NOUN/ADJ/PROPN only
+                            # Use original token surface (analysis.token is '?', pair by index)
+                            pos = getattr(analysis, "pos", "")
+                            if pos in ("NOUN", "ADJ", "PROPN") and i < len(tokens):
+                                tok_surface = getattr(tokens[i], "surface", "") or ""
+                                clean_surf = tok_surface.rstrip(".,;:!?\"'")
+                                if clean_surf and len(clean_surf) > 1 and clean_surf[0] == "ה":
+                                    det_surface_count += 1
+                                    det_surfaces_unique.add(clean_surf)
+
+                actuals[f"token_count:{file_id}:token_count"] = str(total_tokens)
+                actuals[f"unique_lemma_count:{file_id}:unique_lemma_count"] = str(len(lemma_counts))
+                actuals[f"det_surface_count:{file_id}:det_surface_count"] = str(det_surface_count)
+                # Serialize det_surfaces as sorted JSON list for list comparison
+                actuals[f"det_surfaces:{file_id}:det_surfaces"] = _json.dumps(
+                    sorted(det_surfaces_unique), ensure_ascii=False
+                )
+
+                # Per-lemma freq actuals
+                for lemma, freq in lemma_counts.items():
+                    actuals[f"lemma_freq:{file_id}:{lemma}"] = str(freq)
+
+                # Update corpus-level accumulators
+                corpus_total_tokens += total_tokens
+                corpus_all_lemmas.update(lemma_counts.keys())
+                corpus_total_det_surfaces += det_surface_count
+                for lemma, freq in lemma_counts.items():
+                    cross_doc_lemma_freq[lemma] = cross_doc_lemma_freq.get(lemma, 0) + freq
+
+                # --- term_present checks ---
+                term_surfaces = {getattr(t, "surface", str(t)) for t in (result.terms or [])}
+                term_canonicals = {getattr(t, "canonical", "") for t in (result.terms or [])}
+                all_terms = term_surfaces | term_canonicals
+                for chk in gc.checks:
+                    if chk.check_type == "term_present" and chk.file_id == file_id:
+                        key = f"term_present:{file_id}:{chk.item}"
+                        present = any(chk.item in t or t in chk.item for t in all_terms)
+                        actuals[key] = "1" if present else "0"
+
+            # --- corpus_total actuals ---
+            actuals["total_sentences:corpus_total:total_sentences"] = str(corpus_total_sentences)
+            actuals["total_tokens:corpus_total:total_tokens"] = str(corpus_total_tokens)
+            actuals["total_unique_lemmas:corpus_total:total_unique_lemmas"] = str(len(corpus_all_lemmas))
+            actuals["total_det_surfaces:corpus_total:total_det_surfaces"] = str(corpus_total_det_surfaces)
+
+            # --- cross_doc_lemma_freq actuals ---
+            for lemma, total_freq in cross_doc_lemma_freq.items():
+                actuals[f"cross_doc_lemma_freq:cross_doc:{lemma}"] = str(total_freq)
+
+            check_results = run_checks(gc.checks, actuals)
+            self.signals.finished.emit(check_results)
+
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Validation worker failed: %s", exc, exc_info=True)
+            self.signals.failed.emit(str(exc))
 
 
 def _load_qss() -> str:
@@ -150,6 +295,7 @@ class MainWindow(QMainWindow):
         self._view_cache: Dict[int, QWidget] = {}
         self._current_index: int = -1
         self._wired: set[str] = set()
+        self._gold_corpus: Optional[object] = None  # GoldCorpus, loaded by _upload_gold_corpus
 
         self._setup_window()
         self._create_menubar()
@@ -419,13 +565,84 @@ class MainWindow(QMainWindow):
         if hasattr(kb_view, "search"):
             kb_view.search(surface, "surface")
 
-    def _run_validation(self) -> None:
-        """Trigger validation run (stub — wired to ValidationView signal)."""
-        logger.info("Run validation requested")
-
     def _upload_gold_corpus(self) -> None:
-        """Trigger gold corpus upload (stub — wired to ValidationView signal)."""
-        logger.info("Upload gold corpus requested")
+        """Open directory picker, load gold corpus, store for validation run."""
+        from PyQt6.QtWidgets import QFileDialog
+        # Default to user's gold corpus dir if it exists, else tests/data
+        _default_gold = os.path.join(
+            os.path.dirname(__file__), "..", "..", "Tasks",
+            "Gold Corpus v2 upgrade maximum",
+        )
+        _start_dir = _default_gold if os.path.isdir(_default_gold) else os.path.join(
+            os.path.dirname(__file__), "..", "..", "tests", "data"
+        )
+        dir_path = QFileDialog.getExistingDirectory(
+            self, "Select Gold Corpus Directory", _start_dir,
+        )
+        if not dir_path:
+            return
+        try:
+            from kadima.validation.gold_importer import load_gold_corpus
+            gc = load_gold_corpus(dir_path)
+            self._gold_corpus = gc
+            logger.info("Gold corpus loaded: %d checks, %d files — %s",
+                        len(gc.checks), len(gc.raw_files), gc.description)
+            # Notify validation view
+            val = self._view_cache.get(3)
+            if val and hasattr(val, "load_results"):
+                val.load_results([])  # clear previous
+            # Show info in status bar
+            self.set_pipeline_status(f"Gold corpus: {gc.description} ({len(gc.checks)} checks)")
+        except Exception as exc:
+            logger.error("Failed to load gold corpus: %s", exc)
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "Gold Corpus Error",
+                                f"Could not load gold corpus:\n{exc}")
+
+    def _run_validation(self) -> None:
+        """Run validation against loaded gold corpus in background thread."""
+        if self._gold_corpus is None:
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "No Gold Corpus",
+                                    "Upload a gold corpus first (Upload Gold Corpus button).")
+            return
+
+        self.set_pipeline_status("Validation running…")
+        worker = _ValidationWorker(self._gold_corpus, _DB_PATH)
+        worker.signals.finished.connect(self._on_validation_finished)
+        worker.signals.failed.connect(self._on_validation_failed)
+
+        # Run in thread pool via QRunnable wrapper
+        from PyQt6.QtCore import QRunnable, QThreadPool
+
+        class _Runner(QRunnable):
+            def __init__(self, fn):  # type: ignore[override]
+                super().__init__()
+                self._fn = fn
+
+            def run(self) -> None:
+                self._fn()
+
+        runner = _Runner(worker.run)
+        runner.setAutoDelete(True)
+        QThreadPool.globalInstance().start(runner)
+
+    def _on_validation_finished(self, check_results: list) -> None:
+        """Load check results into ValidationView."""
+        self.set_pipeline_status("idle")
+        val = self._get_or_create_view(3)
+        if hasattr(val, "load_results"):
+            val.load_results(check_results)
+        self._switch_view(3)
+        passed = sum(1 for r in check_results if getattr(r, "result", "") == "PASS")
+        failed = sum(1 for r in check_results if getattr(r, "result", "") == "FAIL")
+        logger.info("Validation complete: %d PASS, %d FAIL of %d", passed, failed, len(check_results))
+
+    def _on_validation_failed(self, error: str) -> None:
+        """Show validation error."""
+        self.set_pipeline_status("error")
+        from PyQt6.QtWidgets import QMessageBox
+        QMessageBox.warning(self, "Validation Failed", f"Validation error:\n{error}")
 
     # ── View switching ────────────────────────────────────────────────────────
 

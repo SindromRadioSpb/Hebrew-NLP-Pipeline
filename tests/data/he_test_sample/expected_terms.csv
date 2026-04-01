@@ -1,0 +1,4 @@
+file,term,expected,expectation_type
+doc_01,פלדה,present,present_only
+doc_01,ברזל,present,present_only
+doc_02,מים,present,present_only

@@ -53,7 +53,7 @@ pipeline:
 # These are read by PipelineConfig.get_module_config() when the module is enabled.
 
 diacritizer:
-  backend: phonikud   # phonikud (ONNX, fast) | dicta (transformers, accurate)
+  backend: phonikud   # phonikud (phonikud-onnx, fast ONNX) | dicta (transformers, accurate)
   device: cuda
 
 translator:

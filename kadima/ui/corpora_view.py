@@ -417,9 +417,9 @@ class CorporaView(QWidget):
             try:
                 for doc in docs:
                     conn.execute(
-                        "INSERT INTO documents (corpus_id, filename, content)"
+                        "INSERT INTO documents (corpus_id, filename, raw_text)"
                         " VALUES (?, ?, ?)",
-                        (corpus_id, doc.get("filename", ""), doc.get("content", "")),
+                        (corpus_id, doc.get("filename", ""), doc.get("raw_text", "")),
                     )
                 conn.commit()
             finally:

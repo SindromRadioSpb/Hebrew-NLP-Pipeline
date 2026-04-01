@@ -29,14 +29,13 @@ try:
         Qt,
         pyqtSignal,
     )
-    from PyQt6.QtGui import QKeySequence
+    from PyQt6.QtGui import QKeySequence, QShortcut
     from PyQt6.QtWidgets import (
         QHBoxLayout,
         QKeySequenceEdit,
         QLabel,
         QLineEdit,
         QPushButton,
-        QShortcut,
         QSplitter,
         QTabWidget,
         QTextEdit,
@@ -460,9 +459,9 @@ class ResultsView(QWidget):
         # NP chunks
         chunks: List[Any] = []
         if isinstance(pipeline_result, dict):
-            chunks = pipeline_result.get("chunks", [])
+            chunks = pipeline_result.get("np_chunks", pipeline_result.get("chunks", []))
         else:
-            chunks = getattr(pipeline_result, "chunks", [])
+            chunks = getattr(pipeline_result, "np_chunks", getattr(pipeline_result, "chunks", []))
         self._np_table.load(chunks)
 
         self._terms_view.setVisible(bool(terms))

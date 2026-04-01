@@ -211,7 +211,7 @@ class NERExtractor(Processor):
         device: str = "cuda"
     """
 
-    def __init__(self) -> None:
+    def __init__(self, config: Optional[dict] = None) -> None:
         self._ner_pipeline: Optional[Any] = None
 
     @property
@@ -319,7 +319,7 @@ class NERExtractor(Processor):
             ) else "cpu"
             self._ner_pipeline = hf_pipeline(
                 "token-classification",
-                model="dicta-il/HeQ-NER",
+                model="dicta-il/dictabert-large-ner",
                 aggregation_strategy="simple",
                 device=device,
             )

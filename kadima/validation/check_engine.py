@@ -66,11 +66,23 @@ def compare_absent(expected: str, actual: str) -> str:
     return "PASS" if not actual or actual == "0" or actual == "None" else "FAIL"
 
 
+def compare_list_exact(expected: str, actual: str) -> str:
+    """Compare JSON-serialized sorted lists."""
+    import json
+    try:
+        exp_list = sorted(json.loads(expected))
+        act_list = sorted(json.loads(actual))
+        return "PASS" if exp_list == act_list else "FAIL"
+    except (json.JSONDecodeError, TypeError):
+        return compare_exact(expected, actual)
+
+
 COMPARATORS = {
     "exact": compare_exact,
     "approx": compare_approx,
     "present_only": compare_present_only,
     "absent": compare_absent,
+    "list_exact": compare_list_exact,
 }
 
 

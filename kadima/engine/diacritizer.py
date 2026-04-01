@@ -14,9 +14,11 @@ Example:
 """
 
 import logging
+import os
 import re
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from kadima.engine.base import Processor, ProcessorResult, ProcessorStatus
@@ -25,13 +27,29 @@ logger = logging.getLogger(__name__)
 
 # ── Optional ML imports ─────────────────────────────────────────────────────
 
+# phonikud-onnx: pip install phonikud-onnx
+# Model file (.onnx) downloaded separately — see scripts/setup_models.py
+_PHONIKUD_ONNX_MODEL_PATH = os.environ.get(
+    "PHONIKUD_ONNX_MODEL_PATH",
+    str(
+        Path(os.path.expanduser("~")).parent.parent
+        / "datasets_models"
+        / "phonikud"
+        / "phonikud-1.0.int8.onnx"
+    ),
+)
+
 _PHONIKUD_AVAILABLE = False
+_PhOnnx: Any = None
 try:
-    import phonikud
+    from phonikud_onnx import Phonikud as _PhOnnx  # type: ignore[no-redef]
     _PHONIKUD_AVAILABLE = True
-    logger.info("phonikud available for diacritization")
+    logger.info("phonikud-onnx available for diacritization")
 except ImportError:
-    pass
+    logger.debug(
+        "phonikud-onnx not installed — "
+        "install with: pip install phonikud-onnx"
+    )
 
 _TRANSFORMERS_AVAILABLE = False
 try:
@@ -193,8 +211,9 @@ class Diacritizer(Processor):
         device: str = "cuda"
     """
 
-    def __init__(self) -> None:
+    def __init__(self, config: Optional[dict] = None) -> None:
         self._dicta_pipeline: Optional[Any] = None
+        self._phonikud_model: Optional[Any] = None
 
     @property
     def name(self) -> str:
@@ -277,8 +296,22 @@ class Diacritizer(Processor):
         return [self.process(text, config) for text in inputs]
 
     def _process_phonikud(self, text: str) -> str:
-        """Diacritize via phonikud ONNX."""
-        return phonikud.phonikud(text)
+        """Diacritize via phonikud-onnx (thewh1teagle/phonikud-onnx).
+
+        Lazy-loads the ONNX model on first call.
+        Model path: PHONIKUD_ONNX_MODEL_PATH env var or default F:/datasets_models/phonikud/.
+        Download: https://huggingface.co/thewh1teagle/phonikud/resolve/main/phonikud-1.0.int8.onnx
+        """
+        if self._phonikud_model is None:
+            model_path = Path(_PHONIKUD_ONNX_MODEL_PATH)
+            if not model_path.exists():
+                raise FileNotFoundError(
+                    f"phonikud-onnx model not found at {model_path}. "
+                    "Download from HuggingFace: thewh1teagle/phonikud-onnx"
+                )
+            self._phonikud_model = _PhOnnx(str(model_path))
+            logger.info("phonikud-onnx model loaded from %s", model_path)
+        return self._phonikud_model.add_diacritics(text)
 
     def _process_dicta(self, text: str, device: str) -> str:
         """Diacritize via DictaBERT model."""

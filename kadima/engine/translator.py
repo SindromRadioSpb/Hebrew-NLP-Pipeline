@@ -152,7 +152,7 @@ class Translator(Processor):
         default_tgt_lang: str = "en"
     """
 
-    def __init__(self) -> None:
+    def __init__(self, config: Optional[dict] = None) -> None:
         self._model: Optional[Any] = None
         self._tokenizer: Optional[Any] = None
         self._loaded_backend: Optional[str] = None
