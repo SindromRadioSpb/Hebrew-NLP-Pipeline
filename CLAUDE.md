@@ -104,7 +104,7 @@ make up-llm                 # + llama.cpp (GPU)
 |------|-------|---------|
 | NLP processors (M1-M8, M12) | `kadima/engine/<name>.py` | `term_extractor.py` |
 | **Generative modules (M13-M25)** | `kadima/engine/<name>.py` | `diacritizer.py` |
-| VRAM/model management | `kadima/engine/model_manager.py` | Lazy load + LRU eviction |
+| VRAM/model management | inline в каждом engine-модуле | Lazy load per module; центральный `model_manager.py` **не создан** (запланирован в фазе F) |
 | Pipeline orchestration | `kadima/pipeline/` | `orchestrator.py`, `config.py` |
 | Validation / gold corpus | `kadima/validation/` | `check_engine.py` |
 | Corpus manager | `kadima/corpus/` | `importer.py`, `exporter.py` |
@@ -166,9 +166,16 @@ make up-llm                 # + llama.cpp (GPU)
 **Phase 1 (Tier 1) complete:** M13, M14, M17, M21, M22 implemented with rules + ML fallback.
 **Phase 2 (Tier 2) DONE:** M15 TTS (XTTS→MMS), M16 STT (Whisper→faster-whisper), M18 Sentiment (heBERT→rules), M20 QA (AlephBERT + uncertainty sampling).
 **T5 DONE:** M24 Keyphrase (YAKE+TF-IDF), M23 Grammar (Dicta-LM+rules), M19 Summarizer (LLM+mT5+extractive).
-**T6 D4 DONE:** All 19 stub endpoints functional (validation/kb/annotation/llm vertical slices). **Next:** Docker prod (R-6.1).
+**T6 D4 DONE:** All 19 stub endpoints functional (validation/kb/annotation/llm vertical slices).
+**API generative router:** 12 endpoints (M13/14/15/16/17/18/19/20/21/22/23/24). **Next:** Docker prod (R-6.1).
 
 **Tier meaning:** 1 = first to implement (rules-only or <1GB), 2 = ML-heavy, 3 = LLM-dependent.
+
+**Numbering gaps — M9, M10, M11:** IDs зарезервированы, но ни один из них не был назван или описан ни в одном документе. Нумерация перешла с M8 (Term Extractor) на M12 (Noise Classifier) намеренно — M9-M11 не планировались в известных версиях TZ.
+
+**TermClusterer (`term_clusterer.py`):** Реализован, но сознательно не регистрируется в `pipeline/orchestrator.py` — это batch-инструмент для оффлайн-анализа KB (k-means / HDBSCAN / greedy по NeoDictaBERT-векторам). Используется напрямую из `kb/` слоя, а не через пайплайн.
+
+**Migration 005 (`005_generative_results.sql`):** Не создана намеренно — сохранение результатов генеративных модулей в DB отложено до фазы S (Services). Пока все результаты возвращаются только через API ответ, без персистентности.
 
 ---
 

@@ -334,3 +334,176 @@ async def summarize(req: SummarizeRequest) -> SummarizeResponse:
         sentence_count=result.data.sentence_count,
         backend=result.data.backend,
     )
+
+
+# ── M18 Sentiment Analyzer ───────────────────────────────────────────────────
+
+
+class SentimentRequest(BaseModel):
+    text: str = Field(..., min_length=1, description="Hebrew text")
+    backend: str = Field(default="hebert", pattern=r"^(hebert|rules)$")
+
+
+class SentimentResponse(BaseModel):
+    label: str        # "positive" | "negative" | "neutral"
+    score: float
+    backend: str
+    text_length: int
+
+
+@router.post("/sentiment", response_model=SentimentResponse)
+async def sentiment(req: SentimentRequest) -> SentimentResponse:
+    """Analyse sentiment of Hebrew text (M18).
+
+    Returns label (positive/negative/neutral), confidence score, and backend used.
+    Falls back to rules if heBERT is not installed.
+    """
+    from kadima.engine.sentiment_analyzer import SentimentAnalyzer
+
+    proc = SentimentAnalyzer()
+    result = proc.process(req.text, {"backend": req.backend})
+    if result.status != ProcessorStatus.READY:
+        raise HTTPException(status_code=500, detail=result.errors)
+
+    return SentimentResponse(
+        label=result.data.label,
+        score=result.data.score,
+        backend=result.data.backend,
+        text_length=result.data.text_length,
+    )
+
+
+# ── M20 QA Extractor ─────────────────────────────────────────────────────────
+
+
+class QARequest(BaseModel):
+    question: str = Field(..., min_length=1, description="Hebrew question")
+    context: str = Field(..., min_length=1, description="Hebrew passage to search")
+    backend: str = Field(default="alephbert", pattern=r"^(alephbert)$")
+
+
+class QAResponse(BaseModel):
+    answer: str
+    score: float
+    start: int
+    end: int
+    backend: str
+    uncertainty: float
+
+
+@router.post("/qa", response_model=QAResponse)
+async def qa(req: QARequest) -> QAResponse:
+    """Extract answer span from Hebrew context (M20 QA Extractor).
+
+    Returns the extracted answer, confidence score, character offsets,
+    and uncertainty (1-score) for active learning prioritisation.
+    """
+    from kadima.engine.qa_extractor import QAExtractor, QAInput
+
+    proc = QAExtractor()
+    input_data = QAInput(question=req.question, context=req.context)
+    result = proc.process(input_data, {"backend": req.backend})
+    if result.status != ProcessorStatus.READY:
+        raise HTTPException(status_code=500, detail=result.errors)
+
+    return QAResponse(
+        answer=result.data.answer,
+        score=result.data.score,
+        start=result.data.start,
+        end=result.data.end,
+        backend=result.data.backend,
+        uncertainty=result.data.uncertainty,
+    )
+
+
+# ── M15 TTS Synthesizer ──────────────────────────────────────────────────────
+
+
+class TTSRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=5000, description="Hebrew text to synthesize")
+    backend: str = Field(default="auto", pattern=r"^(auto|xtts|mms)$")
+    device: str = Field(default="cpu", pattern=r"^(cpu|cuda)$")
+
+
+class TTSResponse(BaseModel):
+    audio_path: str | None
+    backend: str
+    text_length: int
+    duration_seconds: float
+
+
+@router.post("/tts", response_model=TTSResponse)
+async def tts(req: TTSRequest) -> TTSResponse:
+    """Synthesize Hebrew text to speech (M15 TTS Synthesizer).
+
+    Returns audio file path on server and metadata.
+    Backend auto-selects: XTTS v2 → MMS-TTS fallback.
+    Returns audio_path=null if no TTS backend is installed.
+    """
+    from kadima.engine.tts_synthesizer import TTSSynthesizer
+
+    proc = TTSSynthesizer()
+    result = proc.process(req.text, {"backend": req.backend, "device": req.device})
+    # TTS returns FAILED if no backend available but still fills data for text_length
+    data = result.data
+    if data is None:
+        raise HTTPException(status_code=500, detail=result.errors)
+
+    audio_path_str = str(data.audio_path) if data.audio_path else None
+    return TTSResponse(
+        audio_path=audio_path_str,
+        backend=data.backend,
+        text_length=data.text_length,
+        duration_seconds=data.duration_seconds,
+    )
+
+
+# ── M16 STT Transcriber ──────────────────────────────────────────────────────
+
+
+class STTRequest(BaseModel):
+    audio_path: str = Field(..., description="Absolute path to audio file on server (WAV/MP3/OGG/FLAC)")
+    backend: str = Field(default="auto", pattern=r"^(auto|whisper|faster-whisper)$")
+    device: str = Field(default="cpu", pattern=r"^(cpu|cuda)$")
+    language: str = Field(default="he", description="Language code (he, en, ...)")
+
+
+class STTResponse(BaseModel):
+    transcript: str
+    language: str
+    confidence: float
+    duration_seconds: float
+    backend: str
+
+
+@router.post("/stt", response_model=STTResponse)
+async def stt(req: STTRequest) -> STTResponse:
+    """Transcribe audio file to Hebrew text (M16 STT Transcriber).
+
+    Accepts a server-side audio file path.
+    Backend auto-selects: openai-whisper → faster-whisper fallback.
+    """
+    import os
+    if not os.path.isfile(req.audio_path):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Audio file not found: {req.audio_path!r}",
+        )
+
+    from kadima.engine.stt_transcriber import STTTranscriber
+
+    proc = STTTranscriber()
+    result = proc.process(
+        req.audio_path,
+        {"backend": req.backend, "device": req.device, "language": req.language},
+    )
+    if result.status != ProcessorStatus.READY or result.data is None:
+        raise HTTPException(status_code=500, detail=result.errors)
+
+    return STTResponse(
+        transcript=result.data.transcript,
+        language=result.data.language,
+        confidence=result.data.confidence,
+        duration_seconds=result.data.duration_seconds,
+        backend=result.data.backend,
+    )
