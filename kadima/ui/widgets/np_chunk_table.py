@@ -119,12 +119,12 @@ class NPChunkTableModel(QAbstractTableModel):
         return None
 
     def sort(self, column: int, order: Qt.SortOrder = Qt.SortOrder.AscendingOrder) -> None:
-        """Sort by column and order, re-emit dataChanged."""
+        """Sort by column and order, re-emit layoutChanged."""
         self._sort_col = column
         self._sort_order = order
+        self.layoutAboutToBeChanged.emit()
         self._apply_sort()
-        self.beginResetModel()
-        self.endResetModel()
+        self.layoutChanged.emit()
 
     def chunk_at(self, row: int) -> Any:
         """Return raw chunk object at row index (for detail panel)."""
