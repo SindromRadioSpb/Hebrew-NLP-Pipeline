@@ -3,7 +3,7 @@
 > **Python 3.10+** | **Package:** `kadima/` | **DB:** SQLite WAL + migrations
 > **Conventions:** snake_case files/functions, PascalCase classes, UPPER_SNAKE constants
 > **Target HW:** RTX 3060 12GB (dev) / RTX 3070 8GB (CI)
-> **Version:** 0.9.x → 1.0.0 | **Current phase:** T5 fully done → T6 (D4 API stubs + Docker prod)
+> **Version:** 0.9.x → 1.0.0 | **Current phase:** T6 D4 DONE → R-6.1 Docker prod
 
 ---
 
@@ -60,7 +60,7 @@ make up-llm                 # + llama.cpp (GPU)
 | NER training pipeline | Working | LS JSON → CoNLL-U → spaCy Examples (R-2.3) |
 | KB embedding search | Working | Cosine similarity over float32 BLOB vectors (R-2.4) |
 | Term clusterer | Working | k-means / HDBSCAN / greedy on NeoDictaBERT vectors (R-2.5) |
-| API (corpora, pipeline, generative) | Working | FastAPI, 3 of 6 routers functional |
+| API (corpora, pipeline, generative) | Working | FastAPI, 6 of 6 routers functional |
 | Generative M13, M14, M17, M21, M22 | Working | Rules + ML fallback, API endpoints live |
 | NER M17 | Working | neodictabert → heq_ner → rules fallback chain (R-2.2) |
 | Transformer backbone | Working | KadimaTransformer, doc.tensor, spaCy pipeline builder (T1) |
@@ -72,7 +72,7 @@ make up-llm                 # + llama.cpp (GPU)
 | T4 widgets | Done | D10: BackendSelector, ExportButton, EntityTable, AudioPlayer created in `ui/widgets/` |
 | GenerativeView (T4 Step 10) | **Working** | 6 tabs: Sentiment/TTS/STT/Translate/Diacritize/NER + GenerativeWorker |
 | AnnotationView (T4 Step 11) | **Working** | Projects table + Tasks + AL Queue + Sync/Pre-annotate/Retrain buttons |
-| Tests | 898 functions | Engine, config, corpus, data, validation, KB, E2E + 62 UI smoke tests |
+| Tests | ~980 functions | Engine, config, corpus, data, validation, KB, E2E + 62 UI smoke + 80 API tests |
 
 ### Resolved blockers (Phase 0)
 
@@ -87,7 +87,7 @@ make up-llm                 # + llama.cpp (GPU)
 
 | ID | Problem | Location | Priority |
 |----|---------|----------|----------|
-| D4 | API routers: validation, annotation, kb, llm are empty stubs (16 TODO endpoints) | `api/routers/` | T6 |
+| D4 | ~~API routers: validation, annotation, kb, llm are empty stubs~~ **CLOSED** — 19 functional endpoints (validation 5, kb 5, annotation 4, llm 5); 80 integration tests | `api/routers/` | — |
 | D5 | ~~UI: main_window + 7 view files are 10-line stubs~~ **CLOSED in T3** | `kadima/ui/` | — |
 | D6 | `Token` dataclass declared in 2 places with different fields (different layers, no conflict) | `data/models.py` + `engine/hebpipe_wrappers.py` | Low |
 | D7 | SQLAlchemy ORM added alongside legacy sqlite3 — UI uses legacy layer by design | `data/repositories.py` | Won't fix |
@@ -166,7 +166,7 @@ make up-llm                 # + llama.cpp (GPU)
 **Phase 1 (Tier 1) complete:** M13, M14, M17, M21, M22 implemented with rules + ML fallback.
 **Phase 2 (Tier 2) DONE:** M15 TTS (XTTS→MMS), M16 STT (Whisper→faster-whisper), M18 Sentiment (heBERT→rules), M20 QA (AlephBERT + uncertainty sampling).
 **T5 DONE:** M24 Keyphrase (YAKE+TF-IDF), M23 Grammar (Dicta-LM+rules), M19 Summarizer (LLM+mT5+extractive).
-**T6 next:** API stub routers (D4: 16 endpoints by vertical slices), Docker prod (R-6.1).
+**T6 D4 DONE:** All 19 stub endpoints functional (validation/kb/annotation/llm vertical slices). **Next:** Docker prod (R-6.1).
 
 **Tier meaning:** 1 = first to implement (rules-only or <1GB), 2 = ML-heavy, 3 = LLM-dependent.
 
@@ -472,6 +472,25 @@ deploy:
 | `POST` | `/api/v1/generative/diacritize` | Working (M13) |
 | `POST` | `/api/v1/generative/ner` | Working (M17) |
 | `POST` | `/api/v1/generative/translate` | Working (M14) |
+| `GET` | `/api/v1/validation/corpora` | Working — list gold corpora |
+| `POST` | `/api/v1/validation/run` | Working — run pipeline vs gold corpus |
+| `GET` | `/api/v1/validation/report/{run_id}` | Working — get stored run |
+| `POST` | `/api/v1/validation/review/{run_id}/{idx}` | Working — override verdict |
+| `GET` | `/api/v1/validation/export/{run_id}` | Working — JSON/CSV export |
+| `GET` | `/api/v1/kb/terms` | Working — full-text search |
+| `GET` | `/api/v1/kb/terms/{term_id}` | Working — get by ID |
+| `PUT` | `/api/v1/kb/terms/{term_id}` | Working — update definition |
+| `GET` | `/api/v1/kb/terms/{term_id}/relations` | Working — similar terms (embedding) |
+| `POST` | `/api/v1/kb/generate/{term_id}` | Working — LLM definition (graceful) |
+| `POST` | `/api/v1/annotation/projects` | Working — create (local + LS if up) |
+| `GET` | `/api/v1/annotation/projects` | Working — list with task counts |
+| `POST` | `/api/v1/annotation/projects/{id}/export` | Working — pull from LS (graceful) |
+| `POST` | `/api/v1/annotation/projects/{id}/preannotate` | Working — push to LS (graceful) |
+| `GET` | `/api/v1/llm/status` | Working — server health check |
+| `POST` | `/api/v1/llm/chat` | Working — single-turn chat (graceful) |
+| `POST` | `/api/v1/llm/define` | Working — term definition (graceful) |
+| `POST` | `/api/v1/llm/explain` | Working — grammar explain (graceful) |
+| `POST` | `/api/v1/llm/exercise` | Working — generate exercises (graceful) |
 
 ### Planned (generative router — Tier 2/3)
 
@@ -485,13 +504,6 @@ POST /api/v1/generative/grammar       {text} -> {corrected}      (M23, Tier 3)
 POST /api/v1/generative/keyphrase     {text} -> {keyphrases}     (M24, Tier 3)
 POST /api/v1/generative/paraphrase    {text} -> {paraphrases}    (M25, Tier 3)
 ```
-
-### Stub routers (need implementation)
-
-- `api/routers/validation.py` — 5 TODO methods
-- `api/routers/annotation.py` — 4 TODO methods
-- `api/routers/kb.py` — 5 TODO methods
-- `api/routers/llm.py` — 5 TODO methods
 
 ---
 
@@ -668,9 +680,8 @@ R-5.1:  keyphrase_extractor.py ✅ (YAKE!+TF-IDF, 36 tests)
 R-5.2:  grammar_corrector.py ✅  (Dicta-LM+rules, 33 tests)
 R-5.3:  summarizer.py ✅         (LLM+mT5+extractive, 34 tests)
 Step 13: widgets/chat_widget.py + nlp_tools_view.py — Grammar/Keyphrase/Summarize ✅
-pre-T6: T5 (UI) fully closed — Steps 13/14/15 DONE, 60 new smoke tests
-Step 14: llm_view.py — chat + presets + context selector
-Step 15: tests/ui/test_nlp_tools.py + test_llm.py
+Step 14: llm_view.py — chat + 5 presets + context selector                       ✅
+Step 15: tests/ui/test_nlp_tools.py + test_llm.py — 60 smoke tests               ✅
 ```
 
 ### T4 GenerativeView Layout Spec (Step 10)
@@ -813,6 +824,7 @@ except ImportError:
 | **T4** | Phase 2 ML + UI: M15 TTS, M16 STT, M18 Sentiment, M20 QA; GenerativeView + AnnotationView | **DONE** |
 | **T5 (ML)** | Phase 3 ML: M24 Keyphrase (YAKE+TF-IDF), M23 Grammar (Dicta-LM+rules), M19 Summarizer (LLM+mT5+extractive); API endpoints | **DONE** |
 | **T5 (UI)** | NLPToolsView (Grammar/Keyphrase/Summarize tabs) + LLMView (chat + 5 presets) + ChatWidget + 60 smoke tests | **DONE** |
+| **T6 D4** | API vertical slices: validation (5ep), KB (5ep), annotation (4ep), LLM (5ep) — 19 endpoints, 80 tests; fix KBRepository r[10]→r[9] | **DONE** |
 
 ### Текущий план (по ТЗ углубления)
 
@@ -855,11 +867,8 @@ except ImportError:
 | | | Step 13: `widgets/chat_widget.py` + `nlp_tools_view.py` — Grammar/Keyphrase/Summarize | **DONE** | 3–4 |
 | | | Step 14: `llm_view.py` — chat + presets + context selector | **DONE** | 3–4 |
 | | | Step 15: `tests/ui/test_nlp_tools.py` + `test_llm.py` | **DONE** | 2–3 |
-| **T5 (UI)** | T5 UI | Step 13: `chat_widget.py` + `nlp_tools_view.py` (Grammar/Keyphrase/Summarize) | **DONE** | 3–4 |
-| | | Step 14: `llm_view.py` — chat + presets + context selector | **DONE** | 3–4 |
-| | | Step 15: `tests/ui/test_nlp_tools.py` + `test_llm.py` | **DONE** | 2–3 |
-| **T6** | Infrastructure | D4: stub routers (validation 5ep, annotation 4ep, kb 5ep, llm 5ep) | **← NEXT** | 4–6 |
-| | | R-6.1 Docker Compose production-ready | Pending | 3–5 |
+| **T6** | Infrastructure | D4: stub routers (validation 5ep, annotation 4ep, kb 5ep, llm 5ep) | **DONE** | — |
+| | | R-6.1 Docker Compose production-ready | **← NEXT** | 3–5 |
 | | | R-6.2 Документация синхронизация | Pending | 2–3 |
 
 ### Следующие фазы (из KADIMA_MASTER_PLAN_v2.md)
@@ -876,7 +885,7 @@ except ImportError:
 
 **Критический путь (мастер-план):**
 ```
-P0 ✅ → T5 UI ✅ → T6 (D4 + Docker) → F (infra) → S (services) → APP/SEC (параллельно) → IO → AUD → UX
+P0 ✅ → T5 UI ✅ → T6 D4 ✅ → T6 Docker (R-6.1) → F (infra) → S (services) → APP/SEC (параллельно) → IO → AUD → UX
 ```
 
 **Зависимости:**
