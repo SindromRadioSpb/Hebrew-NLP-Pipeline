@@ -1,0 +1,3 @@
+[submodule "Tasks/Gold Corpus v2 upgrade maximum"]
+	path = Tasks/Gold Corpus v2 upgrade maximum
+	url = https://github.com/SindromRadioSpb/Hebrew-NLP-Pipeline.git

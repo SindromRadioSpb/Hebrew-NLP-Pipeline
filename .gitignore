@@ -72,3 +72,6 @@ exports/
 
 # Docker volumes (local)
 docker-data/
+
+# Claude Code local settings (machine-specific permissions)
+.claude/
