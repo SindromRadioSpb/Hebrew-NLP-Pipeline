@@ -1,0 +1,95 @@
+# .clinerules — Kadima Project Rules for Cline
+# Loaded automatically in every conversation.
+
+## MEMORY BANK — read at session start
+At the start of every conversation, read these files in order:
+1. `memory-bank/projectbrief.md`   — what KADIMA is, stack, hardware
+2. `memory-bank/status.md`         — current state, what's done, tech debt, next task
+3. `memory-bank/architecture.md`   — module map, file layout, patterns
+4. `memory-bank/conventions.md`    — code style, commit format, test structure
+5. `memory-bank/audit-findings.md` — functional matrix, license risks, blind spots
+6. `memory-bank/roadmap.md`        — master plan phases F→S→T→SEC→IO→AUD→UX
+
+When the user asks about status, architecture, or next steps — always answer from memory-bank, not from assumptions.
+
+---
+
+## CORE RULES (non-negotiable)
+
+### 1. No Guessing
+Before any change that affects correctness:
+- Locate the implementation, inspect callers, verify invariants
+- Never assume schema, API contracts, or side effects
+- Use repo-audit-map skill before any non-trivial change
+
+### 2. Minimal Diffs
+- Small, targeted patches over large rewrites
+- Each patch: independently buildable + testable
+- Do not refactor alongside feature work
+- Do not add comments, docstrings, or type hints to code you didn't change
+
+### 3. Never Block the Event Loop
+- `async def` for all FastAPI route handlers
+- Never `time.sleep()`, `open()`, or `requests.get()` in async context
+- Use `asyncio.to_thread()` for blocking calls
+- Never call engine modules from PyQt6 main thread — use QRunnable + QThreadPool
+
+### 4. Processor Protocol (mandatory for all engine modules)
+Every `kadima/engine/*.py` module MUST implement:
+```python
+def process(self, input_data: Any, config: Dict[str, Any]) -> ProcessorResult: ...
+def validate_input(self, input_data: Any) -> bool: ...
+# Processors NEVER raise — return ProcessorResult(status=FAILED, errors=[...])
+```
+
+### 5. ML / GPU Rules
+```python
+# ALWAYS wrap ML imports:
+try:
+    from some_ml_lib import Model
+except ImportError:
+    Model = None  # graceful degradation
+
+# ALWAYS check before moving to GPU:
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model.to(device)
+```
+
+### 6. Database Rules
+- **All SQL queries: parameterized** (`?` placeholders only, never f-strings)
+- Tables created **only** via migrations in `kadima/data/migrations/`
+- Sort columns must be whitelisted, never interpolated
+- `PRAGMA busy_timeout = 5000` on all connections
+- WAL mode already set in `kadima/data/db.py` — do not override
+
+### 7. Security Rules
+- No hardcoded secrets, tokens, passwords in code
+- File paths from user input: validate with `os.path.realpath()` + base dir check
+- Never `shell=True` with user input in subprocess
+- Never `yaml.load()` — always `yaml.safe_load()`
+- `.env` must remain gitignored; `.env.example` must contain placeholders only
+
+### 8. No NLP Logic in API Routers
+```
+kadima/api/routers/ → calls kadima/engine/ or kadima/pipeline/ only
+No business logic inline in routers
+```
+
+### 9. Definition of Done (every patch)
+- [ ] Feature works per acceptance criteria
+- [ ] `pytest tests/ -v` — all PASS (no regressions)
+- [ ] `ruff check kadima/` — 0 errors
+- [ ] No `print()`, no bare `except:`, no hardcoded paths
+- [ ] CLAUDE.md + memory-bank/status.md updated if behavior changed
+- [ ] Commit message: `type(scope): description` (conventional format)
+
+### 10. Commit Scopes
+`engine | pipeline | api | ui | data | config | docker | ci | kb | llm | annotation | validation`
+
+---
+
+## UPDATING MEMORY BANK
+After completing any significant work, update `memory-bank/status.md`:
+- Move completed items to "Закрытые фазы"
+- Update "Следующий шаг"
+- Add new tech debt if discovered
