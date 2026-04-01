@@ -12,21 +12,23 @@ Data flow:
   ngrams + am_scores + np_chunks → M8 term_extract → TermResult
 """
 
+import logging
 import os
 import time
-import logging
-import sqlite3
-from typing import Dict, Any, Optional, List
+from typing import Any
 
-from kadima.engine.base import Processor, PipelineResult, ProcessorStatus
+from kadima.data.db import get_connection
+from kadima.engine.association_measures import AMResult
+from kadima.engine.base import PipelineResult, Processor, ProcessorStatus
 from kadima.engine.hebpipe_wrappers import (
-    SentenceSplitResult, TokenizeResult, MorphResult, Token,
+    MorphResult,
+    SentenceSplitResult,
+    Token,
+    TokenizeResult,
 )
 from kadima.engine.ngram_extractor import NgramResult
 from kadima.engine.np_chunker import NPChunkResult
-from kadima.engine.association_measures import AMResult
 from kadima.pipeline.config import PipelineConfig
-from kadima.data.db import get_connection
 
 logger = logging.getLogger(__name__)
 
@@ -48,17 +50,17 @@ class PipelineService:
         """
         self.config = config
         self.db_path = db_path
-        self.modules: Dict[str, Processor] = {}
+        self.modules: dict[str, Processor] = {}
         self._register_modules()
 
     def _register_modules(self) -> None:
-        from kadima.engine.hebpipe_wrappers import HebPipeSentSplitter, HebPipeTokenizer, HebPipeMorphAnalyzer
-        from kadima.engine.ngram_extractor import NgramExtractor
-        from kadima.engine.np_chunker import NPChunker
-        from kadima.engine.canonicalizer import Canonicalizer
         from kadima.engine.association_measures import AMEngine
-        from kadima.engine.term_extractor import TermExtractor
+        from kadima.engine.canonicalizer import Canonicalizer
+        from kadima.engine.hebpipe_wrappers import HebPipeMorphAnalyzer, HebPipeSentSplitter, HebPipeTokenizer
+        from kadima.engine.ngram_extractor import NgramExtractor
         from kadima.engine.noise_classifier import NoiseClassifier
+        from kadima.engine.np_chunker import NPChunker
+        from kadima.engine.term_extractor import TermExtractor
 
         self.modules = {
             "sent_split": HebPipeSentSplitter(),
@@ -83,6 +85,9 @@ class PipelineService:
             "stt": ("kadima.engine.stt_transcriber", "STTTranscriber"),
             "sentiment": ("kadima.engine.sentiment_analyzer", "SentimentAnalyzer"),
             "qa": ("kadima.engine.qa_extractor", "QAExtractor"),
+            "summarizer": ("kadima.engine.summarizer", "Summarizer"),
+            "keyphrase": ("kadima.engine.keyphrase_extractor", "KeyphraseExtractor"),
+            "grammar": ("kadima.engine.grammar_corrector", "GrammarCorrector"),
         }
         for mod_name, (mod_path, cls_name) in _optional.items():
             if mod_name not in self.config.modules:
@@ -96,7 +101,7 @@ class PipelineService:
             except ImportError as e:
                 logger.warning("Module %s unavailable: %s", mod_name, e)
 
-    def _get_module_config(self, module_name: str) -> Dict[str, Any]:
+    def _get_module_config(self, module_name: str) -> dict[str, Any]:
         """Получить конфигурацию модуля с учётом профиля."""
         base = self.config.get_module_config(module_name)
         base["profile"] = self.config.profile.value
@@ -159,7 +164,7 @@ class PipelineService:
             all_np_chunks = []
 
             for doc in docs:
-                doc_id, raw_text = doc["id"], doc["raw_text"]
+                raw_text = doc["raw_text"]
                 doc_result = self.run_on_text(raw_text)
 
                 all_terms.extend(doc_result.terms)
@@ -231,14 +236,14 @@ class PipelineService:
         result = PipelineResult(corpus_id=0, profile=self.config.profile.value)
 
         # Промежуточные данные между модулями
-        sentences_data: Optional[SentenceSplitResult] = None
-        all_tokens: List[Token] = []           # flat list для noise
-        tokens_per_sentence: List[List[Token]] = []  # для ngram
-        morph_per_sentence: List[List] = []    # для np_chunk
-        ngram_result: Optional[NgramResult] = None
-        np_chunk_result: Optional[NPChunkResult] = None
-        am_result: Optional[AMResult] = None
-        canonical_mappings: Dict[str, str] = {}
+        sentences_data: SentenceSplitResult | None = None
+        all_tokens: list[Token] = []           # flat list для noise
+        tokens_per_sentence: list[list[Token]] = []  # для ngram
+        morph_per_sentence: list[list] = []    # для np_chunk
+        ngram_result: NgramResult | None = None
+        np_chunk_result: NPChunkResult | None = None
+        am_result: AMResult | None = None
+        canonical_mappings: dict[str, str] = {}
 
         enabled = self.config.modules
 

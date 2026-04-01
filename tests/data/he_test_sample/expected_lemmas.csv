@@ -1,0 +1,7 @@
+file_id,lemma,expected_freq,expected_doc_freq,expected_pos_primary,is_det_surface,expectation_type,comment
+doc_01,פלדה,1,1,NOUN,False,exact,steel
+doc_01,ברזל,1,1,NOUN,False,exact,iron
+doc_01,סגסוגת,1,1,NOUN,False,exact,alloy
+doc_02,מים,1,1,NOUN,False,exact,water
+doc_02,צמח,1,1,NOUN,False,exact,plant
+doc_02,קרקע,1,1,NOUN,False,exact,soil

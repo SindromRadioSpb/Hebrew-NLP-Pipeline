@@ -18,11 +18,11 @@ from tests.fixture_loader import (
 
 
 def test_all_corpora_discovered():
-    """Все 26 корпусов обнаружены."""
+    """Все корпусы обнаружены (26 основных + he_test_sample = 27)."""
     corpora = discover_corpora()
-    assert len(corpora) == 26, f"Expected 26 corpora, found {len(corpora)}"
+    assert len(corpora) == 27, f"Expected 27 corpora, found {len(corpora)}"
     for c in corpora:
-        assert c.startswith("he_") and c[3].isdigit()
+        assert c.startswith("he_")
 
 
 @pytest.mark.parametrize("corpus_id", discover_corpora(), ids=lambda c: c[:6])

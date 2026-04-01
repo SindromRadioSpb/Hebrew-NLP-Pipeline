@@ -6,7 +6,6 @@ transliteration, morphological generation, diacritization, NER, translation.
 """
 
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -47,7 +46,7 @@ class MorphFormResponse(BaseModel):
 class MorphGenResponse(BaseModel):
     lemma: str
     pos: str
-    forms: List[MorphFormResponse]
+    forms: list[MorphFormResponse]
     count: int
 
 
@@ -78,7 +77,7 @@ class EntityResponse(BaseModel):
 
 
 class NERResponse(BaseModel):
-    entities: List[EntityResponse]
+    entities: list[EntityResponse]
     count: int
     backend: str
 
@@ -208,4 +207,130 @@ async def translate(req: TranslateRequest) -> TranslateResponse:
         tgt_lang=result.data.tgt_lang,
         backend=result.data.backend,
         word_count=result.data.word_count,
+    )
+
+
+# ── M24 Keyphrase ────────────────────────────────────────────────────────────
+
+
+class KeyphraseRequest(BaseModel):
+    text: str = Field(..., min_length=1, description="Hebrew text")
+    top_n: int = Field(default=10, ge=1, le=50, description="Number of keyphrases")
+    backend: str = Field(default="yake", pattern=r"^(yake|tfidf)$")
+
+
+class KeyphraseResponse(BaseModel):
+    keyphrases: list[str]
+    scores: list[float]
+    count: int
+    backend: str
+
+
+@router.post("/keyphrase", response_model=KeyphraseResponse)
+async def keyphrase(req: KeyphraseRequest) -> KeyphraseResponse:
+    """Extract keyphrases from Hebrew text (M24)."""
+    from kadima.engine.keyphrase_extractor import KeyphraseExtractor
+
+    proc = KeyphraseExtractor()
+    result = proc.process(req.text, {"backend": req.backend, "top_n": req.top_n})
+    if result.status != ProcessorStatus.READY:
+        raise HTTPException(status_code=500, detail=result.errors)
+
+    return KeyphraseResponse(
+        keyphrases=result.data.keyphrases,
+        scores=result.data.scores,
+        count=len(result.data.keyphrases),
+        backend=result.data.backend,
+    )
+
+
+# ── M23 Grammar Corrector ────────────────────────────────────────────────────
+
+
+class GrammarRequest(BaseModel):
+    text: str = Field(..., min_length=1, description="Hebrew text to correct")
+    backend: str = Field(default="llm", pattern=r"^(llm|rules)$")
+    llm_url: str = Field(default="http://localhost:8081")
+
+
+class CorrectionDetail(BaseModel):
+    original: str
+    corrected: str
+    rule: str
+
+
+class GrammarResponse(BaseModel):
+    original: str
+    corrected: str
+    correction_count: int
+    corrections: list[CorrectionDetail]
+    backend: str
+
+
+@router.post("/grammar", response_model=GrammarResponse)
+async def grammar(req: GrammarRequest) -> GrammarResponse:
+    """Correct grammar in Hebrew text (M23)."""
+    from kadima.engine.grammar_corrector import GrammarCorrector
+
+    proc = GrammarCorrector()
+    result = proc.process(req.text, {"backend": req.backend, "llm_url": req.llm_url})
+    if result.status != ProcessorStatus.READY:
+        raise HTTPException(status_code=500, detail=result.errors)
+
+    corrections = [
+        CorrectionDetail(
+            original=c.original, corrected=c.corrected, rule=c.rule
+        )
+        for c in result.data.corrections
+    ]
+    return GrammarResponse(
+        original=result.data.original,
+        corrected=result.data.corrected,
+        correction_count=result.data.correction_count,
+        corrections=corrections,
+        backend=result.data.backend,
+    )
+
+
+# ── M19 Summarizer ───────────────────────────────────────────────────────────
+
+
+class SummarizeRequest(BaseModel):
+    text: str = Field(..., min_length=10, description="Hebrew text to summarize")
+    backend: str = Field(default="extractive", pattern=r"^(llm|mt5|extractive)$")
+    max_sentences: int = Field(default=3, ge=1, le=10)
+    llm_url: str = Field(default="http://localhost:8081")
+
+
+class SummarizeResponse(BaseModel):
+    original_length: int
+    summary: str
+    compression_ratio: float
+    sentence_count: int
+    backend: str
+
+
+@router.post("/summarize", response_model=SummarizeResponse)
+async def summarize(req: SummarizeRequest) -> SummarizeResponse:
+    """Summarize Hebrew text (M19)."""
+    from kadima.engine.summarizer import Summarizer
+
+    proc = Summarizer()
+    result = proc.process(
+        req.text,
+        {
+            "backend": req.backend,
+            "max_sentences": req.max_sentences,
+            "llm_url": req.llm_url,
+        },
+    )
+    if result.status != ProcessorStatus.READY:
+        raise HTTPException(status_code=500, detail=result.errors)
+
+    return SummarizeResponse(
+        original_length=result.data.original_length,
+        summary=result.data.summary,
+        compression_ratio=result.data.compression_ratio,
+        sentence_count=result.data.sentence_count,
+        backend=result.data.backend,
     )

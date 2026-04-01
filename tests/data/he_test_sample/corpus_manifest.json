@@ -1,4 +1,17 @@
 {
+  "corpus_id": "he_test_sample",
   "version": "1.0",
-  "description": "Sample test corpus — 2 docs, basic Hebrew sentences"
+  "title": "Sample test corpus",
+  "purpose": "Minimal 2-document corpus for integration testing of the validation UI and gold corpus loader",
+  "language": "he",
+  "domain": "general",
+  "difficulty": "basic",
+  "recommended_profile": "any",
+  "text_count": 2,
+  "files": [
+    {"filename": "doc_01.txt", "sentence_count": 3, "token_count": 14},
+    {"filename": "doc_02.txt", "sentence_count": 3, "token_count": 12}
+  ],
+  "expected_primary_checks": ["sentence_count_exact", "token_count_exact"],
+  "assertion_policy": {"sentence_count": "exact", "token_count": "exact"}
 }

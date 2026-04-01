@@ -1,4 +1,4 @@
-file,term,expected,expectation_type
-doc_01,פלדה,present,present_only
-doc_01,ברזל,present,present_only
-doc_02,מים,present,present_only
+corpus_id,term_surface,expected_kind,expected_members,expected_freq,expected_doc_freq,expected_noise,expected_rank_bucket,expected_relative_strength,pmi_expectation,llr_expectation,dice_expectation,weirdness_expectation,keyness_expectation,termhood_expectation,expectation_type,comment
+he_test_sample,פלדה,NOUN_UNIGRAM,פלדה,1,1,non_noise,any,any,any,any,any,any,any,any,present_only,steel should be extracted
+he_test_sample,ברזל,NOUN_UNIGRAM,ברזל,1,1,non_noise,any,any,any,any,any,any,any,any,present_only,iron should be extracted
+he_test_sample,מים,NOUN_UNIGRAM,מים,1,1,non_noise,any,any,any,any,any,any,any,any,present_only,water should be extracted
