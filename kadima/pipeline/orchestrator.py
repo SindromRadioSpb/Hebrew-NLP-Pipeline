@@ -88,6 +88,7 @@ class PipelineService:
             "summarizer": ("kadima.engine.summarizer", "Summarizer"),
             "keyphrase": ("kadima.engine.keyphrase_extractor", "KeyphraseExtractor"),
             "grammar": ("kadima.engine.grammar_corrector", "GrammarCorrector"),
+            "paraphrase": ("kadima.engine.paraphraser", "Paraphraser"),
         }
         for mod_name, (mod_path, cls_name) in _optional.items():
             if mod_name not in self.config.modules:
