@@ -3,7 +3,7 @@
 > **Python 3.10+** | **Package:** `kadima/` | **DB:** SQLite WAL + migrations
 > **Conventions:** snake_case files/functions, PascalCase classes, UPPER_SNAKE constants
 > **Target HW:** RTX 3060 12GB (dev) / RTX 3070 8GB (CI)
-> **Version:** 0.9.x → 1.0.0 | **Current phase:** T5 done → T6 (Infrastructure: Docker prod, API stubs D4, nlp_tools_view)
+> **Version:** 0.9.x → 1.0.0 | **Current phase:** T5 fully done → T6 (D4 API stubs + Docker prod)
 
 ---
 
@@ -166,7 +166,7 @@ make up-llm                 # + llama.cpp (GPU)
 **Phase 1 (Tier 1) complete:** M13, M14, M17, M21, M22 implemented with rules + ML fallback.
 **Phase 2 (Tier 2) DONE:** M15 TTS (XTTS→MMS), M16 STT (Whisper→faster-whisper), M18 Sentiment (heBERT→rules), M20 QA (AlephBERT + uncertainty sampling).
 **T5 DONE:** M24 Keyphrase (YAKE+TF-IDF), M23 Grammar (Dicta-LM+rules), M19 Summarizer (LLM+mT5+extractive).
-**T6 next:** API stub routers (D4: 16 endpoints), nlp_tools_view + llm_view (UI Steps 13–15), Docker prod (R-6.1).
+**T6 next:** API stub routers (D4: 16 endpoints by vertical slices), Docker prod (R-6.1).
 
 **Tier meaning:** 1 = first to implement (rules-only or <1GB), 2 = ML-heavy, 3 = LLM-dependent.
 
@@ -667,7 +667,8 @@ Step 12: tests/ui/test_generative.py + test_annotation.py ✅
 R-5.1:  keyphrase_extractor.py ✅ (YAKE!+TF-IDF, 36 tests)
 R-5.2:  grammar_corrector.py ✅  (Dicta-LM+rules, 33 tests)
 R-5.3:  summarizer.py ✅         (LLM+mT5+extractive, 34 tests)
-Step 13: widgets/chat_widget.py + nlp_tools_view.py — Grammar/Keyphrase/Summarize ← NEXT
+Step 13: widgets/chat_widget.py + nlp_tools_view.py — Grammar/Keyphrase/Summarize ✅
+pre-T6: T5 (UI) fully closed — Steps 13/14/15 DONE, 60 new smoke tests
 Step 14: llm_view.py — chat + presets + context selector
 Step 15: tests/ui/test_nlp_tools.py + test_llm.py
 ```
@@ -811,6 +812,7 @@ except ImportError:
 | **P0** | **Инженерная дисциплина** (из KADIMA_MASTER_PLAN_v2): DoD чек-лист, Cold-Audit Framework, self-check CLI, CI gate | **DONE** |
 | **T4** | Phase 2 ML + UI: M15 TTS, M16 STT, M18 Sentiment, M20 QA; GenerativeView + AnnotationView | **DONE** |
 | **T5 (ML)** | Phase 3 ML: M24 Keyphrase (YAKE+TF-IDF), M23 Grammar (Dicta-LM+rules), M19 Summarizer (LLM+mT5+extractive); API endpoints | **DONE** |
+| **T5 (UI)** | NLPToolsView (Grammar/Keyphrase/Summarize tabs) + LLMView (chat + 5 presets) + ChatWidget + 60 smoke tests | **DONE** |
 
 ### Текущий план (по ТЗ углубления)
 
@@ -850,13 +852,13 @@ except ImportError:
 | **T5** | Phase 3 + UI | R-5.1 M24 Keyphrase (YAKE+TF-IDF) | **DONE** | 3–4 |
 | | | R-5.2 M23 Grammar Checker (Dicta-LM+rules) | **DONE** | 4–6 |
 | | | R-5.3 M19 Summarizer (LLM+mT5+extractive) | **DONE** | 4–6 |
-| | | Step 13: `widgets/chat_widget.py` + `nlp_tools_view.py` — Grammar/Keyphrase/Summarize | Pending | 3–4 |
-| | | Step 14: `llm_view.py` — chat + presets + context selector | Pending | 3–4 |
-| | | Step 15: `tests/ui/test_nlp_tools.py` + `test_llm.py` | Pending | 2–3 |
-| **T5 (UI)** | T5 UI | Step 13: `chat_widget.py` + `nlp_tools_view.py` (Grammar/Keyphrase/Summarize) | **← NEXT** | 3–4 |
-| | | Step 14: `llm_view.py` — chat + presets + context selector | Pending | 3–4 |
-| | | Step 15: `tests/ui/test_nlp_tools.py` + `test_llm.py` | Pending | 2–3 |
-| **T6** | Infrastructure | D4: stub routers (validation 5ep, annotation 4ep, kb 5ep, llm 5ep) | Pending | 4–6 |
+| | | Step 13: `widgets/chat_widget.py` + `nlp_tools_view.py` — Grammar/Keyphrase/Summarize | **DONE** | 3–4 |
+| | | Step 14: `llm_view.py` — chat + presets + context selector | **DONE** | 3–4 |
+| | | Step 15: `tests/ui/test_nlp_tools.py` + `test_llm.py` | **DONE** | 2–3 |
+| **T5 (UI)** | T5 UI | Step 13: `chat_widget.py` + `nlp_tools_view.py` (Grammar/Keyphrase/Summarize) | **DONE** | 3–4 |
+| | | Step 14: `llm_view.py` — chat + presets + context selector | **DONE** | 3–4 |
+| | | Step 15: `tests/ui/test_nlp_tools.py` + `test_llm.py` | **DONE** | 2–3 |
+| **T6** | Infrastructure | D4: stub routers (validation 5ep, annotation 4ep, kb 5ep, llm 5ep) | **← NEXT** | 4–6 |
 | | | R-6.1 Docker Compose production-ready | Pending | 3–5 |
 | | | R-6.2 Документация синхронизация | Pending | 2–3 |
 
@@ -874,7 +876,7 @@ except ImportError:
 
 **Критический путь (мастер-план):**
 ```
-P0 ✅ → T5 UI (Step 13-15) → T6 (D4 + Docker) → F (infra) → S (services) → APP/SEC (параллельно) → IO → AUD → UX
+P0 ✅ → T5 UI ✅ → T6 (D4 + Docker) → F (infra) → S (services) → APP/SEC (параллельно) → IO → AUD → UX
 ```
 
 **Зависимости:**
