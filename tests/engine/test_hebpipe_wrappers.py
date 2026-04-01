@@ -159,10 +159,49 @@ class TestHebPipeTokenizer:
         return HebPipeTokenizer()
 
     def test_basic_tokenize(self, tokenizer):
+        """Basic tokenize with clitic splitting enabled (default)."""
         result = tokenizer.process("חוזק מתיחה של הפלדה", {})
         assert result.status == ProcessorStatus.READY
-        assert result.data.count == 4
+        # Clitic splitting: מתיחה→מ+תיחה, הפלדה→ה+פלדה = 6 tokens
+        assert result.data.count == 6
         assert result.data.tokens[0].surface == "חוזק"
+
+    def test_clitic_splitting_vav_bet(self, tokenizer):
+        """Clitic splitting: ובבית → ו+ב+בית."""
+        result = tokenizer.process("ובבית", {"split_clitics": True})
+        assert result.status == ProcessorStatus.READY
+        assert result.data.count == 3
+        surfaces = [t.surface for t in result.data.tokens]
+        assert surfaces == ["ו", "ב", "בית"]
+
+    def test_clitic_splitting_he_definite(self, tokenizer):
+        """Clitic splitting: הפלדה → ה+פלדה."""
+        result = tokenizer.process("הפלדה", {"split_clitics": True})
+        assert result.status == ProcessorStatus.READY
+        assert result.data.count == 2
+        assert result.data.tokens[0].surface == "ה"
+        assert result.data.tokens[1].surface == "פלדה"
+
+    def test_clitic_splitting_multi_prefix(self, tokenizer):
+        """Clitic splitting: והבית → ו+ה+בית."""
+        result = tokenizer.process("והבית", {"split_clitics": True})
+        assert result.status == ProcessorStatus.READY
+        assert result.data.count == 3
+        surfaces = [t.surface for t in result.data.tokens]
+        assert surfaces == ["ו", "ה", "בית"]
+
+    def test_clitic_splitting_disabled(self, tokenizer):
+        """No clitic splitting when disabled."""
+        result = tokenizer.process("ובבית", {"split_clitics": False})
+        assert result.status == ProcessorStatus.READY
+        assert result.data.count == 1
+        assert result.data.tokens[0].surface == "ובבית"
+
+    def test_no_clitic_on_mixed_text(self, tokenizer):
+        """Latin/mixed text is not split."""
+        result = tokenizer.process("hello MPa 7.5", {})
+        assert result.status == ProcessorStatus.READY
+        assert result.data.count == 3
 
     def test_punct_detection(self, tokenizer):
         result = tokenizer.process("test.", {})

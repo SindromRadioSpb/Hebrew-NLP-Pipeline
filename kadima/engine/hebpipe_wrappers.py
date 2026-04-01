@@ -206,7 +206,13 @@ class HebPipeSentSplitter(Processor):
 
 
 class HebPipeTokenizer(Processor):
-    """M2: Токенизация предложения по пробелам.
+    """M2: Токенизация предложения с клитической декомпозицией.
+
+    Для иврита: разбиение префиксов (ו, ב, כ, ל, מ, ש, ה) как
+    отдельных токенов, аналогично Aggressive Splitting в Hebrew NLP.
+
+    config keys:
+        split_clitics (bool): Split Hebrew clitics. Default: True.
 
     Example:
         >>> tok = HebPipeTokenizer()
@@ -215,6 +221,11 @@ class HebPipeTokenizer(Processor):
         4
         >>> result.data.tokens[0].surface
         'חוזק'
+
+    Clitic splitting example:
+        >>> result = tok.process("ובבית", {"split_clitics": True})
+        >>> [t.surface for t in result.data.tokens]
+        ['ו', 'ב', 'בית']
     """
 
     @property
@@ -231,17 +242,35 @@ class HebPipeTokenizer(Processor):
     def process(self, input_data: str, config: Dict[str, Any]) -> ProcessorResult:
         start = time.time()
         try:
+            split_clitics = config.get("split_clitics", True)
             raw_tokens = input_data.split()
             tokens = []
-            offset = 0
-            for i, raw in enumerate(raw_tokens):
-                pos = input_data.find(raw, offset)
-                tokens.append(Token(
-                    index=i, surface=raw,
-                    start=pos, end=pos + len(raw),
-                    is_punct=bool(re.match(r'^[^\u0590-\u05FF\w]+$', raw)),
-                ))
-                offset = pos + len(raw)
+            token_idx = 0
+
+            for raw in raw_tokens:
+                pos = input_data.find(raw, tokens[-1].end if tokens else 0)
+                if pos == -1:
+                    pos = input_data.find(raw)
+                if pos == -1:
+                    continue
+
+                if split_clitics:
+                    sub_tokens = _split_clitic(raw)
+                else:
+                    sub_tokens = [raw]
+
+                for sub in sub_tokens:
+                    tokens.append(Token(
+                        index=token_idx, surface=sub,
+                        start=pos, end=pos + len(sub),
+                        is_punct=bool(re.match(r'^[^\u0590-\u05FF\w]+$', sub)),
+                    ))
+                    pos += len(sub)
+                    token_idx += 1
+
+                # Move past the original token
+                # (find next occurrence from current raw end)
+
             return ProcessorResult(
                 module_name=self.name, status=ProcessorStatus.READY,
                 data=TokenizeResult(tokens=tokens, count=len(tokens)),
@@ -341,6 +370,55 @@ _HE_RANGE = re.compile(r'[\u0590-\u05FF]')
 _ALL_HE = re.compile(r'^[\u0590-\u05FF]+$')
 _PUNCT_RE = re.compile(r'^[^\w\u0590-\u05FF]+$')
 _NUM_RE = re.compile(r'^[\d.,/%+-]+$')
+
+# Hebrew clitic split patterns for agglutinative tokenization
+# Matches optional prefix chain: ו + (ב/כ/ל/מ/ש) + (ה) + stem
+_CLITIC_SPLIT = re.compile(
+    r'^('
+    r'ו?'                            # conjunctive vav (and)
+    r'[בכלמש]?'                      # preposition (in/like/to/from/that)
+    r'ה?'                            # definite article
+    r')'
+    r'([\u0590-\u05FF]+)$'          # Hebrew stem
+)
+
+
+def _split_clitic(surface: str) -> list[str]:
+    """Split Hebrew word into clitic prefixes + stem.
+
+    E.g. "ובבית" → ["ו", "ב", "בית"], "הפלדה" → ["ה", "פלדה"]
+
+    Args:
+        surface: Hebrew word surface form.
+
+    Returns:
+        List of clitic tokens (always >= 1).
+    """
+    # Only split pure Hebrew words (no Latin, numbers, punctuation)
+    if not _ALL_HE.match(surface):
+        return [surface]
+
+    m = _CLITIC_SPLIT.match(surface)
+    if not m:
+        return [surface]
+
+    prefix_part, stem = m.group(1), m.group(2)
+
+    # Need at least one prefix to split
+    if not prefix_part:
+        return [surface]
+
+    # Split individual prefix chars
+    parts: list[str] = []
+    for ch in prefix_part:
+        parts.append(ch)
+    parts.append(stem)
+
+    # Only split if stem is meaningful (>= 2 chars)
+    if len(stem) < 2:
+        return [surface]
+
+    return parts
 
 # Common adjective suffixes (feminine ה-, plural ים-/ות-)
 _ADJ_PATTERNS = re.compile(
