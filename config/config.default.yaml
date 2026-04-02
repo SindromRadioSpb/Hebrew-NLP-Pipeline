@@ -35,6 +35,8 @@ pipeline:
     min_freq: 2
     pmi_threshold: 3.0
     hapax_filter: true
+    term_mode: canonical
+    term_extractor_backend: statistical
     precise:
       min_freq: 3
       pmi_threshold: 5.0

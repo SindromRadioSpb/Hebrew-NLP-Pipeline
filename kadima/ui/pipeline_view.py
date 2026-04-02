@@ -403,6 +403,29 @@ class PipelineView(QWidget):
         term_row.addWidget(self._term_mode)
         tg_layout.addLayout(term_row)
 
+        # Extraction Backend (T7-3)
+        backend_row = QHBoxLayout()
+        backend_lbl = QLabel("Extraction:")
+        backend_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        backend_row.addWidget(backend_lbl)
+        self._term_backend = QComboBox()
+        self._term_backend.setObjectName("pipeline_term_backend")
+        self._term_backend.addItems(["statistical", "alephbert"])
+        self._term_backend.setCurrentText("statistical")
+        self._term_backend.setToolTip(
+            "statistical: Ngram+AM+NP — быстрый, rule-based\n"
+            "alephbert: ML Token Classification — точный, требует модель"
+        )
+        backend_row.addWidget(self._term_backend)
+        # ML status badge
+        self._ml_status = QLabel("🤖 ML: —")
+        self._ml_status.setObjectName("pipeline_ml_status")
+        self._ml_status.setStyleSheet("color: #808080; font-size: 10px;")
+        self._ml_status.setToolTip("Статус ML модели для извлечения терминов")
+        backend_row.addWidget(self._ml_status)
+        backend_row.addStretch()
+        tg_layout.addLayout(backend_row)
+
         layout.addWidget(thresh_group)
         layout.addStretch()
 
@@ -534,6 +557,7 @@ class PipelineView(QWidget):
             "np_sim_threshold": self._sim_threshold.value(),
             "np_max_span": self._max_span.value(),
             "term_mode": self._term_mode.currentText(),
+            "term_extractor_backend": self._term_backend.currentText(),
         }
         return {"profile": profile, "modules": modules, "thresholds": thresholds}
 
