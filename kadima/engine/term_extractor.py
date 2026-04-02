@@ -13,6 +13,7 @@ Example:
 
 
 import logging
+import re
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -84,12 +85,39 @@ class TermExtractor(Processor):
 
     ALLOWED_TERM_MODES: set[str] = {"distinct", "canonical", "clustered", "related"}
 
+    # Noise types to filter from term tokens
+    NOISE_TYPES: set[str] = {"punct", "number", "latin"}
+
+    # Regex patterns for noise detection (mirrors M12 NoiseClassifier)
+    _HEBREW_RE = re.compile(r'^[\u0590-\u05FF]+$')
+    _NUMBER_RE = re.compile(r'^[0-9.,%]+$')
+    _LATIN_RE = re.compile(r'^[a-zA-Z]+$')
+    _PUNCT_RE = re.compile(r'^[^\w\s]+$')
+
+    def _classify_token(self, token: str) -> str:
+        """Classify a single token as noise type (mirrors M12 logic)."""
+        if self._HEBREW_RE.match(token):
+            return "non_noise"
+        elif self._NUMBER_RE.match(token):
+            return "number"
+        elif self._LATIN_RE.match(token):
+            return "latin"
+        elif self._PUNCT_RE.match(token):
+            return "punct"
+        return "non_noise"
+
+    def _is_noise(self, token: str, noise_types: set[str]) -> bool:
+        """Check if token is a noise type to filter."""
+        return self._classify_token(token) in noise_types
+
     def process(self, input_data: dict[str, Any], config: dict[str, Any]) -> ProcessorResult:
         start = time.time()
         try:
             profile = config.get("profile", "balanced")
             min_freq = config.get("min_freq", 2)
             pos_filter_enabled = config.get("pos_filter_enabled", True)
+            noise_filter_enabled = config.get("noise_filter_enabled", True)
+            noise_types_to_filter = config.get("noise_types_to_filter", self.NOISE_TYPES)
             term_mode = config.get("term_mode", "canonical")
             if term_mode not in self.ALLOWED_TERM_MODES:
                 term_mode = "canonical"
@@ -154,6 +182,17 @@ class TermExtractor(Processor):
                     kind = "NOUN_NOUN"  # fallback for NP match without pattern
                 else:
                     kind = "NOUN_NOUN" if ngram.n == 2 else f"{ngram.n}-GRAM"
+
+                # Noise-aware filtering: skip n-grams with noise tokens (punct, number, latin)
+                if noise_filter_enabled:
+                    skip = False
+                    for tok in ngram.tokens:
+                        if self._is_noise(tok, noise_types_to_filter):
+                            skip = True
+                            logger.debug("M8: skip ngram due to noise token '%s'", tok)
+                            break
+                    if skip:
+                        continue
 
                 # POS-aware filtering: skip n-grams with disallowed POS tokens
                 if pos_filter_enabled:

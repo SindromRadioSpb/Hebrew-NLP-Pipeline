@@ -61,7 +61,11 @@ class TestTermExtractor:
         am_scores = {
             ("a", "b"): {"pmi": 5.2, "llr": 10.0, "dice": 0.8, "t_score": 4.5, "chi_square": 12.3, "phi": 0.6},
         }
-        result = te.process({"ngrams": ngrams, "am_scores": am_scores}, {"min_freq": 1})
+        # Disable noise filtering for this test (Latin tokens "a", "b")
+        result = te.process(
+            {"ngrams": ngrams, "am_scores": am_scores},
+            {"min_freq": 1, "noise_filter_enabled": False}
+        )
         term = result.data.terms[0]
         assert term.pmi == 5.2
         assert term.llr == 10.0
@@ -126,7 +130,11 @@ class TestCanonicalDedup:
 
     def test_empty_canonical_mappings(self, te):
         ngrams = [Ngram(["a"], 1, 5, 2)]
-        result = te.process({"ngrams": ngrams, "am_scores": {}, "canonical_mappings": {}}, {"min_freq": 1})
+        # Disable noise filtering for Latin token "a"
+        result = te.process(
+            {"ngrams": ngrams, "am_scores": {}, "canonical_mappings": {}},
+            {"min_freq": 1, "noise_filter_enabled": False}
+        )
         assert len(result.data.terms) == 1
         assert result.data.terms[0].canonical == "a"
 
@@ -170,7 +178,11 @@ class TestNPAwareKind:
     def test_trigram_no_np_kind(self, te):
         """Trigram with no NP match gets N-GRAM kind."""
         ngrams = [Ngram(["a", "b", "c"], 3, 5, 2)]
-        result = te.process({"ngrams": ngrams, "am_scores": {}}, {"min_freq": 1})
+        # Disable noise filtering for Latin tokens
+        result = te.process(
+            {"ngrams": ngrams, "am_scores": {}},
+            {"min_freq": 1, "noise_filter_enabled": False}
+        )
         assert result.data.terms[0].kind == "3-GRAM"
 
 
@@ -186,7 +198,8 @@ class TestProcessBatch:
             {"ngrams": [Ngram(["a"], 1, 5, 2)], "am_scores": {}},
             {"ngrams": [Ngram(["b"], 1, 3, 1)], "am_scores": {}},
         ]
-        results = te.process_batch(inputs, {"min_freq": 1})
+        # Disable noise filtering for Latin tokens
+        results = te.process_batch(inputs, {"min_freq": 1, "noise_filter_enabled": False})
         assert len(results) == 2
         assert all(r.status == ProcessorStatus.READY for r in results)
         assert len(results[0].data.terms) == 1
@@ -202,7 +215,8 @@ class TestProcessBatch:
             {"ngrams": [], "am_scores": {}},
             {"ngrams": [Ngram(["b"], 1, 1, 1)], "am_scores": {}},
         ]
-        results = te.process_batch(inputs, {"min_freq": 2})
+        # Disable noise filtering for Latin tokens
+        results = te.process_batch(inputs, {"min_freq": 2, "noise_filter_enabled": False})
         assert len(results[0].data.terms) == 1
         assert len(results[1].data.terms) == 0
         assert len(results[2].data.terms) == 0  # min_freq filters it out
@@ -224,7 +238,8 @@ class TestMetrics:
             ("a", "b"): {"pmi": 5.0, "llr": 10.0, "dice": 0.8, "t_score": 4.0, "chi_square": 12.0, "phi": 0.6},
             ("c", "d"): {"pmi": 3.0, "llr": 6.0, "dice": 0.5, "t_score": 2.0, "chi_square": 6.0, "phi": 0.3},
         }
-        result = te.process({"ngrams": ngrams, "am_scores": am_scores}, {"min_freq": 1})
+        # Disable noise filtering for Latin tokens
+        result = te.process({"ngrams": ngrams, "am_scores": am_scores}, {"min_freq": 1, "noise_filter_enabled": False})
         assert result.data.mean_pmi == pytest.approx(4.0)
         assert result.data.mean_llr == pytest.approx(8.0)
         assert result.data.mean_dice == pytest.approx(0.65)
@@ -246,7 +261,8 @@ class TestMetrics:
             Ngram(["a"], 1, 10, 3),
             Ngram(["b"], 1, 1, 1),  # filtered by min_freq
         ]
-        result = te.process({"ngrams": ngrams, "am_scores": {}}, {"min_freq": 2})
+        # Disable noise filtering for Latin tokens
+        result = te.process({"ngrams": ngrams, "am_scores": {}}, {"min_freq": 2, "noise_filter_enabled": False})
         assert result.data.total_candidates == 2  # total input
         assert result.data.filtered == 1  # after filtering
 
@@ -256,7 +272,8 @@ class TestMetrics:
             Ngram(["b"], 1, 5, 2),
             Ngram(["c"], 1, 15, 4),
         ]
-        result = te.process({"ngrams": ngrams, "am_scores": {}}, {"min_freq": 1})
+        # Disable noise filtering for Latin tokens
+        result = te.process({"ngrams": ngrams, "am_scores": {}}, {"min_freq": 1, "noise_filter_enabled": False})
         ranks = [t.rank for t in result.data.terms]
         # Should be 1, 2, 3 (sequential, starting from 1)
         assert sorted(ranks) == [1, 2, 3]
@@ -360,3 +377,54 @@ class TestTermMode:
         result = te.process(inp, {"term_mode": "canonical", "min_freq": 1})
         assert result.data.term_mode == "canonical"
         assert result.data.total_clusters >= 0
+
+
+class TestNoiseFiltering:
+    """M12 noise filtering integration in M8."""
+
+    @pytest.fixture
+    def te(self):
+        return TermExtractor()
+
+    def test_noise_token_filtered_number(self, te):
+        """N-gram with number token is filtered out by default."""
+        ngrams = [Ngram(["חוזק", "7.5"], 2, 10, 3)]
+        result = te.process({"ngrams": ngrams, "am_scores": {}}, {"min_freq": 1})
+        assert len(result.data.terms) == 0  # "7.5" is noise → filtered
+
+    def test_noise_token_filtered_latin(self, te):
+        """N-gram with Latin token is filtered out by default."""
+        ngrams = [Ngram(["tensile", "strength"], 2, 10, 3)]
+        result = te.process({"ngrams": ngrams, "am_scores": {}}, {"min_freq": 1})
+        assert len(result.data.terms) == 0  # Latin tokens → filtered
+
+    def test_noise_token_filtered_punct(self, te):
+        """N-gram with punctuation token is filtered out."""
+        ngrams = [Ngram(["—", "—"], 2, 10, 3)]
+        result = te.process({"ngrams": ngrams, "am_scores": {}}, {"min_freq": 1})
+        assert len(result.data.terms) == 0  # Punctuation → filtered
+
+    def test_noise_filtering_disabled(self, te):
+        """When noise_filter_enabled=False, noise tokens pass through."""
+        ngrams = [Ngram(["חוזק", "7.5"], 2, 10, 3)]
+        result = te.process(
+            {"ngrams": ngrams, "am_scores": {}},
+            {"min_freq": 1, "noise_filter_enabled": False}
+        )
+        assert len(result.data.terms) == 1  # Not filtered when disabled
+
+    def test_hebrew_tokens_pass(self, te):
+        """Pure Hebrew n-grams pass through noise filter."""
+        ngrams = [Ngram(["חוזק", "מתיחה"], 2, 10, 3)]
+        result = te.process({"ngrams": ngrams, "am_scores": {}}, {"min_freq": 1})
+        assert len(result.data.terms) == 1
+
+    def test_custom_noise_types(self, te):
+        """Custom noise_types_to_filter config."""
+        ngrams = [Ngram(["חוזק", "7.5"], 2, 10, 3)]
+        # Only filter "number", not "latin"
+        result = te.process(
+            {"ngrams": ngrams, "am_scores": {}},
+            {"min_freq": 1, "noise_types_to_filter": {"number"}}
+        )
+        assert len(result.data.terms) == 0  # "7.5" is number → filtered
