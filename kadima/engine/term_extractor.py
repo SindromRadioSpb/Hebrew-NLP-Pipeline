@@ -62,6 +62,7 @@ class TermResult:
     # NEW: term_mode metadata
     term_mode: str = "canonical"
     total_clusters: int = 0
+    term_extractor_backend: str = "statistical"
 
 
 class TermExtractor(Processor):
@@ -92,6 +93,7 @@ class TermExtractor(Processor):
             term_mode = config.get("term_mode", "canonical")
             if term_mode not in self.ALLOWED_TERM_MODES:
                 term_mode = "canonical"
+            term_extractor_backend = config.get("term_extractor_backend", "statistical")
 
             ngrams = input_data.get("ngrams", [])
             am_scores = input_data.get("am_scores", {})
@@ -276,7 +278,8 @@ class TermExtractor(Processor):
                                 mean_pmi=mean_pmi, mean_llr=mean_llr, mean_dice=mean_dice,
                                 mean_t_score=mean_t_score, mean_chi_square=mean_chi_square,
                                 mean_phi=mean_phi,
-                                term_mode=term_mode, total_clusters=total_clusters),
+                                term_mode=term_mode, total_clusters=total_clusters,
+                                term_extractor_backend=term_extractor_backend),
                 processing_time_ms=(time.time() - start) * 1000,
             )
         except Exception as e:

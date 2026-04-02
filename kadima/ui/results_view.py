@@ -305,6 +305,16 @@ class ResultsView(QWidget):
         self._empty_label.setStyleSheet("color: #555; font-size: 14px; padding: 40px;")
         terms_layout.addWidget(self._empty_label)
 
+        # Backend badge (T7-3)
+        self._backend_badge = QLabel("")
+        self._backend_badge.setObjectName("results_backend_badge")
+        self._backend_badge.setStyleSheet(
+            "QLabel { background: #2d2d44; color: #808080; border: 1px solid #3d3d5c;"
+            "  border-radius: 4px; padding: 2px 8px; font-size: 10px; }"
+        )
+        self._backend_badge.hide()
+        terms_layout.addWidget(self._backend_badge)
+
         self._tabs.addTab(terms_widget, "📝  Terms")
 
         # N-grams tab
@@ -670,6 +680,42 @@ class ResultsView(QWidget):
 
         self._terms_view.setVisible(bool(terms))
         self._empty_label.setVisible(not terms)
+
+        # Update backend badge
+        if isinstance(pipeline_result, dict):
+            term_mr = pipeline_result.get("module_results", {}).get("term_extract")
+        else:
+            te_mr = getattr(pipeline_result, "module_results", {})
+            term_mr = te_mr.get("term_extract") if hasattr(te_mr, "get") else getattr(te_mr, "term_extract", None)
+
+        backend_name = "statistical"
+        if term_mr and hasattr(term_mr, "data") and term_mr.data:
+            data = term_mr.data
+            backend_name = getattr(data, "term_extractor_backend", "statistical")
+            term_mode = getattr(data, "term_mode", "canonical")
+            # Count from term metadata
+            total_candidates = getattr(data, "total_candidates", 0)
+            total_clusters = getattr(data, "total_clusters", 0)
+            badge_text = f"⚡ {backend_name} | {term_mode} | {len(terms)} terms"
+            if total_clusters > 0:
+                badge_text += f" | {total_clusters} clusters"
+        else:
+            badge_text = f"⚡ {backend_name} | {len(terms)} terms"
+
+        self._backend_badge.setText(badge_text)
+        self._backend_badge.show()
+
+        # Color badge based on backend
+        if backend_name == "alephbert":
+            self._backend_badge.setStyleSheet(
+                "QLabel { background: #1a3a1a; color: #4ade80; border: 1px solid #22c55e;"
+                "  border-radius: 4px; padding: 2px 8px; font-size: 10px; }"
+            )
+        else:
+            self._backend_badge.setStyleSheet(
+                "QLabel { background: #2d2d44; color: #808080; border: 1px solid #3d3d5c;"
+                "  border-radius: 4px; padding: 2px 8px; font-size: 10px; }"
+            )
 
     def _load_am_scores(self, pipeline_result: Any) -> None:
         """Populate AM Scores tab from pipeline result.

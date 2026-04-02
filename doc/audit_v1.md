@@ -500,6 +500,7 @@ ul
 4. **UI: 3 новые колонки** — T-score, Chi², Phi добавлены в TermsTableModel (было 9 колонок, стало 12).
 5. **Тесты расширены** — 7 → 24 теста (6 test classes): добавлены CanonicalDedup, NPAwareKind, ProcessBatch, Metrics, ErrorHandling.
 6. **`term_mode` — 4 режима** (distinct/canonical/clustered/related) + поля cluster_id/variant_count/variants в Term.
+7. **T7-3: `term_extractor_backend`** — M8Backend (ABC) + StatisticalBackend + AlephBERTBackend + training CLI (`export/train/eval`) + 17 тестов. UI: PipelineView Extraction Method selector, ResultsView backend badge.
 
 ---
 
