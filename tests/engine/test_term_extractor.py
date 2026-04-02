@@ -281,3 +281,82 @@ class TestErrorHandling:
         # "not_a_list" has no .freq attr → exception → FAILED
         assert result.status == ProcessorStatus.FAILED
         assert len(result.errors) > 0
+
+
+class TestTermMode:
+    """Tests for term_mode: distinct/canonical/clustered/related."""
+
+    @pytest.fixture
+    def te(self):
+        return TermExtractor()
+
+    def _make_input(self):
+        ngrams = [
+            Ngram(["פלדה"], 1, 10, 3),
+            Ngram(["הפלדה"], 1, 5, 2),   # canonical: פלדה
+            Ngram(["בטון", "קל"], 2, 8, 3),
+        ]
+        am_scores = {
+            ("פלדה",): {"pmi": 2.0, "llr": 5.0, "dice": 0.6, "t_score": 3.0, "chi_square": 8.0, "phi": 0.4},
+            ("הפלדה",): {"pmi": 1.0, "llr": 3.0, "dice": 0.4, "t_score": 2.0, "chi_square": 5.0, "phi": 0.2},
+            ("בטון", "קל"): {"pmi": 4.0, "llr": 9.0, "dice": 0.7, "t_score": 4.0, "chi_square": 10.0, "phi": 0.5},
+        }
+        canonical_mappings = {"הפלדה": "פלדה"}
+        return {"ngrams": ngrams, "am_scores": am_scores, "canonical_mappings": canonical_mappings}
+
+    def test_distinct_mode_no_dedup(self, te):
+        """distinct: all surface forms separate, variant_count=1."""
+        inp = self._make_input()
+        result = te.process(inp, {"term_mode": "distinct", "min_freq": 1})
+        assert result.data.term_mode == "distinct"
+        assert result.data.total_clusters == 0  # no clusters in distinct
+        # All 3 terms present (no dedup)
+        assert len(result.data.terms) == 3
+        # All variant_count=1
+        assert all(t.variant_count == 1 for t in result.data.terms)
+
+    def test_canonical_mode_with_dedup(self, te):
+        """canonical: dedup by canonical form, variant_count>1."""
+        inp = self._make_input()
+        result = te.process(inp, {"term_mode": "canonical", "min_freq": 1})
+        assert result.data.term_mode == "canonical"
+        # הפלדה merges into פלדה → 2 terms
+        assert len(result.data.terms) == 2
+        # פלדה term should have variant_count=2 (פלדה + הפלדה)
+        plda = next((t for t in result.data.terms if t.canonical == "פלדה"), None)
+        assert plda is not None
+        assert plda.variant_count == 2
+        assert set(plda.variants) == {"פלדה", "הפלדה"}
+
+    def test_clustered_mode_has_cluster_id(self, te):
+        """clustered: terms get cluster_id based on kind."""
+        inp = self._make_input()
+        result = te.process(inp, {"term_mode": "clustered", "min_freq": 1})
+        assert result.data.term_mode == "clustered"
+        # At least one term should have cluster_id > 0 (if kind is NOUN-like)
+        terms_with_cluster = [t for t in result.data.terms if t.cluster_id >= 0]
+        assert len(terms_with_cluster) == len(result.data.terms)  # all should have cluster_id
+
+    def test_related_mode_no_merge(self, te):
+        """related: dedup but cluster_id assigned for UI links."""
+        inp = self._make_input()
+        result = te.process(inp, {"term_mode": "related", "min_freq": 1})
+        assert result.data.term_mode == "related"
+        # 2 terms (deduped by canonical, like canonical mode)
+        assert len(result.data.terms) == 2
+        # At least one should have cluster_id assigned (based on kind)
+        related_terms = [t for t in result.data.terms if t.cluster_id >= 0]
+        assert len(related_terms) >= 1
+
+    def test_invalid_mode_defaults_to_canonical(self, te):
+        """Invalid term_mode falls back to canonical."""
+        inp = self._make_input()
+        result = te.process(inp, {"term_mode": "foobar", "min_freq": 1})
+        assert result.data.term_mode == "canonical"
+
+    def test_term_result_metadata(self, te):
+        """TermResult has term_mode and total_clusters metadata."""
+        inp = self._make_input()
+        result = te.process(inp, {"term_mode": "canonical", "min_freq": 1})
+        assert result.data.term_mode == "canonical"
+        assert result.data.total_clusters >= 0

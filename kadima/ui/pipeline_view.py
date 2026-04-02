@@ -385,6 +385,24 @@ class PipelineView(QWidget):
         np_row.addWidget(self._max_span)
         tg_layout.addLayout(np_row)
 
+        # Term Extractor settings (M8)
+        term_row = QHBoxLayout()
+        term_lbl = QLabel("Term Mode:")
+        term_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        term_row.addWidget(term_lbl)
+        self._term_mode = QComboBox()
+        self._term_mode.setObjectName("pipeline_term_mode")
+        self._term_mode.addItems(["distinct", "canonical", "clustered", "related"])
+        self._term_mode.setCurrentText("canonical")
+        self._term_mode.setToolTip(
+            "distinct: все формы отдельно\n"
+            "canonical: дедуп (הפלדה→פלде)\n"
+            "clustered: семантические группы\n"
+            "related: без merge, но с cluster_id"
+        )
+        term_row.addWidget(self._term_mode)
+        tg_layout.addLayout(term_row)
+
         layout.addWidget(thresh_group)
         layout.addStretch()
 
@@ -515,6 +533,7 @@ class PipelineView(QWidget):
             "np_mode": self._np_mode.currentText(),
             "np_sim_threshold": self._sim_threshold.value(),
             "np_max_span": self._max_span.value(),
+            "term_mode": self._term_mode.currentText(),
         }
         return {"profile": profile, "modules": modules, "thresholds": thresholds}
 

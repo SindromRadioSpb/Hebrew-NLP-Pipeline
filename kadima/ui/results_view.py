@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 # ── TermsTableModel ───────────────────────────────────────────────────────────
 
 
-_TERM_COLUMNS = ["Rank", "Surface", "Canonical", "Kind", "Freq", "Doc Freq", "PMI", "LLR", "Dice", "T-score", "Chi²", "Phi"]
+_TERM_COLUMNS = ["Rank", "Surface", "Canonical", "Kind", "Freq", "Doc Freq", "PMI", "LLR", "Dice", "T-score", "Chi²", "Phi", "Variants", "Cluster"]
 
 
 class TermsTableModel(QAbstractTableModel):
@@ -136,6 +136,14 @@ class TermsTableModel(QAbstractTableModel):
         # Rank is dynamic (row position + 1), matching N-grams and NP Chunks behavior
         if col == 0:
             return str(row + 1)
+        if col == 12:  # Variants
+            variants = self._get_val(t, "variants", None)
+            if variants and len(variants) > 1:
+                return ", ".join(str(v) for v in variants)
+            return "—"
+        if col == 13:  # Cluster
+            cluster_id = self._get_val(t, "cluster_id", -1)
+            return str(cluster_id) if cluster_id > 0 else "—"
         attrs = ["_skip", "surface", "canonical", "kind", "freq", "doc_freq", "pmi", "llr", "dice",
                  "t_score", "chi_square", "phi"]
         val = self._get_val(t, attrs[col], "")
@@ -243,6 +251,24 @@ class ResultsView(QWidget):
         terms_layout = QVBoxLayout(terms_widget)
         terms_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Help panel (explained term modes)
+        self._term_mode_help = QLabel(
+            "🔄 <b>Term Mode</b> — как обрабатывать варианты терминов:<br>"
+            "&nbsp; • <b>distinct</b> — все формы отдельно (פלדה, הפלדה, פלדות)<br>"
+            "&nbsp; • <b>canonical</b> — дедуп по корню (הפלדה→פלדה) <i>[default]</i><br>"
+            "&nbsp; • <b>clustered</b> — семантические группы ({פלדה, מתכת} → металлы)<br>"
+            "&nbsp; • <b>related</b> — отдельно, но с связями (פלדה ↔ מתכת)"
+        )
+        self._term_mode_help.setWordWrap(True)
+        self._term_mode_help.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        self._term_mode_help.setStyleSheet(
+            "QLabel { background: #1a1a3a; border: 1px solid #3d3d5c;"
+            "  border-radius: 6px; color: #b0b0c0; padding: 8px 12px;"
+            "  font-size: 11px; line-height: 1.5; }"
+        )
+
         self._terms_model = TermsTableModel()
         self._proxy = QSortFilterProxyModel()
         self._proxy.setSourceModel(self._terms_model)
@@ -270,6 +296,7 @@ class ResultsView(QWidget):
             "  border: none; padding: 4px 8px; font-size: 11px; }"
         )
         self._terms_view.selectionModel().currentRowChanged.connect(self._on_term_selected)
+        terms_layout.addWidget(self._term_mode_help)
         terms_layout.addWidget(self._terms_view)
 
         self._empty_label = QLabel("Run pipeline to see results")
