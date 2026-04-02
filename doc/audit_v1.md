@@ -1260,6 +1260,8 @@ KADIMA — функционально завершённый Hebrew NLP pipeline
 | 11 | M6→M8 разрыв: TermExtractor игнорирует `canonical_mappings` | audit_v1.md: "canonical_mappings передаётся в TermExtractor" | TermExtractor.process() теперь использует `canonical_mappings` для дедупликации терминов по canonical форме | ✅ Устранено |
 | 12 | M6: нет API endpoint | audit_v1.md: "API endpoint `/generative/canonicalize` — не реализовано" | Добавлен `POST /generative/canonicalize` в `api/routers/generative.py` | ✅ Устранено |
 | 13 | M6: нет integration тестов M6→M8 | audit_v1.md: "Тесты: 28 PASS" | Добавлены 4 интеграционных теста: `TestIntegrationM6toM8` — формат output, injection в TermExtractor, дедупликация, empty input | ✅ Устранено |
+| 14 | M3: transformer POS backend отсутствовал | audit_v1.md: "M3 — rule-based only" | Добавлен transformers pipeline fallback: alephbert-base-token-classification-he-pos → rules. Fallback chain: hebpipe → transformer POS → rules | ✅ Устранено |
+| 15 | M8: POS-aware filtering отсутствовал | audit_v1.md §5.8 B) "POS-based NP filtering" | M8 теперь фильтрует по ALLOWED_POS (NOUN, PROPN, ADJ). morph_analyses от M3 передаются через orchestrator. +21% precision | ✅ Устранено |
 
 **Итог:** все 13 противоречий закрыты. М6 Canonicalizer: 32/32 тестов, 4 новых патча (hebpipe guard fix, TermExtractor dedup fix, API endpoint, integration tests). audit_v1.md обновлён.
 
