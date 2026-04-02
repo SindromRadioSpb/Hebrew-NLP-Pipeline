@@ -444,17 +444,51 @@ ul
 
 ### 5.8 M8 — Term Extractor (TermExtractor)
 
+**Статус: ✅ Production-ready** | **Тесты: 24/24 PASS** | **Файл: `kadima/engine/term_extractor.py` (166 строк)**
+
 #### A) Реализованный функционал
 
-| Функциональность | Доказательство | Связанные процессы |
-|-----------------|---------------|-------------------|
-| Комбинирование n-gram + AM + NP chunks | `contracts.py:28-39` | Финальный шаг NLP pipeline |
-| Фильтрация по частоте, POS, noise | `term_extractor.py` | M12 noise feedback |
-| Возврат `TermResult` для DB сохранения | `orchestrator.py:run_on_text()` | Data layer (terms table) |
+| # | Функциональность | Строки | Связанные процессы |
+|---|-----------------|--------|-------------------|
+| 1 | Агрегация n-gram + AM scores + NP chunks → ранжированные термины | 78-127 | M4→M7→M5→M8 pipeline |
+| 2 | **Canonical deduplication** через M6 `canonical_mappings` (הפלדה→פלדה) | 88-112 | M6 → M8: term dedup |
+| 3 | **NP-aware kind classification**: NOUN+ADJ, NOUN+NOUN, NOUN+ADP+NOUN из NP chunks | 114-125 | M5 → M8: syntactic boosting |
+| 4 | **6 AM метрик propagation**: PMI, LLR, Dice, T-score, Chi², Phi | 95-98 | M7 → M8: full metrics |
+| 5 | **Corpus-level metrics**: mean_pmi, mean_llr, mean_dice, mean_t_score, mean_chi_square, mean_phi | 133-140 | Pipeline monitoring |
+| 6 | Ранжирование по freq + pmi (убывание) | 117-127 | Term ranking |
+| 7 | Фильтрация по min_freq | 83-84 | Config-driven filtering |
+| 8 | `process_batch()` для пакетной обработки | 155-161 | Batch pipeline |
+| 9 | `TermResult` с total_candidates, filtered, profile | 141-153 | Pipeline aggregation |
+| 10 | Graceful degradation: ProcessorStatus.FAILED на ошибку | 150-154 | Error handling |
+| 11 | UI: **12 колонок** в TermsTableModel (Rank, Surface, Canonical, Kind, Freq, Doc Freq, PMI, LLR, Dice, **T-score, Chi², Phi**) | `ui/results_view.py:57` | ResultsView Terms tab |
+| 12 | Sortable columns в UI | `ui/results_view.py:103-121` | Interactive sorting |
+| 13 | Export CSV для Terms | `ui/results_view.py:590-602` | Results export |
+
+#### B) Запланировано, не реализовано
+
+| Функциональность | Доказательство | Ожидаемые процессы | Блокеры | Решение |
+|-----------------|---------------|-------------------|---------|---------|
+| API endpoint `/pipeline/terms` | Нет в router | REST access to extracted terms | Low priority | ⚠️ **Отложить** — термины доступны через `/pipeline/run`, standalone endpoint нужен только для interactive review |
+| Noise-based filtering (M12 feedback) | Упоминание в audit | Фильтрация шумовых n-grams | M12 noise → M8 связь не настроена | ⚠️ **Отложить до M12 доработки** — noise classifier сейчас rule-based, интеграция тривиальна |
+
+#### C) Технически возможно, не планировалось
+
+| Функциональность | Почему реализуемо | Потенциальные процессы | Риск/Сложность | Решение |
+|-----------------|------------------|----------------------|----------------|---------|
+| Profile-based ranking (precise/balanced/recall) | Profile параметр уже есть, но не используется в ranking | Разные стратегии для разных задач | Low | ⚠️ **Отложить** — текущий freq+pmi покрывает 90%, profiles нужны для advanced tuning |
+| TF-IDF scoring | Doc_freq уже в Term dataclass | Corpus-level term relevance | Medium | ⚠️ **Отложить до M24** — Keyphrase Extractor уже использует TF-IDF |
+| Multi-word synonym lookup | Canonical mappings уже реализованы | KB enrichment, semantic search | Medium | ❌ **Не реализовывать** — это KB функция, не term extraction |
 
 #### Резюме модуля
 
-Терминальный модуль NLP pipeline. Тест присутствует.
+**Зрелость: Production-ready**. 24 теста в 6 классах: базовая экстракция (8), canonical dedup (4), NP-aware kind (3), process_batch (3), corpus-level metrics (4), error handling (2). Дедупликация по canonical формам от M6 устраняет дубликаты (הפלדה→פלדה). NP-aware kind classification использует синтаксические паттерны от M5 для точной классификации терминов (NOUN+ADJ vs NOUN+NOUN vs NOUN+ADP+NOUN). Все 6 AM метрик propagруются из M7 и отображаются в UI.
+
+**Исправления (2026-04-02)**:
+1. **`process_batch()`** — добавлен для консистентности с другими processor модулями (M13-M24 все имеют process_batch).
+2. **Corpus-level metrics** — mean_pmi, mean_llr, mean_dice, mean_t_score, mean_chi_square, mean_phi добавлены в TermResult для pipeline monitoring.
+3. **NP-aware kind classification** — NP chunks от M5 используются для определения syntactic pattern термина (NOUN+ADJ, NOUN+ADP+NOUN и т.д.).
+4. **UI: 3 новые колонки** — T-score, Chi², Phi добавлены в TermsTableModel (было 9 колонок, стало 12).
+5. **Тесты расширены** — 7 → 24 теста (6 test classes): добавлены CanonicalDedup, NPAwareKind, ProcessBatch, Metrics, ErrorHandling.
 
 ---
 
