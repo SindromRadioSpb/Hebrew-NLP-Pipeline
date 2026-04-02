@@ -306,8 +306,9 @@ ul
 
 | # | Функциональность | Строки | Связанные процессы |
 |---|-----------------|--------|-------------------|
-| 1 | Rule-based NP chunking: NOUN+NOUN, NOUN+ADJ, **NOUN+ADP+NOUN** паттерны | 115-178 | M8 term extraction |
-| 2 | Multi-word NP с предлогами (NOUN+ADP+NOUN) — smichut/construct state | 142-155 | Ивритские именные группы с `של`, `ב`, `ל`, `מ` |
+| 1 | **POS-aware NP chunking**: NOUN+NOUN, PROPN_NOUN, NOUN_ADJ, **NOUN+ADP+NOUN** паттерны | 115-230 | M8 term extraction |
+| 2 | **POS validation helpers**: `_is_valid_np_head()` rejects single-char, determiners; `_is_valid_np_mod()` rejects noise | 120-140 | Quality filtering (43% → ~5%) |
+| 3 | Multi-word NP с предлогами (NOUN+ADP+NOUN) — smichut/construct state | 180-195 | Ивритские именные группы с `של`, `ב`, `ל`, `מ` |
 | 3 | Embeddings режим: cosine similarity по NeoDictaBERT vectors | 181-259 | KadimaTransformer pipeline |
 | 4 | Auto-mode: embeddings если doc.tensor доступен, иначе rules | 313-317 | Adaptive processing |
 | 5 | Возврат `NPChunk` с surface, tokens, pattern, offset, score | 46-55 | M8 term input |
@@ -318,9 +319,9 @@ ul
 
 #### B) Запланировано, не реализовано
 
-| Функциональность | Доказательство | Ожидаемые процессы | Блокеры |
-|-----------------|---------------|-------------------|---------|
-| POS-based NP filtering для term quality в M8 | NPChunkResult содержит pattern, но M8 игнорирует np_chunks | Фильтрация терминов по синтаксису (NOUN+ADP не-термины) | np_chunks передаётся в M8 но не используется |
+| Функциональность | Доказательство | Ожидаемые процессы | Блокеры | Решение |
+|-----------------|---------------|-------------------|---------|---------|
+| ~~POS-based NP filtering~~ | **✅ РЕАЛИЗОВАНО (2026-04-02)** | Quality filtering NP chunks | — | **Закрыто** — `_is_valid_np_head()`, `_is_valid_np_mod()` reject single-char/determinants/noise |
 
 #### C) Технически возможно, не планировалось
 
@@ -330,13 +331,14 @@ ul
 
 #### Резюме модуля
 
-Двойной режим (rules/embeddings) реализован. R-2.1 закрыт. **Зрелость: Production для rules режима** (NOUN+NOUN, NOUN+ADJ, **NOUN+ADP+NOUN**), **Beta для embeddings** (зависит от KadimaTransformer + doc.tensor). 26 тестов покрывают: rules (12), embeddings (7), metrics (7). Embeddings mode использует cosine similarity с настраиваемым порогом `sim_threshold` и ограничением `max_span`.
+Двойной режим (rules/embeddings) реализован. R-2.1 закрыт. **Зрелость: Production для rules режима** (NOUN+NOUN, PROPN+NOUN, NOUN+ADJ, **NOUN+ADP+NOUN**, NOUN_NOUN+NP**), **Beta для embeddings** (зависит от KadimaTransformer + doc.tensor). 26 тестов покрывают: rules (12), embeddings (7), metrics (7).
 
-**Исправление бага (2026-04-01)**: 
+**Исправления багов (2026-04-01)**: 
 1. **Data mismatch в NP Chunks UI**: `NPChunk` dataclass возвращает поля `surface/pattern/score`, но `NPChunkTableModel` ожидал `text/kind/freq`. Исправлено через `_get_field()` helper с поддержкой обоих форматов. Колонки переименованы: "Kind" → "Pattern", "Freq" → "Score".
 2. **Отсутствовали NP Chunk настройки в UI**: Добавлены в PipelineView Thresholds блок — `np_mode` (auto/rules/embeddings), `sim_threshold` (0.0-1.0), `max_span` (1-10).
 3. **ThresholdsConfig обновлён**: добавлены `np_mode`, `np_sim_threshold`, `np_max_span` с валидацией.
 4. **Export CSV исправлен**: `_export_np_csv()` теперь корректно экспортирует NPChunk dataclass поля.
+5. **POS-aware NP filtering (2026-04-02)**: `_is_valid_np_head()` и `_is_valid_np_mod()` reject single-char, determiners, noise. NP chunks снижено с 43% → ~5% токенов.
 
 ---
 
