@@ -2,13 +2,12 @@
 """REST API: Pipeline execution endpoints."""
 
 import logging
-from fastapi import APIRouter, HTTPException
-from typing import List
+
+from fastapi import APIRouter
 
 from kadima.api.schemas import PipelineRunRequest, PipelineRunResponse, TermResponse
 from kadima.pipeline.config import PipelineConfig
 from kadima.pipeline.orchestrator import PipelineService
-from kadima.engine.base import ProcessorStatus
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,9 @@ async def run_pipeline(corpus_id: int, body: PipelineRunRequest):
         TermResponse(
             surface=t.surface, canonical=t.canonical, kind=t.kind,
             freq=t.freq, doc_freq=t.doc_freq,
-            pmi=t.pmi, llr=t.llr, dice=t.dice, rank=t.rank,
+            pmi=t.pmi, llr=t.llr, dice=t.dice,
+            t_score=t.t_score, chi_square=t.chi_square, phi=t.phi,
+            rank=t.rank,
         )
         for t in result.terms
     ]
@@ -51,7 +52,9 @@ async def run_pipeline_on_text(text: str, profile: str = "balanced"):
         TermResponse(
             surface=t.surface, canonical=t.canonical, kind=t.kind,
             freq=t.freq, doc_freq=t.doc_freq,
-            pmi=t.pmi, llr=t.llr, dice=t.dice, rank=t.rank,
+            pmi=t.pmi, llr=t.llr, dice=t.dice,
+            t_score=t.t_score, chi_square=t.chi_square, phi=t.phi,
+            rank=t.rank,
         )
         for t in result.terms
     ]

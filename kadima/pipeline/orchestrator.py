@@ -346,11 +346,14 @@ class PipelineService:
         if "term_extract" in enabled and "term_extract" in self.modules:
             proc = self.modules["term_extract"]
 
-            # Собираем AM scores в dict для TermExtractor
+            # Собираем AM scores в dict для TermExtractor (все 6 метрик)
             am_scores = {}
             if am_result:
                 for score in am_result.scores:
-                    am_scores[score.pair] = {"pmi": score.pmi, "llr": score.llr, "dice": score.dice}
+                    am_scores[score.pair] = {
+                        "pmi": score.pmi, "llr": score.llr, "dice": score.dice,
+                        "t_score": score.t_score, "chi_square": score.chi_square, "phi": score.phi,
+                    }
 
             term_input = {
                 "ngrams": ngram_result.ngrams if ngram_result else [],

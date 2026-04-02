@@ -19,7 +19,7 @@ import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from kadima.engine.base import Processor, ProcessorResult, ProcessorStatus
 
@@ -28,16 +28,10 @@ logger = logging.getLogger(__name__)
 # ── Optional ML imports ─────────────────────────────────────────────────────
 
 # phonikud-onnx: pip install phonikud-onnx
-# Model file (.onnx) downloaded separately — see scripts/setup_models.py
-_PHONIKUD_ONNX_MODEL_PATH = os.environ.get(
-    "PHONIKUD_ONNX_MODEL_PATH",
-    str(
-        Path(os.path.expanduser("~")).parent.parent
-        / "datasets_models"
-        / "phonikud"
-        / "phonikud-1.0.int8.onnx"
-    ),
-)
+# Model file auto-downloaded via huggingface_hub on first use
+_PHONIKUD_ONNX_REPO = "thewh1teagle/phonikud-onnx"
+_PHONIKUD_ONNX_FILENAME = "phonikud-1.0.int8.onnx"
+_PHONIKUD_ONNX_MODEL_PATH = os.environ.get("PHONIKUD_ONNX_MODEL_PATH", "")
 
 _PHONIKUD_AVAILABLE = False
 _PhOnnx: Any = None
@@ -116,7 +110,7 @@ def word_accuracy(predicted: str, expected: str) -> float:
     return matches / max(len(pred_words), len(exp_words))
 
 
-def _extract_niqqud_per_letter(text: str) -> List[str]:
+def _extract_niqqud_per_letter(text: str) -> list[str]:
     """Extract niqqud marks grouped per Hebrew letter.
 
     Returns list of niqqud strings, one per Hebrew letter.
@@ -138,7 +132,7 @@ def _extract_niqqud_per_letter(text: str) -> List[str]:
 # ── Rule-based fallback ────────────────────────────────────────────────────
 
 # Common word → diacritized form lookup
-_COMMON_WORDS: Dict[str, str] = {
+_COMMON_WORDS: dict[str, str] = {
     "של": "שֶׁל",
     "על": "עַל",
     "את": "אֶת",
@@ -211,9 +205,9 @@ class Diacritizer(Processor):
         device: str = "cuda"
     """
 
-    def __init__(self, config: Optional[dict] = None) -> None:
-        self._dicta_pipeline: Optional[Any] = None
-        self._phonikud_model: Optional[Any] = None
+    def __init__(self, config: dict | None = None) -> None:
+        self._dicta_pipeline: Any | None = None
+        self._phonikud_model: Any | None = None
 
     @property
     def name(self) -> str:
@@ -227,7 +221,7 @@ class Diacritizer(Processor):
         """Input must be a non-empty string."""
         return isinstance(input_data, str) and len(input_data) > 0
 
-    def process(self, input_data: str, config: Dict[str, Any]) -> ProcessorResult:
+    def process(self, input_data: str, config: dict[str, Any]) -> ProcessorResult:
         """Diacritize Hebrew text.
 
         Args:
@@ -282,8 +276,8 @@ class Diacritizer(Processor):
             )
 
     def process_batch(
-        self, inputs: List[str], config: Dict[str, Any]
-    ) -> List[ProcessorResult]:
+        self, inputs: list[str], config: dict[str, Any]
+    ) -> list[ProcessorResult]:
         """Diacritize multiple texts.
 
         Args:
@@ -299,18 +293,29 @@ class Diacritizer(Processor):
         """Diacritize via phonikud-onnx (thewh1teagle/phonikud-onnx).
 
         Lazy-loads the ONNX model on first call.
-        Model path: PHONIKUD_ONNX_MODEL_PATH env var or default F:/datasets_models/phonikud/.
-        Download: https://huggingface.co/thewh1teagle/phonikud/resolve/main/phonikud-1.0.int8.onnx
+        If PHONIKUD_ONNX_MODEL_PATH env var is set, uses that path.
+        Otherwise downloads the model via huggingface_hub (cached automatically).
         """
         if self._phonikud_model is None:
-            model_path = Path(_PHONIKUD_ONNX_MODEL_PATH)
-            if not model_path.exists():
-                raise FileNotFoundError(
-                    f"phonikud-onnx model not found at {model_path}. "
-                    "Download from HuggingFace: thewh1teagle/phonikud-onnx"
+            from huggingface_hub import hf_hub_download
+
+            if _PHONIKUD_ONNX_MODEL_PATH:
+                # Env var override — use local file
+                model_path = Path(_PHONIKUD_ONNX_MODEL_PATH)
+                if not model_path.exists():
+                    raise FileNotFoundError(
+                        f"phonikud-onnx model not found at {model_path}. "
+                        f"Expected: {_PHONIKUD_ONNX_FILENAME} from {_PHONIKUD_ONNX_REPO}"
+                    )
+                model_file = str(model_path)
+            else:
+                # Auto-download via HF hub, cached in ~/.cache/huggingface/hub
+                model_file = hf_hub_download(
+                    repo_id=_PHONIKUD_ONNX_REPO,
+                    filename=_PHONIKUD_ONNX_FILENAME,
                 )
-            self._phonikud_model = _PhOnnx(str(model_path))
-            logger.info("phonikud-onnx model loaded from %s", model_path)
+            self._phonikud_model = _PhOnnx(model_file)
+            logger.info("phonikud-onnx model loaded from %s", model_file)
         return self._phonikud_model.add_diacritics(text)
 
     def _process_dicta(self, text: str, device: str) -> str:

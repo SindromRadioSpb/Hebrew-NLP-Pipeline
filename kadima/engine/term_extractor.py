@@ -12,10 +12,10 @@ Example:
 """
 
 
-import time
 import logging
-from typing import Any, Dict, List
+import time
 from dataclasses import dataclass
+from typing import Any
 
 from kadima.engine.base import Processor, ProcessorResult, ProcessorStatus
 
@@ -34,6 +34,9 @@ class Term:
     pmi: float
     llr: float
     dice: float
+    t_score: float
+    chi_square: float
+    phi: float
     rank: int
     profile: str        # "precise" / "balanced" / "recall"
 
@@ -42,7 +45,7 @@ class Term:
 class TermResult:
     """Результат извлечения терминов: ранжированный список."""
 
-    terms: List[Term]
+    terms: list[Term]
     profile: str
     total_candidates: int
     filtered: int
@@ -62,7 +65,7 @@ class TermExtractor(Processor):
     def validate_input(self, input_data: Any) -> bool:
         return isinstance(input_data, dict) and "ngrams" in input_data
 
-    def process(self, input_data: Dict[str, Any], config: Dict[str, Any]) -> ProcessorResult:
+    def process(self, input_data: dict[str, Any], config: dict[str, Any]) -> ProcessorResult:
         start = time.time()
         try:
             profile = config.get("profile", "balanced")
@@ -71,16 +74,16 @@ class TermExtractor(Processor):
             ngrams = input_data.get("ngrams", [])
             am_scores = input_data.get("am_scores", {})
             np_chunks = input_data.get("np_chunks", [])
-            canonical_mappings: Dict[str, str] = input_data.get("canonical_mappings", {})
+            canonical_mappings: dict[str, str] = input_data.get("canonical_mappings", {})
 
             # Phase 1: Build terms with canonical forms
-            terms: List[Term] = []
+            terms: list[Term] = []
             for ngram in ngrams:
                 if ngram.freq < min_freq:
                     continue
                 key = tuple(ngram.tokens)
-                am = am_scores.get(key, {"pmi": 0.0, "llr": 0.0, "dice": 0.0})
-                
+                am = am_scores.get(key, {"pmi": 0.0, "llr": 0.0, "dice": 0.0, "t_score": 0.0, "chi_square": 0.0, "phi": 0.0})
+
                 # Use canonical_mappings from M6 for deduplication
                 surface = " ".join(ngram.tokens)
                 canonical_tokens = [canonical_mappings.get(tok, tok) for tok in ngram.tokens]
@@ -89,15 +92,16 @@ class TermExtractor(Processor):
                 terms.append(Term(
                     surface=surface,
                     canonical=canonical,
-                    kind=f"NOUN_NOUN" if ngram.n == 2 else f"{ngram.n}-GRAM",
+                    kind="NOUN_NOUN" if ngram.n == 2 else f"{ngram.n}-GRAM",
                     freq=ngram.freq, doc_freq=ngram.doc_freq,
                     pmi=am.get("pmi", 0.0), llr=am.get("llr", 0.0), dice=am.get("dice", 0.0),
+                    t_score=am.get("t_score", 0.0), chi_square=am.get("chi_square", 0.0), phi=am.get("phi", 0.0),
                     rank=0,  # will be set during dedup sort
                     profile=profile,
                 ))
 
             # Phase 2: Deduplicate by canonical form (keep highest freq)
-            deduped: Dict[str, Term] = {}
+            deduped: dict[str, Term] = {}
             for term in terms:
                 if term.canonical in deduped:
                     existing = deduped[term.canonical]
@@ -115,6 +119,7 @@ class TermExtractor(Processor):
                     surface=term.surface, canonical=term.canonical,
                     kind=term.kind, freq=term.freq, doc_freq=term.doc_freq,
                     pmi=term.pmi, llr=term.llr, dice=term.dice,
+                    t_score=term.t_score, chi_square=term.chi_square, phi=term.phi,
                     rank=rank, profile=term.profile,
                 ))
 

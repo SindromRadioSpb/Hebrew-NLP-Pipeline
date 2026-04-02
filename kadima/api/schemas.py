@@ -53,6 +53,9 @@ class TermResponse(BaseModel):
     pmi: float = 0.0
     llr: float = 0.0
     dice: float = 0.0
+    t_score: float = 0.0
+    chi_square: float = 0.0
+    phi: float = 0.0
     rank: int = 0
 
 
