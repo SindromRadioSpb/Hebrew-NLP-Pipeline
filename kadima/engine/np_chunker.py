@@ -320,13 +320,13 @@ class NPChunker(Processor):
 
             if mode == "embeddings":
                 if not is_doc:
-                    logger.warning(
+                    logger.debug(
                         "embeddings mode requires spaCy Doc, got %s — falling back to rules",
                         type(input_data).__name__,
                     )
                     mode = "rules"
                 elif input_data.tensor is None or len(input_data.tensor) == 0:
-                    logger.warning("Doc has no tensor — falling back to rules")
+                    logger.debug("Doc has no tensor — falling back to rules")
                     mode = "rules"
 
             if mode == "embeddings":
@@ -338,7 +338,7 @@ class NPChunker(Processor):
             else:
                 # rules mode — input must be List[List[MorphAnalysis]]
                 if is_doc:
-                    logger.warning("rules mode received Doc — returning empty result")
+                    logger.debug("rules mode received Doc — returning empty result")
                     chunks = []
                 else:
                     chunks = _chunks_from_rules(input_data)

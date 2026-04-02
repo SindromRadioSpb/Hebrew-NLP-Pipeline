@@ -426,6 +426,11 @@ class PipelineView(QWidget):
         backend_row.addStretch()
         tg_layout.addLayout(backend_row)
 
+        # Connect backend change to ML status update
+        self._term_backend.currentTextChanged.connect(self._update_ml_status)
+        # Initial status check
+        self._update_ml_status()
+
         layout.addWidget(thresh_group)
         layout.addStretch()
 
@@ -661,6 +666,27 @@ class PipelineView(QWidget):
         self._stop_btn.setEnabled(False)
         self._append_log(f"FAILED: {error}")
         self.run_failed_signal.emit(error)
+
+    def _update_ml_status(self) -> None:
+        """Update ML status badge based on selected backend and model availability."""
+        backend = self._term_backend.currentText()
+        if backend != "alephbert":
+            self._ml_status.setText("🤖 ML: —")
+            self._ml_status.setStyleSheet("color: #808080; font-size: 10px;")
+            return
+
+        # Check if AlephBERT model exists
+        import os
+        model_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "models", "term_extractor_v1", "config.json"
+        )
+        if os.path.exists(model_path):
+            self._ml_status.setText("🤖 ML: ✅")
+            self._ml_status.setStyleSheet("color: #4caf50; font-size: 10px; font-weight: bold;")
+        else:
+            self._ml_status.setText("🤖 ML: ❌")
+            self._ml_status.setStyleSheet("color: #f44336; font-size: 10px; font-weight: bold;")
 
     def _append_log(self, line: str) -> None:
         self._log_output.append(line)

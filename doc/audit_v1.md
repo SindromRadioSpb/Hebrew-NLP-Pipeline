@@ -472,6 +472,8 @@ ul
 | 20 | **CoNLL-U + JSON training data** — поддержка обоих форматов | `scripts/train_term_extractor.py:167-207` | NEMO-Corpus compatibility |
 | 21 | **Fine-tuned AlephBERT model** — F1=0.943, P=0.934, R=0.953 на NEMO-Corpus (160K tokens) | `models/term_extractor_v1/` | T7-3: ML backend |
 | 22 | **Config profiles** — precise/balanced/recall с разными term_mode | `config/config.default.yaml` | Pipeline config |
+| 23 | **UI: ML status badge** — показывает ✅/❌ доступность AlephBERT модели при переключении backend | `ui/pipeline_view.py:_update_ml_status()` | Visual feedback для ML backend |
+| 24 | **noise_filter_enabled в pipeline config** — `get_module_config("term_extract")` передаёт `noise_filter_enabled` из ThresholdsConfig | `pipeline/config.py:430-438` | Config propagation для noise filtering |
 
 #### B) Запланировано, не реализовано
 
@@ -480,6 +482,8 @@ ul
 | ~~API endpoint `/pipeline/terms`~~ | **✅ РЕАЛИЗОВАНО** (2026-04-02) | REST access to extracted terms | — | **Закрыто** — endpoint добавлен с full preprocessing pipeline |
 | ~~Noise-based filtering (M12 feedback)~~ | **✅ РЕАЛИЗОВАНО** (2026-04-02) | Фильтрация шумовых n-grams | — | **Закрыто** — M12 noise classification интегрирована в M8 |
 | ~~AlephBERT backend integration в process()~~ | **✅ РЕАЛИЗОВАНО** (2026-04-02) | ML-based term extraction | — | **Закрыто** — AlephBERT backend загружается lazy, graceful degradation |
+| ~~ML status badge в UI~~ | **✅ РЕАЛИЗОВАНО** (2026-04-02) | Визуальная индикация доступности модели | — | **Закрыто** — `_update_ml_status()` в PipelineView |
+| ~~noise_filter_enabled config propagation~~ | **✅ РЕАЛИЗОВАНО** (2026-04-02) | Передача noise_filter_enabled из config | — | **Закрыто** — `get_module_config("term_extract")` + ThresholdsConfig |
 
 #### C) Технически возможно, не планировалось
 
@@ -543,11 +547,15 @@ ul
 11. **M12 noise filtering** — noise classification интегрирована в M8 (6 новых тестов, 36/36 PASS).
 12. **AlephBERT backend integration** — lazy loading, graceful degradation, raw_text input (4 новых теста, 40/40 PASS).
 13. **API endpoint `/pipeline/terms`** — standalone term extraction (9 API тестов, 9/9 PASS).
+14. **UI: ML status badge** — `_update_ml_status()` в PipelineView показывает ✅/❌ при переключении backend (2026-04-02).
+15. **Config: noise_filter_enabled propagation** — `get_module_config("term_extract")` передаёт `noise_filter_enabled` из ThresholdsConfig (2026-04-02).
 
 **Рекомендации по M8**:
 1. ✅ **AlephBERT backend интегрирован** — lazy loading, graceful degradation, raw_text input.
 2. ✅ **API endpoint `/pipeline/terms` добавлен** — standalone term extraction с full preprocessing.
 3. ✅ **M12 noise filtering подключён** — noise tokens (number, Latin, punct) фильтруются по умолчанию.
+4. ✅ **ML status badge в UI** — пользователь видит доступность модели без запуска pipeline.
+5. ✅ **noise_filter_enabled в config** — noise filtering работает через pipeline config propagation.
 4. ✅ **UI/UX закрывает боль** — 4 режима term_mode, backend badge, help panel, 12 колонок с сортировкой, export CSV, standalone API endpoint.
 
 ---

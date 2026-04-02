@@ -307,10 +307,11 @@ except ImportError:
         "Install with: pip install -e '.[hebpipe]'"
     )
 except SystemExit:
-    logger.info(
-        "hebpipe installed but CLI guard failed — using rule-based fallback. "
-        "Ensure you run 'python -m hebpipe' as CLI, not import hebpipe"
+    logger.debug(
+        "hebpipe installed but CLI guard triggered — using rule-based fallback"
     )
+except Exception:
+    logger.debug("hebpipe import failed — using rule-based fallback")
 finally:
     try:
         sys.argv = _orig_argv
