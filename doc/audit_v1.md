@@ -444,7 +444,7 @@ ul
 
 ### 5.8 M8 — Term Extractor (TermExtractor)
 
-**Статус: ✅ Production-ready** | **Тесты: 30/30 PASS** | **Файл: `kadima/engine/term_extractor.py` (297 строк)**
+**Статус: ✅ Production-ready** | **Тесты: 40/40 PASS (engine) + 9/9 PASS (API)** | **Файл: `kadima/engine/term_extractor.py` (380+ строк)**
 
 #### A) Реализованный функционал
 
@@ -477,9 +477,9 @@ ul
 
 | Функциональность | Доказательство | Ожидаемые процессы | Блокеры | Решение |
 |-----------------|---------------|-------------------|---------|---------|
-| API endpoint `/pipeline/terms` | Нет в router | REST access to extracted terms | Low priority | ⚠️ **Отложить** — термины доступны через `/pipeline/run`, standalone endpoint нужен только для interactive review |
-| Noise-based filtering (M12 feedback) | Упоминание в audit | Фильтрация шумовых n-grams | M12 noise → M8 связь не настроена | ⚠️ **Отложить до M12 доработки** — noise classifier сейчас rule-based, интеграция тривиальна |
-| **AlephBERT backend integration в process()** | `term_extractor_backend` config есть, но ML backend не вызывается в process() | ML-based term extraction | Model loading, VRAM | ⚠️ **В работе** — модель fine-tuned (F1=0.943), но не интегрирована в pipeline process() |
+| ~~API endpoint `/pipeline/terms`~~ | **✅ РЕАЛИЗОВАНО** (2026-04-02) | REST access to extracted terms | — | **Закрыто** — endpoint добавлен с full preprocessing pipeline |
+| ~~Noise-based filtering (M12 feedback)~~ | **✅ РЕАЛИЗОВАНО** (2026-04-02) | Фильтрация шумовых n-grams | — | **Закрыто** — M12 noise classification интегрирована в M8 |
+| ~~AlephBERT backend integration в process()~~ | **✅ РЕАЛИЗОВАНО** (2026-04-02) | ML-based term extraction | — | **Закрыто** — AlephBERT backend загружается lazy, graceful degradation |
 
 #### C) Технически возможно, не планировалось
 
@@ -492,10 +492,10 @@ ul
 
 #### Резюме модуля
 
-**Зрелость: Production-ready (statistical backend) / Beta (AlephBERT backend)**. 30 тестов в 7 классах: базовая экстракция (8), canonical dedup (4), NP-aware kind (3), process_batch (3), corpus-level metrics (4), error handling (2), term_mode (6). Дедупликация по canonical формам от M6 устраняет дубликаты (הפלדה→פלדה). NP-aware kind classification использует синтаксические паттерны от M5 для точной классификации терминов (NOUN+ADJ vs NOUN+NOUN vs NOUN+ADP+NOUN). Все 6 AM метрик propagруются из M7 и отображаются в UI (12 колонок в TermsTableModel).
+**Зрелость: Production-ready (statistical backend) / Production-ready (AlephBERT backend)**. 40 тестов в 8 классах (engine) + 9 тестов (API): базовая экстракция (8), canonical dedup (4), NP-aware kind (3), process_batch (3), corpus-level metrics (4), error handling (2), term_mode (6), noise filtering (6), AlephBERT backend (4). Дедупликация по canonical формам от M6 устраняет дубликаты (הפלדה→פלדה). NP-aware kind classification использует синтаксические паттерны от M5 для точной классификации терминов (NOUN+ADJ vs NOUN+NOUN vs NOUN+ADP+NOUN). Все 6 AM метрик propagруются из M7 и отображаются в UI (12 колонок в TermsTableModel).
 
 **Режимы работы (`term_mode`)**: 4 режима настраиваются через config:
-- **`distinct`** — Все surface-формы отдельно (פלדה, הפלדה, פלדות — каждая отдельно)
+- **`distinct`** — Все surface-формы отдельно (פלדה, הפלדה, פлדות — каждая отдельно)
 - **`canonical`** — Дедупликация по canonical форме (הפלדה → פלדה) [default]
 - **`clustered`** — Семантические группы по NP pattern (terms с одинаковым kind группируются)
 - **`related`** — Отдельно, но с cluster_id для UI links (показывает связи без объединения)
@@ -507,6 +507,7 @@ ul
 - ✅ **ResultsView**: Backend badge показывает текущий backend, mode, количество терминов — цветовая индикация (зелёный для alephbert, серый для statistical)
 - ✅ **TermsTableModel**: 12 колонок с сортировкой + export CSV
 - ✅ **Help panel**: Объяснение term_mode прямо в UI — пользователь видит что делает каждый режим
+- ✅ **API `/pipeline/terms`**: Standalone endpoint для interactive term review без запуска full pipeline
 
 **T7-3 AlephBERT Fine-Tuning — статус**:
 - ✅ Модель fine-tuned на NEMO-Corpus: 160K tokens, 11.5K term tokens, 5168 examples
@@ -514,7 +515,19 @@ ul
 - ✅ Training CLI: `scripts/train_term_extractor.py` (465 строк, export/train/eval)
 - ✅ CoNLL-U + JSON формат training data
 - ✅ Model saved: `models/term_extractor_v1/` (478MB, не в git — превышает 100MB limit)
-- ⚠️ **Не интегрировано в process()** — `term_extractor_backend` config есть, но AlephBERT backend не вызывается в runtime
+- ✅ **Интегрировано в process()** — AlephBERT backend загружается lazy, graceful degradation при отсутствии модели
+
+**M12 Noise Filtering — статус**:
+- ✅ Noise classification (Hebrew/number/Latin/punct) интегрирована в M8
+- ✅ N-grams с noise tokens автоматически фильтруются (configurable)
+- ✅ Config: `noise_filter_enabled` (default True), `noise_types_to_filter`
+- ✅ 6 новых тестов: number, Latin, punct filtering, disabled mode, Hebrew pass, custom types
+
+**API endpoint `/pipeline/terms` — статус**:
+- ✅ POST endpoint с TermExtractRequest schema
+- ✅ Full preprocessing: sentence split → tokenize → morph → ngram → NP → canon → AM → term
+- ✅ Поддержка statistical и AlephBERT backends
+- ✅ 9 API тестов: 200, list, fields, empty text, alephbert, noise filter, profile, modules
 
 **Исправления (2026-04-02)**:
 1. **`process_batch()`** — добавлен для консистентности с другими processor модулями (M13-M24 все имеют process_batch).
@@ -527,12 +540,15 @@ ul
 8. **Тесты верифицированы запуском** — 30/30 PASS (2026-04-02).
 9. **AlephBERT fine-tuned** — F1=0.943, P=0.934, R=0.953 на NEMO-Corpus (160K tokens, 5168 examples).
 10. **Training CLI** — `scripts/train_term_extractor.py` (465 строк, export/train/eval, CoNLL-U + JSON).
+11. **M12 noise filtering** — noise classification интегрирована в M8 (6 новых тестов, 36/36 PASS).
+12. **AlephBERT backend integration** — lazy loading, graceful degradation, raw_text input (4 новых теста, 40/40 PASS).
+13. **API endpoint `/pipeline/terms`** — standalone term extraction (9 API тестов, 9/9 PASS).
 
 **Рекомендации по M8**:
-1. ⚠️ **Интегрировать AlephBERT backend в process()** — модель fine-tuned, но не вызывается в runtime. Добавить M8Backend ABC вызов при `term_extractor_backend=alephbert`.
-2. ⚠️ **Добавить API endpoint `/pipeline/terms`** — для interactive term review (аналогично `/pipeline/run` но только terms).
-3. ⚠️ **Подключить M12 noise filtering** — noise classifier готов, интеграция тривиальна (skip n-grams с noise tokens).
-4. ✅ **UI/UX закрывает боль** — 4 режима term_mode, backend badge, help panel, 12 колонок с сортировкой, export CSV.
+1. ✅ **AlephBERT backend интегрирован** — lazy loading, graceful degradation, raw_text input.
+2. ✅ **API endpoint `/pipeline/terms` добавлен** — standalone term extraction с full preprocessing.
+3. ✅ **M12 noise filtering подключён** — noise tokens (number, Latin, punct) фильтруются по умолчанию.
+4. ✅ **UI/UX закрывает боль** — 4 режима term_mode, backend badge, help panel, 12 колонок с сортировкой, export CSV, standalone API endpoint.
 
 ---
 
