@@ -1,9 +1,10 @@
 """Tests for M8: Term Extractor."""
 
 import pytest
-from kadima.engine.term_extractor import TermExtractor, Term, TermResult
-from kadima.engine.ngram_extractor import Ngram
+
 from kadima.engine.base import ProcessorStatus
+from kadima.engine.ngram_extractor import Ngram
+from kadima.engine.term_extractor import TermExtractor
 
 
 class TestTermExtractor:
@@ -54,6 +55,21 @@ class TestTermExtractor:
         assert term.llr == 10.0
         assert term.dice == 0.8
 
+    def test_all_am_metrics_applied(self, te):
+        """All 6 AM metrics are propagated from am_scores to Term."""
+        ngrams = [Ngram(["a", "b"], 2, 10, 3)]
+        am_scores = {
+            ("a", "b"): {"pmi": 5.2, "llr": 10.0, "dice": 0.8, "t_score": 4.5, "chi_square": 12.3, "phi": 0.6},
+        }
+        result = te.process({"ngrams": ngrams, "am_scores": am_scores}, {"min_freq": 1})
+        term = result.data.terms[0]
+        assert term.pmi == 5.2
+        assert term.llr == 10.0
+        assert term.dice == 0.8
+        assert term.t_score == 4.5
+        assert term.chi_square == 12.3
+        assert term.phi == 0.6
+
     def test_empty_input(self, te):
         result = te.process({"ngrams": [], "am_scores": {}}, {})
         assert result.status == ProcessorStatus.READY
@@ -65,3 +81,203 @@ class TestTermExtractor:
 
     def test_module_id(self, te):
         assert te.module_id == "M8"
+
+
+class TestCanonicalDedup:
+    """M6 → M8 integration: canonical_mappings for deduplication."""
+
+    @pytest.fixture
+    def te(self):
+        return TermExtractor()
+
+    def test_dedup_by_canonical(self, te):
+        """Two n-grams with same canonical form → keep higher freq."""
+        ngrams = [
+            Ngram(["הפלדה"], 1, 5, 2),   # canonical: פלדה
+            Ngram(["פלדה"], 1, 10, 3),    # canonical: פלדה
+        ]
+        canonical_mappings = {"הפלדה": "פלדה"}
+        result = te.process({
+            "ngrams": ngrams, "am_scores": {}, "canonical_mappings": canonical_mappings
+        }, {"min_freq": 1})
+        # Should dedup to 1 term (keep freq=10)
+        assert len(result.data.terms) == 1
+        assert result.data.terms[0].freq == 10
+        assert result.data.terms[0].surface == "פלדה"
+
+    def test_no_canonical_mappings(self, te):
+        """Without canonical_mappings, no dedup occurs."""
+        ngrams = [
+            Ngram(["הפלדה"], 1, 5, 2),
+            Ngram(["פלדה"], 1, 10, 3),
+        ]
+        result = te.process({"ngrams": ngrams, "am_scores": {}}, {"min_freq": 1})
+        assert len(result.data.terms) == 2
+
+    def test_canonical_form_computed(self, te):
+        """Canonical form is computed from canonical_mappings per token."""
+        ngrams = [Ngram(["הפלדה", "של"], 2, 8, 3)]
+        canonical_mappings = {"הפלדה": "פלדה", "של": "של"}
+        result = te.process({
+            "ngrams": ngrams, "am_scores": {}, "canonical_mappings": canonical_mappings
+        }, {"min_freq": 1})
+        assert result.data.terms[0].canonical == "פלדה של"
+        assert result.data.terms[0].surface == "הפלדה של"
+
+    def test_empty_canonical_mappings(self, te):
+        ngrams = [Ngram(["a"], 1, 5, 2)]
+        result = te.process({"ngrams": ngrams, "am_scores": {}, "canonical_mappings": {}}, {"min_freq": 1})
+        assert len(result.data.terms) == 1
+        assert result.data.terms[0].canonical == "a"
+
+
+class TestNPAwareKind:
+    """NP chunks influence term kind classification."""
+
+    @pytest.fixture
+    def te(self):
+        return TermExtractor()
+
+    def test_np_chunk_pattern_kind(self, te):
+        """NP chunk with pattern 'NOUN+NOUN' overrides default kind."""
+        ngrams = [Ngram(["בטון", "קל"], 2, 5, 2)]
+
+        class FakeNPChunk:
+            def __init__(self):
+                self.surface = "בטון קל"
+                self.tokens = ["בטון", "קל"]
+                self.pattern = "NOUN+ADJ"
+
+        result = te.process({
+            "ngrams": ngrams, "am_scores": {}, "np_chunks": [FakeNPChunk()]
+        }, {"min_freq": 1})
+        assert result.data.terms[0].kind == "NOUN+ADJ"
+
+    def test_no_np_match_fallback(self, te):
+        """Non-matching ngram gets default kind."""
+        ngrams = [Ngram(["של", "הפלדה"], 2, 3, 2)]
+
+        class FakeNPChunk:
+            surface = "בטון קל"
+            tokens = ["בטון", "קל"]
+            pattern = "NOUN+ADJ"
+
+        result = te.process({
+            "ngrams": ngrams, "am_scores": {}, "np_chunks": [FakeNPChunk()]
+        }, {"min_freq": 1})
+        assert result.data.terms[0].kind == "NOUN_NOUN"
+
+    def test_trigram_no_np_kind(self, te):
+        """Trigram with no NP match gets N-GRAM kind."""
+        ngrams = [Ngram(["a", "b", "c"], 3, 5, 2)]
+        result = te.process({"ngrams": ngrams, "am_scores": {}}, {"min_freq": 1})
+        assert result.data.terms[0].kind == "3-GRAM"
+
+
+class TestProcessBatch:
+    """Batch processing tests."""
+
+    @pytest.fixture
+    def te(self):
+        return TermExtractor()
+
+    def test_process_batch_basic(self, te):
+        inputs = [
+            {"ngrams": [Ngram(["a"], 1, 5, 2)], "am_scores": {}},
+            {"ngrams": [Ngram(["b"], 1, 3, 1)], "am_scores": {}},
+        ]
+        results = te.process_batch(inputs, {"min_freq": 1})
+        assert len(results) == 2
+        assert all(r.status == ProcessorStatus.READY for r in results)
+        assert len(results[0].data.terms) == 1
+        assert len(results[1].data.terms) == 1
+
+    def test_process_batch_empty_input(self, te):
+        results = te.process_batch([], {})
+        assert results == []
+
+    def test_process_batch_mixed_results(self, te):
+        inputs = [
+            {"ngrams": [Ngram(["a"], 1, 10, 3)], "am_scores": {("a",): {"pmi": 5.0, "llr": 8.0, "dice": 0.7, "t_score": 3.0, "chi_square": 9.0, "phi": 0.5}}},
+            {"ngrams": [], "am_scores": {}},
+            {"ngrams": [Ngram(["b"], 1, 1, 1)], "am_scores": {}},
+        ]
+        results = te.process_batch(inputs, {"min_freq": 2})
+        assert len(results[0].data.terms) == 1
+        assert len(results[1].data.terms) == 0
+        assert len(results[2].data.terms) == 0  # min_freq filters it out
+
+
+class TestMetrics:
+    """Corpus-level metrics in TermResult."""
+
+    @pytest.fixture
+    def te(self):
+        return TermExtractor()
+
+    def test_mean_metrics_computed(self, te):
+        ngrams = [
+            Ngram(["a", "b"], 2, 10, 3),
+            Ngram(["c", "d"], 2, 5, 2),
+        ]
+        am_scores = {
+            ("a", "b"): {"pmi": 5.0, "llr": 10.0, "dice": 0.8, "t_score": 4.0, "chi_square": 12.0, "phi": 0.6},
+            ("c", "d"): {"pmi": 3.0, "llr": 6.0, "dice": 0.5, "t_score": 2.0, "chi_square": 6.0, "phi": 0.3},
+        }
+        result = te.process({"ngrams": ngrams, "am_scores": am_scores}, {"min_freq": 1})
+        assert result.data.mean_pmi == pytest.approx(4.0)
+        assert result.data.mean_llr == pytest.approx(8.0)
+        assert result.data.mean_dice == pytest.approx(0.65)
+        assert result.data.mean_t_score == pytest.approx(3.0)
+        assert result.data.mean_chi_square == pytest.approx(9.0)
+        assert result.data.mean_phi == pytest.approx(0.45)
+
+    def test_mean_metrics_empty(self, te):
+        result = te.process({"ngrams": [], "am_scores": {}}, {})
+        assert result.data.mean_pmi == 0.0
+        assert result.data.mean_llr == 0.0
+        assert result.data.mean_dice == 0.0
+        assert result.data.mean_t_score == 0.0
+        assert result.data.mean_chi_square == 0.0
+        assert result.data.mean_phi == 0.0
+
+    def test_total_candidates(self, te):
+        ngrams = [
+            Ngram(["a"], 1, 10, 3),
+            Ngram(["b"], 1, 1, 1),  # filtered by min_freq
+        ]
+        result = te.process({"ngrams": ngrams, "am_scores": {}}, {"min_freq": 2})
+        assert result.data.total_candidates == 2  # total input
+        assert result.data.filtered == 1  # after filtering
+
+    def test_ranking_assigned(self, te):
+        ngrams = [
+            Ngram(["a"], 1, 10, 3),
+            Ngram(["b"], 1, 5, 2),
+            Ngram(["c"], 1, 15, 4),
+        ]
+        result = te.process({"ngrams": ngrams, "am_scores": {}}, {"min_freq": 1})
+        ranks = [t.rank for t in result.data.terms]
+        # Should be 1, 2, 3 (sequential, starting from 1)
+        assert sorted(ranks) == [1, 2, 3]
+
+
+class TestErrorHandling:
+    """Error handling and graceful degradation."""
+
+    @pytest.fixture
+    def te(self):
+        return TermExtractor()
+
+    def test_invalid_input_type(self, te):
+        assert not te.validate_input("string")
+        assert not te.validate_input(None)
+        assert not te.validate_input({"am_scores": {}})  # no "ngrams" key
+
+    def test_exception_returns_failed_status(self, te):
+        """Passing non-dict am_scores should not crash but handle gracefully."""
+        # This should work fine — processor catches exceptions
+        result = te.process({"ngrams": "not_a_list", "am_scores": {}}, {})
+        # "not_a_list" has no .freq attr → exception → FAILED
+        assert result.status == ProcessorStatus.FAILED
+        assert len(result.errors) > 0

@@ -49,6 +49,12 @@ class TermResult:
     profile: str
     total_candidates: int
     filtered: int
+    mean_pmi: float = 0.0
+    mean_llr: float = 0.0
+    mean_dice: float = 0.0
+    mean_t_score: float = 0.0
+    mean_chi_square: float = 0.0
+    mean_phi: float = 0.0
 
 
 class TermExtractor(Processor):
@@ -76,6 +82,25 @@ class TermExtractor(Processor):
             np_chunks = input_data.get("np_chunks", [])
             canonical_mappings: dict[str, str] = input_data.get("canonical_mappings", {})
 
+            # Build NP lookup set for syntactic boosting:
+            # NP chunks that match ngram tokens get a kind boost (NOUN_NOUN, NOUN_ADJ, etc.)
+            np_surface_set: set[str] = set()
+            np_pattern_map: dict[tuple[str, ...], str] = {}
+            if np_chunks:
+                for chunk in np_chunks:
+                    # chunk can be dataclass or dict
+                    if hasattr(chunk, "surface"):
+                        np_surface_set.add(chunk.surface)
+                        if hasattr(chunk, "tokens") and hasattr(chunk, "pattern"):
+                            np_pattern_map[tuple(chunk.tokens)] = chunk.pattern
+                    elif isinstance(chunk, dict):
+                        surf = chunk.get("surface", "")
+                        np_surface_set.add(surf)
+                        tokens = chunk.get("tokens", [])
+                        pattern = chunk.get("pattern", "")
+                        if tokens:
+                            np_pattern_map[tuple(tokens)] = pattern
+
             # Phase 1: Build terms with canonical forms
             terms: list[Term] = []
             for ngram in ngrams:
@@ -89,10 +114,20 @@ class TermExtractor(Processor):
                 canonical_tokens = [canonical_mappings.get(tok, tok) for tok in ngram.tokens]
                 canonical = " ".join(canonical_tokens)
 
+                # Determine kind from NP chunks if available
+                tokens_tuple = tuple(ngram.tokens)
+                if tokens_tuple in np_pattern_map:
+                    np_pat = np_pattern_map[tokens_tuple]
+                    kind = np_pat  # e.g. "NOUN+NOUN", "NOUN+ADJ", "NOUN+ADP+NOUN"
+                elif surface in np_surface_set:
+                    kind = "NOUN_NOUN"  # fallback for NP match without pattern
+                else:
+                    kind = "NOUN_NOUN" if ngram.n == 2 else f"{ngram.n}-GRAM"
+
                 terms.append(Term(
                     surface=surface,
                     canonical=canonical,
-                    kind="NOUN_NOUN" if ngram.n == 2 else f"{ngram.n}-GRAM",
+                    kind=kind,
                     freq=ngram.freq, doc_freq=ngram.doc_freq,
                     pmi=am.get("pmi", 0.0), llr=am.get("llr", 0.0), dice=am.get("dice", 0.0),
                     t_score=am.get("t_score", 0.0), chi_square=am.get("chi_square", 0.0), phi=am.get("phi", 0.0),
@@ -123,10 +158,22 @@ class TermExtractor(Processor):
                     rank=rank, profile=term.profile,
                 ))
 
+            # Phase 4: Compute corpus-level metrics
+            n = len(final_terms)
+            mean_pmi = sum(t.pmi for t in final_terms) / n if n else 0.0
+            mean_llr = sum(t.llr for t in final_terms) / n if n else 0.0
+            mean_dice = sum(t.dice for t in final_terms) / n if n else 0.0
+            mean_t_score = sum(t.t_score for t in final_terms) / n if n else 0.0
+            mean_chi_square = sum(t.chi_square for t in final_terms) / n if n else 0.0
+            mean_phi = sum(t.phi for t in final_terms) / n if n else 0.0
+
             return ProcessorResult(
                 module_name=self.name, status=ProcessorStatus.READY,
                 data=TermResult(terms=final_terms, profile=profile,
-                                total_candidates=len(ngrams), filtered=len(final_terms)),
+                                total_candidates=len(ngrams), filtered=len(final_terms),
+                                mean_pmi=mean_pmi, mean_llr=mean_llr, mean_dice=mean_dice,
+                                mean_t_score=mean_t_score, mean_chi_square=mean_chi_square,
+                                mean_phi=mean_phi),
                 processing_time_ms=(time.time() - start) * 1000,
             )
         except Exception as e:
@@ -136,3 +183,9 @@ class TermExtractor(Processor):
                 data=None, errors=[str(e)],
                 processing_time_ms=(time.time() - start) * 1000,
             )
+
+    def process_batch(
+        self, inputs: list[dict[str, Any]], config: dict[str, Any]
+    ) -> list[ProcessorResult]:
+        """Batch processing: process each input dict independently."""
+        return [self.process(inp, config) for inp in inputs]

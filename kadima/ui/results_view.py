@@ -54,14 +54,15 @@ logger = logging.getLogger(__name__)
 # ── TermsTableModel ───────────────────────────────────────────────────────────
 
 
-_TERM_COLUMNS = ["Rank", "Surface", "Canonical", "Kind", "Freq", "Doc Freq", "PMI", "LLR", "Dice"]
+_TERM_COLUMNS = ["Rank", "Surface", "Canonical", "Kind", "Freq", "Doc Freq", "PMI", "LLR", "Dice", "T-score", "Chi²", "Phi"]
 
 
 class TermsTableModel(QAbstractTableModel):
     """QAbstractTableModel for TermResponse / Term dataclass rows.
 
     Each row is expected to be a dict or object with attributes:
-    rank, surface, canonical, kind, freq, doc_freq, pmi, llr, dice.
+    rank, surface, canonical, kind, freq, doc_freq, pmi, llr, dice,
+    t_score, chi_square, phi.
     """
 
     COLUMNS = _TERM_COLUMNS
@@ -88,8 +89,8 @@ class TermsTableModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.DisplayRole:
             return self._cell_text(index.row(), index.column())
         if role == Qt.ItemDataRole.TextAlignmentRole:
-            # Numeric columns right-aligned
-            if index.column() in (0, 4, 5, 6, 7, 8):
+            # Numeric columns right-aligned (0=Rank, 4=Freq, 5=Doc Freq, 6-11=AM scores)
+            if index.column() in (0, 4, 5, 6, 7, 8, 9, 10, 11):
                 return int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         return None
 
@@ -113,6 +114,9 @@ class TermsTableModel(QAbstractTableModel):
             lambda t: self._get_val(t, "pmi", 0.0),
             lambda t: self._get_val(t, "llr", 0.0),
             lambda t: self._get_val(t, "dice", 0.0),
+            lambda t: self._get_val(t, "t_score", 0.0),
+            lambda t: self._get_val(t, "chi_square", 0.0),
+            lambda t: self._get_val(t, "phi", 0.0),
         ]
         if 0 <= column < len(key_fns):
             self.beginResetModel()
@@ -132,7 +136,8 @@ class TermsTableModel(QAbstractTableModel):
         # Rank is dynamic (row position + 1), matching N-grams and NP Chunks behavior
         if col == 0:
             return str(row + 1)
-        attrs = ["_skip", "surface", "canonical", "kind", "freq", "doc_freq", "pmi", "llr", "dice"]
+        attrs = ["_skip", "surface", "canonical", "kind", "freq", "doc_freq", "pmi", "llr", "dice",
+                 "t_score", "chi_square", "phi"]
         val = self._get_val(t, attrs[col], "")
         if isinstance(val, float):
             return f"{val:.4f}"
