@@ -280,6 +280,7 @@ class ThresholdsOverrides(BaseModel):
     np_mode: Optional[str] = Field(default=None, pattern=r"^(auto|rules|embeddings)$")
     np_sim_threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     np_max_span: Optional[int] = Field(default=None, ge=1, le=10)
+    term_mode: Optional[str] = Field(default=None, pattern=r"^(distinct|canonical|clustered|related)$")
 
 
 class ThresholdsConfig(BaseModel):
@@ -295,6 +296,7 @@ class ThresholdsConfig(BaseModel):
     np_mode: str = Field(default="auto", pattern=r"^(auto|rules|embeddings)$")
     np_sim_threshold: float = Field(default=0.4, ge=0.0, le=1.0)
     np_max_span: int = Field(default=4, ge=1, le=10)
+    term_mode: str = Field(default="canonical", pattern=r"^(distinct|canonical|clustered|related)$")
 
     # Profile overrides (schema-typed, not Dict[str, Any])
     precise: Optional[ThresholdsOverrides] = None
@@ -428,6 +430,7 @@ class PipelineConfig(BaseModel):
                 "min_freq": thresholds.min_freq,
                 "pmi_threshold": thresholds.pmi_threshold,
                 "hapax_filter": thresholds.hapax_filter,
+                "term_mode": thresholds.term_mode,
             },
             "noise": {
                 "min_freq": thresholds.min_freq,
