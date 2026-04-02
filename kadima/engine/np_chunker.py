@@ -115,11 +115,16 @@ def _cosine(a: np.ndarray, b: np.ndarray) -> float:
 def _chunks_from_rules(
     sentences: List[List[MorphAnalysis]],
 ) -> List[NPChunk]:
-    """Rule-based NP detection: NOUN+NOUN, NOUN+ADJ patterns."""
+    """Rule-based NP detection: NOUN+NOUN, NOUN+ADJ, NOUN+ADP+NOUN patterns."""
+    _ADP = {"ADP", "PREP"}
     chunks: List[NPChunk] = []
     for sent_idx, sentence in enumerate(sentences):
         i = 0
         while i < len(sentence):
+            if sentence[i].pos != "NOUN":
+                i += 1
+                continue
+            # NOUN+NOUN
             if (
                 i + 1 < len(sentence)
                 and sentence[i].pos == "NOUN"
@@ -136,6 +141,25 @@ def _chunks_from_rules(
                 ))
                 i += 2
                 continue
+            # NOUN+ADP+NOUN (3-token span)
+            if (
+                i + 2 < len(sentence)
+                and sentence[i].pos == "NOUN"
+                and sentence[i + 1].pos in _ADP
+                and sentence[i + 2].pos in ("NOUN", "PROPN")
+            ):
+                surface = f"{sentence[i].surface} {sentence[i + 1].surface} {sentence[i + 2].surface}"
+                chunks.append(NPChunk(
+                    surface=surface,
+                    tokens=[sentence[i].surface, sentence[i + 1].surface, sentence[i + 2].surface],
+                    pattern="NOUN_ADP_NOUN",
+                    start=sentence[i].start if hasattr(sentence[i], "start") else i,
+                    end=sentence[i + 2].end if hasattr(sentence[i + 2], "end") else i + 2,
+                    sentence_idx=sent_idx,
+                ))
+                i += 3
+                continue
+            # NOUN+ADJ
             if (
                 i + 1 < len(sentence)
                 and sentence[i].pos == "NOUN"

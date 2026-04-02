@@ -71,26 +71,57 @@ class TermExtractor(Processor):
             ngrams = input_data.get("ngrams", [])
             am_scores = input_data.get("am_scores", {})
             np_chunks = input_data.get("np_chunks", [])
+            canonical_mappings: Dict[str, str] = input_data.get("canonical_mappings", {})
 
-            terms = []
-            for i, ngram in enumerate(ngrams):
+            # Phase 1: Build terms with canonical forms
+            terms: List[Term] = []
+            for ngram in ngrams:
                 if ngram.freq < min_freq:
                     continue
                 key = tuple(ngram.tokens)
                 am = am_scores.get(key, {"pmi": 0.0, "llr": 0.0, "dice": 0.0})
+                
+                # Use canonical_mappings from M6 for deduplication
+                surface = " ".join(ngram.tokens)
+                canonical_tokens = [canonical_mappings.get(tok, tok) for tok in ngram.tokens]
+                canonical = " ".join(canonical_tokens)
+
                 terms.append(Term(
-                    surface=" ".join(ngram.tokens),
-                    canonical=" ".join(ngram.tokens),
+                    surface=surface,
+                    canonical=canonical,
                     kind=f"NOUN_NOUN" if ngram.n == 2 else f"{ngram.n}-GRAM",
                     freq=ngram.freq, doc_freq=ngram.doc_freq,
                     pmi=am.get("pmi", 0.0), llr=am.get("llr", 0.0), dice=am.get("dice", 0.0),
-                    rank=i + 1, profile=profile,
+                    rank=0,  # will be set during dedup sort
+                    profile=profile,
+                ))
+
+            # Phase 2: Deduplicate by canonical form (keep highest freq)
+            deduped: Dict[str, Term] = {}
+            for term in terms:
+                if term.canonical in deduped:
+                    existing = deduped[term.canonical]
+                    # Keep the one with higher freq
+                    if term.freq > existing.freq:
+                        deduped[term.canonical] = term
+                else:
+                    deduped[term.canonical] = term
+
+            # Phase 3: Sort by freq+pmi for ranking
+            ranked = sorted(deduped.values(), key=lambda t: t.freq + t.pmi, reverse=True)
+            final_terms = []
+            for rank, term in enumerate(ranked, 1):
+                final_terms.append(Term(
+                    surface=term.surface, canonical=term.canonical,
+                    kind=term.kind, freq=term.freq, doc_freq=term.doc_freq,
+                    pmi=term.pmi, llr=term.llr, dice=term.dice,
+                    rank=rank, profile=term.profile,
                 ))
 
             return ProcessorResult(
                 module_name=self.name, status=ProcessorStatus.READY,
-                data=TermResult(terms=terms, profile=profile,
-                                total_candidates=len(ngrams), filtered=len(terms)),
+                data=TermResult(terms=final_terms, profile=profile,
+                                total_candidates=len(ngrams), filtered=len(final_terms)),
                 processing_time_ms=(time.time() - start) * 1000,
             )
         except Exception as e:

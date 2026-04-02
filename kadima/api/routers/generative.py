@@ -98,7 +98,61 @@ class TranslateResponse(BaseModel):
     word_count: int
 
 
+# ── Canonicalization schemas ────────────────────────────────────────────────
+
+
+class CanonicalizeRequest(BaseModel):
+    words: list[str] = Field(
+        ..., min_length=1, max_length=1000,
+        description="List of Hebrew words/surfaces to canonicalize",
+    )
+    use_hebpipe: bool = Field(default=True, description="Use HebPipe backend if available")
+
+
+class CanonicalizeMappingResponse(BaseModel):
+    surface: str
+    canonical: str
+    rules_applied: list[str]
+
+
+class CanonicalizeResponse(BaseModel):
+    mappings: list[CanonicalizeMappingResponse]
+    count: int
+    backend: str  # "hebpipe" or "rules"
+
+
 # ── Endpoints ───────────────────────────────────────────────────────────────
+
+@router.post("/canonicalize", response_model=CanonicalizeResponse)
+async def canonicalize(req: CanonicalizeRequest) -> CanonicalizeResponse:
+    """Canonicalize Hebrew surface forms: det removal, niqqud stripping, clitic decomposition.
+    
+    M6: Canonicalizer — приведение поверхностных форм к каноническим.
+    Supports hebpipe (full lemma) and rule-based (det/final/niqqud/clitic) backends.
+    """
+    from kadima.engine.canonicalizer import Canonicalizer
+
+    proc = Canonicalizer()
+    input_words = list(set(req.words))  # deduplicate
+    result = proc.process(input_words, {"use_hebpipe": req.use_hebpipe})
+    if result.status != ProcessorStatus.READY:
+        raise HTTPException(status_code=500, detail=result.errors)
+
+    backend = "hebpipe" if result.data.mappings and any(
+        "hebpipe" in r for m in result.data.mappings for r in m.rules_applied
+    ) else "rules"
+
+    return CanonicalizeResponse(
+        mappings=[
+            CanonicalizeMappingResponse(
+                surface=m.surface, canonical=m.canonical, rules_applied=m.rules_applied,
+            )
+            for m in result.data.mappings
+        ],
+        count=len(result.data.mappings),
+        backend=backend,
+    )
+
 
 @router.post("/transliterate", response_model=TransliterateResponse)
 async def transliterate(req: TransliterateRequest) -> TransliterateResponse:

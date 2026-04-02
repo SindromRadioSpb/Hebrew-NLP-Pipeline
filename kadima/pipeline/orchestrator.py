@@ -356,6 +356,7 @@ class PipelineService:
                 "ngrams": ngram_result.ngrams if ngram_result else [],
                 "am_scores": am_scores,
                 "np_chunks": np_chunk_result.chunks if np_chunk_result else [],
+                "canonical_mappings": canonical_mappings,  # M6 → M8: use canonical forms for term dedup
             }
             proc_result = proc.process(term_input, self._get_module_config("term_extract"))
             result.module_results["term_extract"] = proc_result

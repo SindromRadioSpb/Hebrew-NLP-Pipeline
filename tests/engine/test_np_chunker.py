@@ -74,6 +74,41 @@ class TestNPChunker:
         assert len(result.data.chunks) == 1
         assert result.data.chunks[0].pattern == "NOUN_ADJ"
 
+    def test_noun_adp_noun_pattern(self, chunker):
+        """NOUN+ADP+NOUN — construct state with preposition (smichut)."""
+        morphs = [[
+            _make_morph("מנהל", "מנהל", "מנהל", "NOUN"),
+            _make_morph("של", "של", "של", "ADP"),
+            _make_morph("פרויקט", "פרויקט", "פרויקט", "NOUN"),
+        ]]
+        result = chunker.process(morphs, {})
+        assert result.status == ProcessorStatus.READY
+        assert len(result.data.chunks) == 1
+        assert result.data.chunks[0].pattern == "NOUN_ADP_NOUN"
+        assert result.data.chunks[0].surface == "מנהל של פרויקט"
+
+    def test_noun_adp_propn_pattern(self, chunker):
+        """NOUN+ADP+PROPN — prepositional phrase with proper noun."""
+        morphs = [[
+            _make_morph("בית", "בית", "בית", "NOUN"),
+            _make_morph("של", "של", "של", "PREP"),
+            _make_morph("דוד", "דוד", "דוד", "PROPN"),
+        ]]
+        result = chunker.process(morphs, {})
+        assert result.status == ProcessorStatus.READY
+        assert len(result.data.chunks) == 1
+        assert result.data.chunks[0].pattern == "NOUN_ADP_NOUN"
+
+    def test_noun_adp_partial_no_match(self, chunker):
+        """NOUN+ADP without following NOUN/PROPN — should NOT create chunk."""
+        morphs = [[
+            _make_morph("מנהל", "מנהל", "מנהל", "NOUN"),
+            _make_morph("של", "של", "של", "ADP"),
+            _make_morph("טוב", "טוב", "טוב", "ADJ"),
+        ]]
+        result = chunker.process(morphs, {})
+        assert len(result.data.chunks) == 0
+
     def test_no_chunks(self, chunker):
         morphs = [[
             _make_morph("של", "של", "של", "PREP"),

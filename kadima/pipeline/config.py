@@ -275,16 +275,26 @@ class ThresholdsOverrides(BaseModel):
     min_freq: Optional[int] = Field(default=None, ge=1)
     pmi_threshold: Optional[float] = Field(default=None, ge=0.0)
     hapax_filter: Optional[bool] = None
+    min_n: Optional[int] = Field(default=None, ge=1, le=5)
+    max_n: Optional[int] = Field(default=None, ge=1, le=10)
+    np_mode: Optional[str] = Field(default=None, pattern=r"^(auto|rules|embeddings)$")
+    np_sim_threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    np_max_span: Optional[int] = Field(default=None, ge=1, le=10)
 
 
 class ThresholdsConfig(BaseModel):
-    """Пороги pipeline: минимальная частота, PMI, фильтрация hapax."""
+    """Пороги pipeline: минимальная частота, PMI, фильтрация hapax, n-gram range, NP chunk settings."""
 
     model_config = ConfigDict(extra="forbid")
 
     min_freq: int = Field(default=2, ge=1)
     pmi_threshold: float = Field(default=3.0, ge=0.0)
     hapax_filter: bool = True
+    min_n: int = Field(default=2, ge=1, le=5)
+    max_n: int = Field(default=5, ge=1, le=10)
+    np_mode: str = Field(default="auto", pattern=r"^(auto|rules|embeddings)$")
+    np_sim_threshold: float = Field(default=0.4, ge=0.0, le=1.0)
+    np_max_span: int = Field(default=4, ge=1, le=10)
 
     # Profile overrides (schema-typed, not Dict[str, Any])
     precise: Optional[ThresholdsOverrides] = None
@@ -396,13 +406,16 @@ class PipelineConfig(BaseModel):
                 "language": self.language,
             },
             "ngram": {
-                "min_n": 2,
-                "max_n": 5,
+                "min_n": thresholds.min_n,
+                "max_n": thresholds.max_n,
                 "min_freq": thresholds.min_freq,
             },
             "np_chunk": {
                 "language": self.language,
                 "min_freq": thresholds.min_freq,
+                "mode": thresholds.np_mode,
+                "sim_threshold": thresholds.np_sim_threshold,
+                "max_span": thresholds.np_max_span,
             },
             "canonicalize": {
                 "language": self.language,

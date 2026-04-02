@@ -288,9 +288,17 @@ class HebPipeTokenizer(Processor):
 # ── M3: Morphological Analyzer ───────────────────────────────────────────────
 
 # Try to import hebpipe for real morphological analysis
+# WARNING: hebpipe >= 3.0 calls run_hebpipe() at import time, which triggers CLI parsing.
+# We need to temporarily suppress sys.argv to prevent argparse from failing.
 _HEBPIPE_AVAILABLE = False
+_hebpipe = None
+
 try:
-    import hebpipe
+    import sys
+    _orig_argv = sys.argv.copy()
+    sys.argv = ["hebpipe"]  # prevent CLI arg parsing
+    import hebpipe as _hebpipe_mod
+    _hebpipe = _hebpipe_mod
     _HEBPIPE_AVAILABLE = True
     logger.info("hebpipe available — using full morphological analysis")
 except ImportError:
@@ -298,6 +306,16 @@ except ImportError:
         "hebpipe not installed — using rule-based fallback. "
         "Install with: pip install -e '.[hebpipe]'"
     )
+except SystemExit:
+    logger.info(
+        "hebpipe installed but CLI guard failed — using rule-based fallback. "
+        "Ensure you run 'python -m hebpipe' as CLI, not import hebpipe"
+    )
+finally:
+    try:
+        sys.argv = _orig_argv
+    except NameError:
+        pass
 
 
 # ── Hebrew prefix/POS rules ────────────────────────────────────────────────
@@ -571,7 +589,8 @@ class HebPipeMorphAnalyzer(Processor):
         # Reconstruct sentence text for hebpipe
         text = " ".join(t.surface for t in tokens)
         try:
-            result = hebpipe.parse(text)
+            # Use _hebpipe (saved under guard) instead of global hebpipe
+            result = _hebpipe.parse(text)
             analyses = []
             for i, token in enumerate(tokens):
                 if i < len(result):
