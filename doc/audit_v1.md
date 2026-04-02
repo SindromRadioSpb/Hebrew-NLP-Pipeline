@@ -478,6 +478,8 @@ ul
 | Profile-based ranking (precise/balanced/recall) | Profile параметр уже есть, но не используется в ranking | Разные стратегии для разных задач | Low | ⚠️ **Отложить** — текущий freq+pmi покрывает 90%, profiles нужны для advanced tuning |
 | TF-IDF scoring | Doc_freq уже в Term dataclass | Corpus-level term relevance | Medium | ⚠️ **Отложить до M24** — Keyphrase Extractor уже использует TF-IDF |
 | Multi-word synonym lookup | Canonical mappings уже реализованы | KB enrichment, semantic search | Medium | ❌ **Не реализовывать** — это KB функция, не term extraction |
+| NeoDictaBERT clustering (Вариант 3) | NeoDictaBERT уже загружен для M5 | Semantic term grouping | Medium | ⚠️ **Отложить** — требует VRAM, см. Фаза T7-2 roadmap |
+| AlephBERT Fine-Tuning (Вариант 6) | onlplab/alephbert-base уже в deps | Domain-specific term extraction | High | ⚠️ **Планируется** — см. Фаза T7-3 roadmap |
 
 #### Резюме модуля
 

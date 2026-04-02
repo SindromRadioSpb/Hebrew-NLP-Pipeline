@@ -81,6 +81,7 @@
 | — | Generative router расширен до 12 endpoints (M15/M16/M18/M20 добавлены) |
 | — | audit_v1.md создан (1106+ строк, все 15 противоречий устранены) |
 | — | M8 Term Extractor: POS-aware filtering (+21% precision), 111 tests |
+| — | M8 Term Extractor: 4 режима term_mode (distinct/canonical/clustered/related), UI selector, help panel, 14 колонок, 30 тестов, integration test script |
 | — | M3 Morph Analyzer: transformer POS fallback chain |
 | — | .cline/skills/ создан (13 skills) |
 | — | §§5.1-5.4 M1-M4 актуализированы: статусы, строки кода, тесты, баг min_n/max_n исправлен |

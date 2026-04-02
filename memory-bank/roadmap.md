@@ -280,6 +280,46 @@ kadima/infra/reference/hewiki_connector.py — Hebrew Wikipedia как reference
 
 ---
 
+## Фаза T7: Term Extractor ML Enhancement
+**Параллельна Фазе S. Оценка: 1.5 недели / ~40ч**
+
+### T7-1 — POS-aware Filtering (✅ DONE)
+```
+Реализовано: 2026-04-02
+- M3: transformer POS fallback chain
+- M8: POS-aware filtering (ALLOWED_POS: NOUN, PROPN, ADJ)
+- Orchestrator: M3 → M8 data flow
+- term_mode: 4 режима (distinct/canonical/clustered/related)
+- UI: PipelineView selector + ResultsView help panel
+- Тесты: 30/30 PASS
+```
+
+### T7-2 — NeoDictaBERT Clustering (~16ч)
+```
+kadima/engine/term_clusterer.py — уже есть, доработать:
+- NeoDictaBERT embeddings для терминов
+- HDBSCAN clustering (density-based)
+- Semantic synonym merging
+- variant_count, variants list в Term
+
+UI: ResultsView — expandable cluster groups
+```
+
+### T7-3 — AlephBERT Fine-Tuning (~24ч)
+```
+kadima/engine/term_extractor_ml.py — новый ML backend:
+- AlephBERT Token Classification (fine-tuned)
+- Active learning loop: UI → Label Studio → retrain
+- export_training_data() → CoNLL-U формат
+- train_m8_model() скрипт
+
+UI: PipelineView — "Extraction Method" selector (statistical | ml)
+     ResultsView — кнопка "Retrain Term Model"
+     Status bar: 🤖 ML: v3 (trained 2 days ago)
+```
+
+---
+
 ## Философские принципы (из мастер-плана, обязательны)
 
 ```
