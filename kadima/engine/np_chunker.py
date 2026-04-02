@@ -112,69 +112,99 @@ def _cosine(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / (na * nb))
 
 
+def _is_valid_np_head(ma: MorphAnalysis) -> bool:
+    """Check if a morph analysis is a valid NP head (NOUN or PROPN with meaningful content)."""
+    if ma.pos not in ("NOUN", "PROPN"):
+        return False
+    # Reject single-char tokens (likely prefixes/clitics or noise)
+    if len(ma.base or ma.surface) < 2:
+        return False
+    # Reject tokens marked as determiners
+    if getattr(ma, "is_det", False):
+        return False
+    return True
+
+
+def _is_valid_np_modifier(ma: MorphAnalysis) -> bool:
+    """Check if a morph analysis is a valid NP modifier (ADJ or content NOUN/PROPN).
+    
+    ADJ can modify NOUN. NOUN/PROPN in second position can also be valid (smichut).
+    Rejects single-char and function words.
+    """
+    if ma.pos not in ("NOUN", "PROPN", "ADJ"):
+        return False
+    # Reject single-char tokens
+    if len(ma.base or ma.surface) < 2:
+        return False
+    return True
+
+
 def _chunks_from_rules(
     sentences: List[List[MorphAnalysis]],
 ) -> List[NPChunk]:
-    """Rule-based NP detection: NOUN+NOUN, NOUN+ADJ, NOUN+ADP+NOUN patterns."""
+    """Rule-based NP detection: NOUN+NOUN, NOUN+ADJ, NOUN+ADP+NOUN patterns.
+    
+    POS-aware filtering:
+    - Only NOUN/PROPN with meaningful content can be NP heads
+    - Single-char tokens (prefixes, clitics) are rejected
+    - Determiners (ה) are rejected as heads
+    - Modifiers must also be meaningful content words
+    """
     _ADP = {"ADP", "PREP"}
+    _VALID_MODIFIERS = {"NOUN", "PROPN", "ADJ"}
     chunks: List[NPChunk] = []
     for sent_idx, sentence in enumerate(sentences):
         i = 0
         while i < len(sentence):
-            if sentence[i].pos != "NOUN":
+            ma_i = sentence[i]
+            # Must be a valid NP head
+            if not _is_valid_np_head(ma_i):
                 i += 1
                 continue
-            # NOUN+NOUN
-            if (
-                i + 1 < len(sentence)
-                and sentence[i].pos == "NOUN"
-                and sentence[i + 1].pos == "NOUN"
-            ):
-                surface = f"{sentence[i].surface} {sentence[i + 1].surface}"
-                chunks.append(NPChunk(
-                    surface=surface,
-                    tokens=[sentence[i].surface, sentence[i + 1].surface],
-                    pattern="NOUN_NOUN",
-                    start=sentence[i].start if hasattr(sentence[i], "start") else i,
-                    end=sentence[i + 1].end if hasattr(sentence[i + 1], "end") else i + 1,
-                    sentence_idx=sent_idx,
-                ))
-                i += 2
-                continue
+            # NOUN+NOUN / PROPN+NOUN / NOUN+PROPN / PROPN+PROPN
+            if i + 1 < len(sentence):
+                ma_j = sentence[i + 1]
+                if ma_j.pos in _VALID_MODIFIERS and _is_valid_np_modifier(ma_j):
+                    # Determine pattern
+                    if ma_i.pos == "NOUN" and ma_j.pos == "NOUN":
+                        pattern = "NOUN_NOUN"
+                    elif ma_i.pos == "NOUN" and ma_j.pos == "ADJ":
+                        pattern = "NOUN_ADJ"
+                    elif ma_i.pos == "PROPN" and ma_j.pos == "NOUN":
+                        pattern = "PROPN_NOUN"
+                    elif ma_i.pos == "NOUN" and ma_j.pos == "PROPN":
+                        pattern = "NOUN_PROPN"
+                    else:
+                        pattern = f"{ma_i.pos}_{ma_j.pos}"
+                    surface = f"{ma_i.surface} {ma_j.surface}"
+                    chunks.append(NPChunk(
+                        surface=surface,
+                        tokens=[ma_i.surface, ma_j.surface],
+                        pattern=pattern,
+                        start=ma_i.start if hasattr(ma_i, "start") else i,
+                        end=ma_j.end if hasattr(ma_j, "end") else i + 1,
+                        sentence_idx=sent_idx,
+                    ))
+                    i += 2
+                    continue
             # NOUN+ADP+NOUN (3-token span)
             if (
                 i + 2 < len(sentence)
-                and sentence[i].pos == "NOUN"
+                and ma_i.pos == "NOUN"
                 and sentence[i + 1].pos in _ADP
                 and sentence[i + 2].pos in ("NOUN", "PROPN")
+                and _is_valid_np_head(sentence[i + 2])
             ):
-                surface = f"{sentence[i].surface} {sentence[i + 1].surface} {sentence[i + 2].surface}"
+                surface = f"{ma_i.surface} {sentence[i + 1].surface} {sentence[i + 2].surface}"
                 chunks.append(NPChunk(
                     surface=surface,
-                    tokens=[sentence[i].surface, sentence[i + 1].surface, sentence[i + 2].surface],
+                    tokens=[ma_i.surface, sentence[i + 1].surface, sentence[i + 2].surface],
                     pattern="NOUN_ADP_NOUN",
-                    start=sentence[i].start if hasattr(sentence[i], "start") else i,
+                    start=ma_i.start if hasattr(ma_i, "start") else i,
                     end=sentence[i + 2].end if hasattr(sentence[i + 2], "end") else i + 2,
                     sentence_idx=sent_idx,
                 ))
                 i += 3
-                continue
-            # NOUN+ADJ
-            if (
-                i + 1 < len(sentence)
-                and sentence[i].pos == "NOUN"
-                and sentence[i + 1].pos == "ADJ"
-            ):
-                surface = f"{sentence[i].surface} {sentence[i + 1].surface}"
-                chunks.append(NPChunk(
-                    surface=surface,
-                    tokens=[sentence[i].surface, sentence[i + 1].surface],
-                    pattern="NOUN_ADJ",
-                    start=i,
-                    end=i + 1,
-                    sentence_idx=sent_idx,
-                ))
-                i += 2
                 continue
             i += 1
     return chunks
