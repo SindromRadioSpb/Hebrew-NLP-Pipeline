@@ -164,15 +164,47 @@ def train_model(
         print("pip install torch transformers datasets")
         sys.exit(1)
 
-    # Load data
+    # Load data — support both JSON and CoNLL-U formats
     data_path = Path(data_dir) / "training_data.json"
-    if not data_path.exists():
-        print(f"Error: Training data not found at {data_path}")
-        print("Run: python scripts/train_term_extractor.py export --db ... --output ...")
-        sys.exit(1)
+    conllu_path = Path(data_dir) / "nemo_train.conllu"
 
-    with open(data_path, "r", encoding="utf-8") as f:
-        examples = json.load(f)
+    examples = []
+
+    if data_path.exists():
+        with open(data_path, "r", encoding="utf-8") as f:
+            examples = json.load(f)
+    elif conllu_path.exists():
+        # Parse CoNLL-U format (token\tlabel per line, empty line = sentence)
+        current_tokens = []
+        current_labels = []
+        with open(conllu_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    if current_tokens:
+                        examples.append({
+                            "text": " ".join(current_tokens),
+                            "label": "TERM" if "B-TERM" in current_labels else "O",
+                            "source": "nemo_corpus",
+                        })
+                        current_tokens = []
+                        current_labels = []
+                else:
+                    parts = line.split("\t")
+                    if len(parts) >= 2:
+                        current_tokens.append(parts[0])
+                        current_labels.append(parts[1])
+        # Don't forget last sentence
+        if current_tokens:
+            examples.append({
+                "text": " ".join(current_tokens),
+                "label": "TERM" if "B-TERM" in current_labels else "O",
+                "source": "nemo_corpus",
+            })
+    else:
+        print(f"Error: Training data not found in {data_dir}")
+        print("Expected: training_data.json or nemo_train.conllu")
+        sys.exit(1)
 
     if not examples:
         print("Error: No training examples found")
@@ -250,7 +282,7 @@ def train_model(
         per_device_eval_batch_size=batch_size,
         learning_rate=learning_rate,
         weight_decay=0.01,
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
         metric_for_best_model="f1",
