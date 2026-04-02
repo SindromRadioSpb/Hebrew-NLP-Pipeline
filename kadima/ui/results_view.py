@@ -20,13 +20,16 @@ from __future__ import annotations
 
 import csv
 import logging
+import os
 from typing import Any, Dict, List, Optional
 
 try:
     from PyQt6.QtCore import (
         QAbstractTableModel,
         QModelIndex,
+        QSettings,
         QSortFilterProxyModel,
+        QTimer,
         Qt,
         pyqtSignal,
     )
@@ -55,6 +58,54 @@ logger = logging.getLogger(__name__)
 
 
 _TERM_COLUMNS = ["Rank", "Surface", "Canonical", "Kind", "Freq", "Doc Freq", "PMI", "LLR", "Dice", "T-score", "Chi²", "Phi", "Variants", "Cluster"]
+_TERM_HEADER_TOOLTIPS = {
+    0: "Dynamic rank in the current sort order.",
+    1: "Observed term surface form.",
+    2: "Canonical or normalized term form.",
+    3: "Term kind or syntactic type.",
+    4: "Total frequency in the corpus.",
+    5: "Document frequency across the corpus.",
+    6: "Pointwise Mutual Information.",
+    7: "Log-Likelihood Ratio.",
+    8: "Dice coefficient.",
+    9: "T-score.",
+    10: "Chi-square score.",
+    11: "Phi coefficient.",
+    12: "Known variants for this term.",
+    13: "Cluster identifier for clustered mode.",
+}
+
+
+class TermsFilterProxyModel(QSortFilterProxyModel):
+    """Search and sort proxy for the Terms tab."""
+
+    FILTER_COLUMNS = (1, 2, 3, 12, 13)
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        self._filter_text = ""
+        self.setDynamicSortFilter(True)
+        self.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.setSortRole(Qt.ItemDataRole.UserRole)
+
+    def set_filter_text(self, text: str) -> None:
+        self._filter_text = (text or "").strip().casefold()
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
+        if not self._filter_text:
+            return True
+
+        model = self.sourceModel()
+        if model is None:
+            return True
+
+        for col in self.FILTER_COLUMNS:
+            index = model.index(source_row, col, source_parent)
+            value = model.data(index, Qt.ItemDataRole.DisplayRole)
+            if value is not None and self._filter_text in str(value).casefold():
+                return True
+        return False
 
 
 class TermsTableModel(QAbstractTableModel):
@@ -88,6 +139,10 @@ class TermsTableModel(QAbstractTableModel):
             return None
         if role == Qt.ItemDataRole.DisplayRole:
             return self._cell_text(index.row(), index.column())
+        if role == Qt.ItemDataRole.UserRole:
+            return self._sort_value(index.row(), index.column())
+        if role == Qt.ItemDataRole.ToolTipRole:
+            return self._cell_tooltip(index.row(), index.column())
         if role == Qt.ItemDataRole.TextAlignmentRole:
             # Numeric columns right-aligned (0=Rank, 4=Freq, 5=Doc Freq, 6-11=AM scores)
             if index.column() in (0, 4, 5, 6, 7, 8, 9, 10, 11):
@@ -99,28 +154,19 @@ class TermsTableModel(QAbstractTableModel):
     ) -> Any:
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             return self.COLUMNS[section]
+        if role == Qt.ItemDataRole.ToolTipRole and orientation == Qt.Orientation.Horizontal:
+            return _TERM_HEADER_TOOLTIPS.get(section)
         return None
 
     def sort(self, column: int, order: Qt.SortOrder = Qt.SortOrder.AscendingOrder) -> None:
         """Sort by the given column."""
         reverse = order == Qt.SortOrder.DescendingOrder
-        key_fns = [
-            lambda t: int(self._get_val(t, "rank", 0)),          # force int for numeric sort
-            lambda t: self._get_val(t, "surface", ""),
-            lambda t: self._get_val(t, "canonical", ""),
-            lambda t: self._get_val(t, "kind", ""),
-            lambda t: int(self._get_val(t, "freq", 0)),           # force int
-            lambda t: int(self._get_val(t, "doc_freq", 0)),       # force int
-            lambda t: float(self._get_val(t, "pmi", 0.0)),        # force float
-            lambda t: float(self._get_val(t, "llr", 0.0)),        # force float
-            lambda t: float(self._get_val(t, "dice", 0.0)),       # force float
-            lambda t: float(self._get_val(t, "t_score", 0.0)),    # force float
-            lambda t: float(self._get_val(t, "chi_square", 0.0)), # force float
-            lambda t: float(self._get_val(t, "phi", 0.0)),        # force float
-        ]
-        if 0 <= column < len(key_fns):
+        if 0 <= column < len(self.COLUMNS):
             self.beginResetModel()
-            self._terms.sort(key=key_fns[column], reverse=reverse)
+            self._terms.sort(
+                key=lambda term: self._sort_value_for_term(term, column),
+                reverse=reverse,
+            )
             self.endResetModel()
 
     # ── Helpers ───────────────────────────────────────────────────────────────
@@ -151,6 +197,42 @@ class TermsTableModel(QAbstractTableModel):
             return f"{val:.4f}"
         return str(val) if val is not None else ""
 
+    def _cell_tooltip(self, row: int, col: int) -> str:
+        text = self._cell_text(row, col)
+        if col == 12 and text == "—":
+            return "No alternative variants for this term."
+        if col == 13 and text == "—":
+            return "This term is not assigned to a cluster."
+        return text
+
+    def _sort_value(self, row: int, col: int) -> Any:
+        return self._sort_value_for_term(self._terms[row], col)
+
+    def _sort_value_for_term(self, term: Any, col: int) -> Any:
+        if col == 0:
+            return self._numeric(self._get_val(term, "rank", 0))
+        if col == 12:
+            variants = self._get_val(term, "variants", None)
+            if isinstance(variants, list):
+                return ", ".join(str(v) for v in variants).casefold()
+            return str(variants or "").casefold()
+        if col == 13:
+            return self._numeric(self._get_val(term, "cluster_id", -1))
+
+        attrs = ["_skip", "surface", "canonical", "kind", "freq", "doc_freq", "pmi", "llr", "dice",
+                 "t_score", "chi_square", "phi"]
+        value = self._get_val(term, attrs[col], "")
+        if col in (4, 5, 6, 7, 8, 9, 10, 11):
+            return self._numeric(value)
+        return str(value or "").casefold()
+
+    @staticmethod
+    def _numeric(value: Any) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0
+
     def term_at(self, row: int) -> Any:
         """Return raw term object at row index (for detail panel)."""
         if 0 <= row < len(self._terms):
@@ -180,6 +262,13 @@ class ResultsView(QWidget):
         self.setObjectName("results_view")
 
         self._pipeline_result: Any = None
+        kadima_home = os.environ.get("KADIMA_HOME", os.path.expanduser("~/.kadima"))
+        os.makedirs(kadima_home, exist_ok=True)
+        settings_path = os.path.join(kadima_home, "results_view.ini")
+        self._settings = QSettings(settings_path, QSettings.Format.IniFormat)
+        self._column_state_timer = QTimer(self)
+        self._column_state_timer.setSingleShot(True)
+        self._column_state_timer.timeout.connect(self._persist_column_state)
 
         splitter = QSplitter(Qt.Orientation.Horizontal, self)
         splitter.setObjectName("results_splitter")
@@ -199,6 +288,7 @@ class ResultsView(QWidget):
         root.addWidget(splitter)
 
         self._setup_shortcuts()
+        self._restore_column_state()
         self._show_empty()
 
     # ── Build helpers ─────────────────────────────────────────────────────────
@@ -222,6 +312,21 @@ class ResultsView(QWidget):
         )
         self._filter_edit.textChanged.connect(self._on_filter_changed)
         toolbar.addWidget(self._filter_edit, stretch=1)
+
+        self._filter_clear_btn = QPushButton("Clear")
+        self._filter_clear_btn.setObjectName("results_filter_clear_btn")
+        self._filter_clear_btn.setStyleSheet(
+            "QPushButton { background: #26263a; border: 1px solid #3d3d5c; border-radius: 4px;"
+            "  padding: 5px 10px; color: #b0b0c0; }"
+            "QPushButton:hover { border-color: #7c3aed; color: #e0e0e0; }"
+        )
+        self._filter_clear_btn.clicked.connect(self._filter_edit.clear)
+        toolbar.addWidget(self._filter_clear_btn)
+
+        self._results_meta_label = QLabel("No results")
+        self._results_meta_label.setObjectName("results_meta_label")
+        self._results_meta_label.setStyleSheet("color: #8f90aa; font-size: 11px; padding: 0 8px;")
+        toolbar.addWidget(self._results_meta_label)
 
         self._export_btn = QPushButton("📥  Export CSV")
         self._export_btn.setObjectName("results_export_btn")
@@ -270,10 +375,8 @@ class ResultsView(QWidget):
         )
 
         self._terms_model = TermsTableModel()
-        self._proxy = QSortFilterProxyModel()
+        self._proxy = TermsFilterProxyModel()
         self._proxy.setSourceModel(self._terms_model)
-        self._proxy.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self._proxy.setFilterKeyColumn(1)  # Surface column
 
         self._terms_view = QTableView()
         self._terms_view.setObjectName("results_terms_table")
@@ -282,13 +385,28 @@ class ResultsView(QWidget):
         self._terms_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self._terms_view.setAlternatingRowColors(True)
         self._terms_view.setSortingEnabled(True)
+        self._terms_view.horizontalHeader().setSectionsClickable(True)
+        self._terms_view.horizontalHeader().setSortIndicatorShown(True)
         self._terms_view.verticalHeader().hide()
         self._terms_view.setShowGrid(False)
         hh = self._terms_view.horizontalHeader()
-        hh.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        hh.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        for col in (0, 3, 4, 5, 6, 7, 8):
-            hh.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+        hh.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        hh.setMinimumSectionSize(60)
+        hh.resizeSection(0, 72)
+        hh.resizeSection(1, 220)
+        hh.resizeSection(2, 220)
+        hh.resizeSection(3, 120)
+        hh.resizeSection(4, 84)
+        hh.resizeSection(5, 96)
+        hh.resizeSection(6, 84)
+        hh.resizeSection(7, 84)
+        hh.resizeSection(8, 84)
+        hh.resizeSection(9, 90)
+        hh.resizeSection(10, 90)
+        hh.resizeSection(11, 84)
+        hh.resizeSection(12, 180)
+        hh.resizeSection(13, 90)
+        self._connect_header_persistence(hh)
         self._terms_view.setStyleSheet(
             "QTableView { background: #1e1e2e; color: #e0e0e0; gridline-color: #2d2d44;"
             "  alternate-background-color: #28283e; border: none; }"
@@ -322,6 +440,8 @@ class ResultsView(QWidget):
 
         self._ngram_table = NgramTable()
         self._ngram_table.setObjectName("results_ngrams_table")
+        self._connect_header_persistence(self._ngram_table.horizontalHeader())
+        self._ngram_table.selectionModel().currentRowChanged.connect(self._on_ngram_selected)
         self._tabs.addTab(self._ngram_table, "🔗  N-grams")
 
         # NP Chunks tab
@@ -329,11 +449,14 @@ class ResultsView(QWidget):
 
         self._np_table = NPChunkTable()
         self._np_table.setObjectName("results_np_table")
+        self._connect_header_persistence(self._np_table.horizontalHeader())
+        self._np_table.selectionModel().currentRowChanged.connect(self._on_np_selected)
         self._tabs.addTab(self._np_table, "🧩  NP Chunks")
 
         # AM Scores tab
         self._am_widget = self._build_am_tab()
         self._tabs.addTab(self._am_widget, "📊  AM Scores")
+        self._tabs.currentChanged.connect(self._on_tab_changed)
 
         layout.addWidget(self._tabs)
         return container
@@ -513,10 +636,70 @@ class ResultsView(QWidget):
         filter_sc = QShortcut(QKeySequence("Ctrl+F"), self)
         filter_sc.activated.connect(self._filter_edit.setFocus)
 
+    def _connect_header_persistence(self, header: Any) -> None:
+        header.sectionResized.connect(self._queue_persist_column_state)
+        header.sectionMoved.connect(self._queue_persist_column_state)
+        header.sortIndicatorChanged.connect(self._queue_persist_column_state)
+
+    def _queue_persist_column_state(self, *_args: Any) -> None:
+        self._column_state_timer.start(200)
+
+    def _persist_column_state(self) -> None:
+        self._settings.setValue("terms/column_widths", self._collect_header_widths(self._terms_view.horizontalHeader()))
+        self._settings.setValue("ngrams/column_widths", self._ngram_table.column_widths())
+        self._settings.setValue("np_chunks/column_widths", self._np_table.column_widths())
+        self._settings.sync()
+
+    def _restore_column_state(self) -> None:
+        terms_widths = self._settings.value("terms/column_widths")
+        if terms_widths:
+            self._restore_header_widths(self._terms_view.horizontalHeader(), terms_widths)
+
+        ngrams_widths = self._settings.value("ngrams/column_widths")
+        if ngrams_widths:
+            self._ngram_table.restore_column_widths(ngrams_widths)
+
+        np_widths = self._settings.value("np_chunks/column_widths")
+        if np_widths:
+            self._np_table.restore_column_widths(np_widths)
+
+    @staticmethod
+    def _collect_header_widths(header: Any) -> List[int]:
+        return [header.sectionSize(i) for i in range(header.count())]
+
+    @staticmethod
+    def _restore_header_widths(header: Any, widths: Any) -> None:
+        for index, width in enumerate(widths):
+            if index >= header.count():
+                break
+            try:
+                header.resizeSection(index, int(width))
+            except (TypeError, ValueError):
+                continue
+
     # ── Slots ─────────────────────────────────────────────────────────────────
 
     def _on_filter_changed(self, text: str) -> None:
-        self._proxy.setFilterFixedString(text)
+        current_tab = self._tabs.currentIndex()
+        if current_tab == 0:
+            self._proxy.set_filter_text(text)
+        elif current_tab == 1:
+            self._ngram_table.set_filter_text(text)
+        elif current_tab == 2:
+            self._np_table.set_filter_text(text)
+        self._update_results_meta()
+
+    def _on_tab_changed(self, index: int) -> None:
+        if index == 0:
+            self._filter_edit.setPlaceholderText("Filter terms by surface, canonical, kind, variant…")
+        elif index == 1:
+            self._filter_edit.setPlaceholderText("Filter n-grams by text, size, frequency…")
+        elif index == 2:
+            self._filter_edit.setPlaceholderText("Filter NP chunks by text, pattern, score…")
+        else:
+            self._filter_edit.setPlaceholderText("Filtering is available for table tabs only")
+
+        self._on_filter_changed(self._filter_edit.text())
 
     def _on_term_selected(self, current: QModelIndex, _prev: QModelIndex) -> None:
         if not current.isValid():
@@ -529,6 +712,28 @@ class ResultsView(QWidget):
             return
         self._show_term_detail(term)
         self._kb_btn.setEnabled(True)
+
+    def _on_ngram_selected(self, current: QModelIndex, _prev: QModelIndex) -> None:
+        if not current.isValid():
+            self._detail_text.clear()
+            self._kb_btn.setEnabled(False)
+            return
+        ngram = self._ngram_table.ngram_at_view_row(current.row())
+        if ngram is None:
+            return
+        self._show_ngram_detail(ngram)
+        self._kb_btn.setEnabled(False)
+
+    def _on_np_selected(self, current: QModelIndex, _prev: QModelIndex) -> None:
+        if not current.isValid():
+            self._detail_text.clear()
+            self._kb_btn.setEnabled(False)
+            return
+        chunk = self._np_table.chunk_at_view_row(current.row())
+        if chunk is None:
+            return
+        self._show_np_chunk_detail(chunk)
+        self._kb_btn.setEnabled(False)
 
     def _show_term_detail(self, term: Any) -> None:
         if isinstance(term, dict):
@@ -545,6 +750,54 @@ class ResultsView(QWidget):
                 f"<b>Rank:</b> {getattr(term, 'rank', '—')}",
             ]
         self._detail_text.setHtml("<br>".join(lines))
+
+    def _show_ngram_detail(self, ngram: Any) -> None:
+        if isinstance(ngram, dict):
+            tokens = ngram.get("text", ngram.get("tokens", []))
+            n = ngram.get("n", "—")
+            freq = ngram.get("freq", "—")
+            doc_freq = ngram.get("doc_freq", "—")
+        else:
+            tokens = getattr(ngram, "tokens", getattr(ngram, "text", []))
+            n = getattr(ngram, "n", "—")
+            freq = getattr(ngram, "freq", "—")
+            doc_freq = getattr(ngram, "doc_freq", "—")
+
+        text = " ".join(str(t) for t in tokens) if isinstance(tokens, list) else str(tokens or "—")
+        self._detail_text.setHtml(
+            "<br>".join(
+                [
+                    f"<b>N-gram:</b> {text}",
+                    f"<b>N:</b> {n}",
+                    f"<b>Freq:</b> {freq}",
+                    f"<b>Doc Freq:</b> {doc_freq}",
+                ]
+            )
+        )
+
+    def _show_np_chunk_detail(self, chunk: Any) -> None:
+        if isinstance(chunk, dict):
+            surface = chunk.get("surface", chunk.get("text", "—"))
+            pattern = chunk.get("pattern", chunk.get("kind", "—"))
+            score = chunk.get("score", chunk.get("freq", "—"))
+            tokens = chunk.get("tokens", [])
+        else:
+            surface = getattr(chunk, "surface", getattr(chunk, "text", "—"))
+            pattern = getattr(chunk, "pattern", getattr(chunk, "kind", "—"))
+            score = getattr(chunk, "score", getattr(chunk, "freq", "—"))
+            tokens = getattr(chunk, "tokens", [])
+
+        token_text = " / ".join(str(t) for t in tokens) if isinstance(tokens, list) else str(tokens or "—")
+        self._detail_text.setHtml(
+            "<br>".join(
+                [
+                    f"<b>Chunk:</b> {surface}",
+                    f"<b>Pattern:</b> {pattern}",
+                    f"<b>Score:</b> {score}",
+                    f"<b>Tokens:</b> {token_text}",
+                ]
+            )
+        )
 
     def _open_in_kb(self) -> None:
         idx = self._terms_view.currentIndex()
@@ -677,6 +930,7 @@ class ResultsView(QWidget):
 
         # AM Scores
         self._load_am_scores(pipeline_result)
+        self._restore_column_state()
 
         self._terms_view.setVisible(bool(terms))
         self._empty_label.setVisible(not terms)
@@ -704,6 +958,7 @@ class ResultsView(QWidget):
 
         self._backend_badge.setText(badge_text)
         self._backend_badge.show()
+        self._update_results_meta()
 
         # Color badge based on backend
         if backend_name == "alephbert":
@@ -826,6 +1081,30 @@ class ResultsView(QWidget):
         self._empty_label.show()
         self._detail_text.clear()
         self._kb_btn.setEnabled(False)
+        self._results_meta_label.setText("No results")
+
+    def _update_results_meta(self) -> None:
+        current_tab = self._tabs.currentIndex()
+        if current_tab == 0:
+            visible = self._proxy.rowCount()
+            total = self._terms_model.rowCount()
+            label = "Terms"
+        elif current_tab == 1:
+            visible = self._ngram_table.model().rowCount()
+            total = self._ngram_table.total_count()
+            label = "N-grams"
+        elif current_tab == 2:
+            visible = self._np_table.model().rowCount()
+            total = self._np_table.total_count()
+            label = "NP Chunks"
+        else:
+            self._results_meta_label.setText("AM Scores")
+            return
+
+        if self._filter_edit.text().strip():
+            self._results_meta_label.setText(f"{label}: showing {visible} of {total}")
+        else:
+            self._results_meta_label.setText(f"{label}: {total}")
 
     def refresh(self) -> None:
         """Re-apply current results (no-op if no results loaded)."""
