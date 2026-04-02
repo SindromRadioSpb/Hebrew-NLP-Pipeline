@@ -7,6 +7,7 @@ Tabs:
   - Terms   : QTableView + TermsTableModel + QSortFilterProxyModel + filter
   - N-grams : NgramTable
   - NP Chunks: NPChunkTable
+  - AM Scores: Association Measures dashboard (PMI, LLR, Dice, T-score, Chi², Phi)
 
 Detail panel (splitter right): selected term info + KB link button.
 Export: CSV via corpus/exporter.py or simple csv.writer fallback.
@@ -288,7 +289,145 @@ class ResultsView(QWidget):
         self._np_table.setObjectName("results_np_table")
         self._tabs.addTab(self._np_table, "🧩  NP Chunks")
 
+        # AM Scores tab
+        self._am_widget = self._build_am_tab()
+        self._tabs.addTab(self._am_widget, "📊  AM Scores")
+
         layout.addWidget(self._tabs)
+        return container
+
+    def _build_am_tab(self) -> QWidget:
+        """Build the AM Scores dashboard tab.
+
+        Shows:
+          1. Info panel — educational explanation of AM
+          2. Summary table: Metric | Value | Interpretation
+          3. Top pairs table: Pair | PMI | LLR | Dice | T-score | Chi² | Phi
+        """
+        from PyQt6.QtWidgets import QGroupBox, QTableWidget, QTableWidgetItem, QHeaderView
+        from PyQt6.QtCore import Qt as _Qt
+
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(12)
+
+        # ── Info panel (educational) ─────────────────────────────────────────
+        info_panel = QLabel(
+            "<b>📊 Association Measures (AM)</b> — статистические меры связи между словами.<br><br>"
+            "Когда два слова часто встречаются вместе, это может быть не случайно. "
+            "AM показывают, насколько сильно слова <b>«притягиваются»</b> друг к другу:<br>"
+            "• <b>PMI > 0</b> — слова встречаются вместе чаще случайного (связь есть)<br>"
+            "• <b>LLR > 3.84</b> — связь статистически значима (p < 0.05)<br>"
+            "• <b>Dice ≈ 1</b> — слова почти всегда вместе<br>"
+            "• <b>Phi > 0</b> — притяжение, <b>Phi < 0</b> — отталкивание<br><br>"
+            "<span style='color: #888;'>💡 Наведите курсор на заголовки колонок для подробностей.</span>"
+        )
+        info_panel.setObjectName("am_info_panel")
+        info_panel.setWordWrap(True)
+        info_panel.setTextInteractionFlags(
+            _Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        info_panel.setStyleSheet(
+            "QLabel#am_info_panel { background: #1a1a3a; border: 1px solid #3d3d5c;"
+            "  border-radius: 6px; color: #d0d0e0; padding: 10px 14px; "
+            "  font-size: 12px; line-height: 1.5; }"
+        )
+        layout.addWidget(info_panel)
+
+        # Summary section
+        summary_group = QGroupBox("Association Measures Summary")
+        summary_group.setStyleSheet(
+            "QGroupBox { color: #e0e0e0; font-weight: bold; border: 1px solid #3d3d5c;"
+            "  border-radius: 6px; margin-top: 8px; padding-top: 12px; }"
+            "QGroupBox::title { subcontrol-origin: margin; left: 10px; color: #a0a0c0; }"
+        )
+        summary_layout = QVBoxLayout(summary_group)
+
+        self._am_summary_table = QTableWidget(0, 3)
+        self._am_summary_table.setObjectName("am_summary_table")
+        self._am_summary_table.setHorizontalHeaderLabels(["Metric", "Value", "Interpretation"])
+        # Tooltips for summary table headers
+        self._am_summary_table.horizontalHeaderItem(0).setToolTip("Название метрики (PMI, LLR, Dice, T-score, Chi², Phi)")
+        self._am_summary_table.horizontalHeaderItem(1).setToolTip("Среднее значение метрики по всем парам слов")
+        self._am_summary_table.horizontalHeaderItem(2).setToolTip("Интерпретация: что означает это значение в контексте связи слов")
+        self._am_summary_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._am_summary_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self._am_summary_table.verticalHeader().hide()
+        self._am_summary_table.setShowGrid(False)
+        self._am_summary_table.setAlternatingRowColors(True)
+        self._am_summary_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self._am_summary_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self._am_summary_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self._am_summary_table.setStyleSheet(
+            "QTableWidget { background: #1e1e2e; color: #e0e0e0; gridline-color: #2d2d44;"
+            "  alternate-background-color: #28283e; border: none; }"
+            "QHeaderView::section { background: #2d2d44; color: #a0a0c0;"
+            "  border: none; padding: 6px 10px; font-size: 11px; font-weight: bold; }"
+        )
+        summary_layout.addWidget(self._am_summary_table)
+        layout.addWidget(summary_group)
+
+        # Top pairs section
+        pairs_group = QGroupBox("Top Scored Pairs (by PMI)")
+        pairs_group.setStyleSheet(
+            "QGroupBox { color: #e0e0e0; font-weight: bold; border: 1px solid #3d3d5c;"
+            "  border-radius: 6px; margin-top: 8px; padding-top: 12px; }"
+            "QGroupBox::title { subcontrol-origin: margin; left: 10px; color: #a0a0c0; }"
+        )
+        pairs_layout = QVBoxLayout(pairs_group)
+
+        self._am_pairs_table = QTableWidget(0, 7)
+        self._am_pairs_table.setObjectName("am_pairs_table")
+        self._am_pairs_table.setHorizontalHeaderLabels(["Pair", "PMI", "LLR", "Dice", "T-score", "Chi²", "Phi"])
+        # Tooltips for pairs table headers
+        self._am_pairs_table.horizontalHeaderItem(0).setToolTip("Пара слов (биграмма), найденная в корпусе")
+        self._am_pairs_table.horizontalHeaderItem(1).setToolTip(
+            "PMI (Pointwise Mutual Information) — логарифм отношения совместной вероятности к произведению маргинальных.\n"
+            "> 0 = притяжение, < 0 = отталкивание, = 0 = независимость"
+        )
+        self._am_pairs_table.horizontalHeaderItem(2).setToolTip(
+            "LLR (Log-Likelihood Ratio) — статистическая значимость отклонения от независимости.\n"
+            "> 3.84 = p<0.05, > 6.63 = p<0.01, > 10.83 = p<0.001"
+        )
+        self._am_pairs_table.horizontalHeaderItem(3).setToolTip(
+            "Dice coefficient — мера перекрытия частот двух слов.\n"
+            "Диапазон [0, 1]: 0 = никогда вместе, 1 = всегда вместе"
+        )
+        self._am_pairs_table.horizontalHeaderItem(4).setToolTip(
+            "T-score — отклонение наблюдаемой частоты от ожидаемой.\n"
+            "> 2.576 = p<0.01, > 1.645 = p<0.05. Положительный = чаще случайного"
+        )
+        self._am_pairs_table.horizontalHeaderItem(5).setToolTip(
+            "Chi² (Chi-square) — критерий независимости в таблице 2×2 с поправкой Йейтса.\n"
+            "> 3.84 = p<0.05, > 6.63 = p<0.01"
+        )
+        self._am_pairs_table.horizontalHeaderItem(6).setToolTip(
+            "Phi coefficient — корреляция для бинарных переменных.\n"
+            "Диапазон [-1, +1]: > 0 = притяжение, < 0 = отталкивание"
+        )
+        self._am_pairs_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._am_pairs_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self._am_pairs_table.verticalHeader().hide()
+        self._am_pairs_table.setShowGrid(False)
+        self._am_pairs_table.setAlternatingRowColors(True)
+        self._am_pairs_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        for col in range(1, 7):
+            self._am_pairs_table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+        self._am_pairs_table.setStyleSheet(
+            "QTableWidget { background: #1e1e2e; color: #e0e0e0; gridline-color: #2d2d44;"
+            "  alternate-background-color: #28283e; border: none; }"
+            "QHeaderView::section { background: #2d2d44; color: #a0a0c0;"
+            "  border: none; padding: 6px 10px; font-size: 11px; font-weight: bold; }"
+        )
+        pairs_layout.addWidget(self._am_pairs_table)
+        layout.addWidget(pairs_group)
+
+        self._am_empty_label = QLabel("No association measures available")
+        self._am_empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._am_empty_label.setStyleSheet("color: #555; font-size: 14px; padding: 40px;")
+        layout.addWidget(self._am_empty_label)
+
         return container
 
     def _build_detail_panel(self) -> QWidget:
@@ -494,13 +633,117 @@ class ResultsView(QWidget):
             chunks = getattr(pipeline_result, "np_chunks", getattr(pipeline_result, "chunks", []))
         self._np_table.load(chunks)
 
+        # AM Scores
+        self._load_am_scores(pipeline_result)
+
         self._terms_view.setVisible(bool(terms))
         self._empty_label.setVisible(not terms)
+
+    def _load_am_scores(self, pipeline_result: Any) -> None:
+        """Populate AM Scores tab from pipeline result.
+
+        Extracts AMResult from module_results["am"] and displays:
+          1. Summary table: Metric | Value | Interpretation
+          2. Top pairs table: Pair | PMI | LLR | Dice | T-score | Chi² | Phi
+        """
+        from PyQt6.QtWidgets import QTableWidgetItem
+
+        # Extract AM result
+        am_data = None
+        if isinstance(pipeline_result, dict):
+            module_results = pipeline_result.get("module_results", {})
+        else:
+            module_results = getattr(pipeline_result, "module_results", {})
+
+        am_result = module_results.get("am")
+        if am_result and hasattr(am_result, "data") and am_result.data:
+            am_data = am_result.data
+
+        if am_data is None:
+            self._am_summary_table.setRowCount(0)
+            self._am_pairs_table.setRowCount(0)
+            self._am_empty_label.setVisible(True)
+            return
+
+        self._am_empty_label.setVisible(False)
+
+        # Interpretation thresholds
+        def pmi_interp(v):
+            if v > 5: return "Very strong association"
+            if v > 3: return "Strong association"
+            if v > 0: return "Moderate association"
+            if v == 0: return "No association"
+            return "Repulsion (avoidance)"
+
+        def llr_interp(v):
+            if v > 15.13: return "p < 0.0001 (highly significant)"
+            if v > 10.83: return "p < 0.001 (very significant)"
+            if v > 6.63: return "p < 0.01 (significant)"
+            if v > 3.84: return "p < 0.05 (marginally significant)"
+            return "Not significant"
+
+        def dice_interp(v):
+            if v > 0.8: return "Very high overlap"
+            if v > 0.5: return "High overlap"
+            if v > 0.2: return "Moderate overlap"
+            return "Low overlap"
+
+        def t_interp(v):
+            if v > 3.291: return "p < 0.001 (highly significant)"
+            if v > 2.576: return "p < 0.01 (significant)"
+            if v > 1.645: return "p < 0.05 (marginally significant)"
+            return "Not significant"
+
+        def chi_interp(v):
+            if v > 10.83: return "p < 0.001 (highly significant)"
+            if v > 6.63: return "p < 0.01 (significant)"
+            if v > 3.84: return "p < 0.05 (significant)"
+            return "Not significant"
+
+        def phi_interp(v):
+            if v > 0.5: return "Strong attraction"
+            if v > 0.2: return "Moderate attraction"
+            if v > 0: return "Weak attraction"
+            if v == 0: return "Independent"
+            return "Repulsion"
+
+        # Summary table
+        summary_rows = [
+            ("Scored Pairs", str(getattr(am_data, "total_scored", 0)), "Number of word pairs scored"),
+            ("Mean PMI", f"{getattr(am_data, 'mean_pmi', 0):.4f}", pmi_interp(getattr(am_data, "mean_pmi", 0))),
+            ("Mean LLR", f"{getattr(am_data, 'mean_llr', 0):.4f}", llr_interp(getattr(am_data, "mean_llr", 0))),
+            ("Mean Dice", f"{getattr(am_data, 'mean_dice', 0):.4f}", dice_interp(getattr(am_data, "mean_dice", 0))),
+            ("Mean T-score", f"{getattr(am_data, 'mean_t_score', 0):.4f}", t_interp(getattr(am_data, "mean_t_score", 0))),
+            ("Mean Chi²", f"{getattr(am_data, 'mean_chi_square', 0):.4f}", chi_interp(getattr(am_data, "mean_chi_square", 0))),
+            ("Mean Phi", f"{getattr(am_data, 'mean_phi', 0):.4f}", phi_interp(getattr(am_data, "mean_phi", 0))),
+        ]
+        self._am_summary_table.setRowCount(len(summary_rows))
+        for i, (metric, value, interp) in enumerate(summary_rows):
+            self._am_summary_table.setItem(i, 0, QTableWidgetItem(metric))
+            self._am_summary_table.setItem(i, 1, QTableWidgetItem(value))
+            self._am_summary_table.setItem(i, 2, QTableWidgetItem(interp))
+
+        # Top pairs table (show up to top 50 by PMI)
+        scores = getattr(am_data, "scores", []) or []
+        top_pairs = sorted(scores, key=lambda s: s.pmi, reverse=True)[:50]
+        self._am_pairs_table.setRowCount(len(top_pairs))
+        for i, s in enumerate(top_pairs):
+            pair_str = " ".join(str(t) for t in getattr(s, "pair", ("?", "?")))
+            self._am_pairs_table.setItem(i, 0, QTableWidgetItem(pair_str))
+            self._am_pairs_table.setItem(i, 1, QTableWidgetItem(f"{getattr(s, 'pmi', 0):.4f}"))
+            self._am_pairs_table.setItem(i, 2, QTableWidgetItem(f"{getattr(s, 'llr', 0):.4f}"))
+            self._am_pairs_table.setItem(i, 3, QTableWidgetItem(f"{getattr(s, 'dice', 0):.4f}"))
+            self._am_pairs_table.setItem(i, 4, QTableWidgetItem(f"{getattr(s, 't_score', 0):.4f}"))
+            self._am_pairs_table.setItem(i, 5, QTableWidgetItem(f"{getattr(s, 'chi_square', 0):.4f}"))
+            self._am_pairs_table.setItem(i, 6, QTableWidgetItem(f"{getattr(s, 'phi', 0):.4f}"))
 
     def _show_empty(self) -> None:
         self._terms_model.load([])
         self._ngram_table.clear()
         self._np_table.clear()
+        self._am_summary_table.setRowCount(0)
+        self._am_pairs_table.setRowCount(0)
+        self._am_empty_label.setVisible(True)
         self._terms_view.hide()
         self._empty_label.show()
         self._detail_text.clear()

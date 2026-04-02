@@ -101,6 +101,24 @@ class _WorkerSignals(QObject):
 # ── Pipeline worker ───────────────────────────────────────────────────────────
 
 
+# ── Python logging → Qt signal bridge ──────────────────────────────────────────
+
+
+class _QtLogHandler(logging.Handler):
+    """Redirects Python logging records to a Qt signal for UI display."""
+
+    def __init__(self, emit_fn) -> None:
+        super().__init__()
+        self._emit_fn = emit_fn
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = self.format(record)
+            self._emit_fn(msg)
+        except Exception:
+            self.handleError(record)
+
+
 class PipelineWorker(QRunnable):
     """Runs the NLP pipeline in a QThreadPool worker thread.
 
@@ -133,6 +151,14 @@ class PipelineWorker(QRunnable):
         """Entry point — called by QThreadPool in a worker thread."""
         self.signals.started.emit()
         self.signals.log.emit("Pipeline started…")
+
+        # Install Qt log handler to capture ALL kadima logger output (pipeline + engine modules)
+        _root_kadima_logger = logging.getLogger("kadima")
+        _qt_handler = _QtLogHandler(self.signals.log.emit)
+        _qt_handler.setLevel(logging.DEBUG)
+        _qt_handler.setFormatter(logging.Formatter("[%(name)s] %(message)s"))
+        _root_kadima_logger.addHandler(_qt_handler)
+        _root_kadima_logger.setLevel(logging.DEBUG)
         try:
             from kadima.pipeline.config import PipelineConfig
             from kadima.pipeline.orchestrator import PipelineService
@@ -178,6 +204,12 @@ class PipelineWorker(QRunnable):
             logger.error("PipelineWorker error: %s\n%s", exc, tb)
             self.signals.log.emit(f"ERROR: {exc}")
             self.signals.failed.emit(str(exc))
+        finally:
+            # Remove Qt log handler after pipeline run to avoid duplicate emissions
+            try:
+                _root_kadima_logger.removeHandler(_qt_handler)
+            except Exception:
+                pass
 
 
 # ── Pipeline View ─────────────────────────────────────────────────────────────
@@ -285,6 +317,25 @@ class PipelineView(QWidget):
         thresh_group.setObjectName("pipeline_thresh_group")
         tg_layout = QVBoxLayout(thresh_group)
 
+        # N-gram range (M4)
+        ngram_row = QHBoxLayout()
+        ngram_lbl = QLabel("N-gram range:")
+        ngram_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        ngram_row.addWidget(ngram_lbl)
+        self._min_n = QSpinBox()
+        self._min_n.setObjectName("pipeline_min_n")
+        self._min_n.setRange(1, 5)
+        self._min_n.setValue(2)
+        self._min_n.setSuffix(" min")
+        ngram_row.addWidget(self._min_n)
+        self._max_n = QSpinBox()
+        self._max_n.setObjectName("pipeline_max_n")
+        self._max_n.setRange(1, 10)
+        self._max_n.setValue(5)
+        self._max_n.setSuffix(" max")
+        ngram_row.addWidget(self._max_n)
+        tg_layout.addLayout(ngram_row)
+
         row1 = QHBoxLayout()
         row1.addWidget(QLabel("Min freq:"))
         self._min_freq = QSpinBox()
@@ -308,6 +359,31 @@ class PipelineView(QWidget):
         self._hapax_filter.setObjectName("pipeline_hapax_filter")
         self._hapax_filter.setChecked(True)
         tg_layout.addWidget(self._hapax_filter)
+
+        # NP Chunk settings
+        np_row = QHBoxLayout()
+        np_lbl = QLabel("NP Chunk:")
+        np_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        np_row.addWidget(np_lbl)
+        self._np_mode = QComboBox()
+        self._np_mode.setObjectName("pipeline_np_mode")
+        self._np_mode.addItems(["auto", "rules", "embeddings"])
+        self._np_mode.setCurrentIndex(0)
+        np_row.addWidget(self._np_mode)
+        self._sim_threshold = QDoubleSpinBox()
+        self._sim_threshold.setObjectName("pipeline_sim_threshold")
+        self._sim_threshold.setRange(0.0, 1.0)
+        self._sim_threshold.setSingleStep(0.05)
+        self._sim_threshold.setValue(0.4)
+        self._sim_threshold.setSuffix(" sim")
+        np_row.addWidget(self._sim_threshold)
+        self._max_span = QSpinBox()
+        self._max_span.setObjectName("pipeline_max_span")
+        self._max_span.setRange(1, 10)
+        self._max_span.setValue(4)
+        self._max_span.setSuffix(" span")
+        np_row.addWidget(self._max_span)
+        tg_layout.addLayout(np_row)
 
         layout.addWidget(thresh_group)
         layout.addStretch()
@@ -434,6 +510,11 @@ class PipelineView(QWidget):
             "min_freq": self._min_freq.value(),
             "pmi_threshold": self._pmi_threshold.value(),
             "hapax_filter": self._hapax_filter.isChecked(),
+            "min_n": self._min_n.value(),
+            "max_n": self._max_n.value(),
+            "np_mode": self._np_mode.currentText(),
+            "np_sim_threshold": self._sim_threshold.value(),
+            "np_max_span": self._max_span.value(),
         }
         return {"profile": profile, "modules": modules, "thresholds": thresholds}
 
