@@ -481,7 +481,15 @@ ul
 
 #### Резюме модуля
 
-**Зрелость: Production-ready**. 24 теста в 6 классах: базовая экстракция (8), canonical dedup (4), NP-aware kind (3), process_batch (3), corpus-level metrics (4), error handling (2). Дедупликация по canonical формам от M6 устраняет дубликаты (הפלדה→פלדה). NP-aware kind classification использует синтаксические паттерны от M5 для точной классификации терминов (NOUN+ADJ vs NOUN+NOUN vs NOUN+ADP+NOUN). Все 6 AM метрик propagруются из M7 и отображаются в UI.
+**Зрелость: Production-ready**. 24 теста в 6 классах: базовая экстракция (8), canonical dedup (4), NP-aware kind (3), process_batch (3), corpus-level metrics (4), error handling (2). Дедупликация по canonical формам от M6 устраняет дубликаты (הפלדה→פלדה). NP-aware kind classification использует синтаксические паттерны от M5 для точной классификации терминов (NOUN+ADJ vs NOUN+NOUN vs NOUN+ADP+NOUN). Все 6 AM метрик propagруются из M7 и отображаются в UI (12 колонок в TermsTableModel).
+
+**Режимы работы (`term_mode`)**: 4 режима настраиваются через config:
+- **`distinct`** — Все surface-формы отдельно (פלדה, הפלדה, פלדות — каждая отдельно)
+- **`canonical`** — Дедупликация по canonical форме (הפלדה → פלדה) [default]
+- **`clustered`** — Семантические группы по NP pattern (terms с одинаковым kind группируются)
+- **`related`** — Отдельно, но с cluster_id для UI links (показывает связи без объединения)
+
+Каждый термин получает поля: `cluster_id` (>-1 = в кластере), `variant_count` (сколько surface форм объединено), `variants` (список surface форм).
 
 **Исправления (2026-04-02)**:
 1. **`process_batch()`** — добавлен для консистентности с другими processor модулями (M13-M24 все имеют process_batch).
@@ -489,6 +497,7 @@ ul
 3. **NP-aware kind classification** — NP chunks от M5 используются для определения syntactic pattern термина (NOUN+ADJ, NOUN+ADP+NOUN и т.д.).
 4. **UI: 3 новые колонки** — T-score, Chi², Phi добавлены в TermsTableModel (было 9 колонок, стало 12).
 5. **Тесты расширены** — 7 → 24 теста (6 test classes): добавлены CanonicalDedup, NPAwareKind, ProcessBatch, Metrics, ErrorHandling.
+6. **`term_mode` — 4 режима** (distinct/canonical/clustered/related) + поля cluster_id/variant_count/variants в Term.
 
 ---
 
