@@ -241,6 +241,7 @@ class PipelineService:
         all_tokens: list[Token] = []           # flat list для noise
         tokens_per_sentence: list[list[Token]] = []  # для ngram
         morph_per_sentence: list[list] = []    # для np_chunk
+        m3_result: ProcessorResult | None = None  # для M8 POS-aware filtering
         ngram_result: NgramResult | None = None
         np_chunk_result: NPChunkResult | None = None
         am_result: AMResult | None = None
@@ -295,6 +296,7 @@ class PipelineService:
 
             if proc_result is not None:
                 result.module_results["morph_analyzer"] = proc_result
+                m3_result = proc_result
             logger.debug("M3: %d sentences morphed", len(morph_per_sentence))
 
         # ── M4: N-gram Extraction ────────────────────────────────────────
@@ -360,6 +362,7 @@ class PipelineService:
                 "am_scores": am_scores,
                 "np_chunks": np_chunk_result.chunks if np_chunk_result else [],
                 "canonical_mappings": canonical_mappings,  # M6 → M8: use canonical forms for term dedup
+                "morph_analyses": m3_result.data.analyses if (m3_result and m3_result.data) else [],  # M3 → M8: POS-aware filtering
             }
             proc_result = proc.process(term_input, self._get_module_config("term_extract"))
             result.module_results["term_extract"] = proc_result

@@ -71,16 +71,33 @@ class TermExtractor(Processor):
     def validate_input(self, input_data: Any) -> bool:
         return isinstance(input_data, dict) and "ngrams" in input_data
 
+    # Allowed POS tags for term tokens
+    ALLOWED_POS: set[str] = {"NOUN", "PROPN", "ADJ"}
+
     def process(self, input_data: dict[str, Any], config: dict[str, Any]) -> ProcessorResult:
         start = time.time()
         try:
             profile = config.get("profile", "balanced")
             min_freq = config.get("min_freq", 2)
+            pos_filter_enabled = config.get("pos_filter_enabled", True)
 
             ngrams = input_data.get("ngrams", [])
             am_scores = input_data.get("am_scores", {})
             np_chunks = input_data.get("np_chunks", [])
             canonical_mappings: dict[str, str] = input_data.get("canonical_mappings", {})
+            morph_analyses: list[Any] = input_data.get("morph_analyses", [])
+
+            # Build POS map from M3 morph analyses
+            pos_map: dict[str, str] = {}
+            pos_map_source = ""
+            if morph_analyses:
+                for ma in morph_analyses:
+                    if hasattr(ma, "surface") and hasattr(ma, "pos"):
+                        pos_map[ma.surface] = ma.pos
+                pos_map_source = "morph_analyses"
+            elif pos_filter_enabled:
+                # Fallback: try to get POS from np_chunks patterns
+                pass  # pos_map stays empty → defaults to NOUN for unknown
 
             # Build NP lookup set for syntactic boosting:
             # NP chunks that match ngram tokens get a kind boost (NOUN_NOUN, NOUN_ADJ, etc.)
@@ -123,6 +140,18 @@ class TermExtractor(Processor):
                     kind = "NOUN_NOUN"  # fallback for NP match without pattern
                 else:
                     kind = "NOUN_NOUN" if ngram.n == 2 else f"{ngram.n}-GRAM"
+
+                # POS-aware filtering: skip n-grams with disallowed POS tokens
+                if pos_filter_enabled:
+                    skip = False
+                    for tok in ngram.tokens:
+                        tok_pos = pos_map.get(tok, "NOUN")  # Default to NOUN if unknown
+                        if tok_pos not in self.ALLOWED_POS:
+                            skip = True
+                            logger.debug("M8: skip ngram due to POS=%s for '%s'", tok_pos, tok)
+                            break
+                    if skip:
+                        continue
 
                 terms.append(Term(
                     surface=surface,

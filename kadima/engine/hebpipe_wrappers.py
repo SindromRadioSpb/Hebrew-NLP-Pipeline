@@ -443,6 +443,63 @@ _ADJ_PATTERNS = re.compile(
     r'^[\u0590-\u05FF]{2,}(ית|יים|יות|ני|נית|לי|לית|אי|אית)$'
 )
 
+# ── spaCy-transformers POS backend ────────────────────────────────────────────
+
+_TRANSFORMER_POS: Any = None
+_TRANSFORMER_POS_AVAILABLE: bool = False
+
+def _load_transformer_pos() -> Any:
+    """Load Hebrew POS tagger via transformers pipeline (fallback when hebpipe/spaCy unavailable).
+
+    Uses distilbert or similar that's already in deps.
+    Returns None if no suitable model is available — gracefully degrades to rules.
+    """
+    global _TRANSFORMER_POS, _TRANSFORMER_POS_AVAILABLE
+    if _TRANSFORMER_POS is not None or _TRANSFORMER_POS_AVAILABLE is False:
+        return _TRANSFORMER_POS
+    try:
+        from transformers import pipeline
+        # Hebrew POS tagger — uses already-installed transformers
+        # Try hebrew POS model; graceful fallback = None → rules
+        try:
+            _TRANSFORMER_POS = pipeline(
+                "token-classification",
+                model="onlplab/alephbert-base-token-classification-he-pos",
+                tokenizer="onlplab/alephbert-base-token-classification-he-pos",
+            )
+            logger.info("Transformer POS loaded: alephbert-base-token-classification-he-pos")
+            _TRANSFORMER_POS_AVAILABLE = True
+        except Exception:
+            logger.info("Transformer POS model not available — falling back to rules")
+            _TRANSFORMER_POS_AVAILABLE = False
+    except ImportError:
+        logger.info("transformers not installed — POS rules fallback")
+        _TRANSFORMER_POS_AVAILABLE = False
+    return _TRANSFORMER_POS
+
+
+def _get_pos_transformer(tokens: list[Token]) -> dict[str, str]:
+    """POS tagging via transformers pipeline for a list of tokens.
+
+    Returns:
+        dict mapping token.surface → POS tag (NOUN/VERB/ADJ/etc.)
+    """
+    result: dict[str, str] = {}
+    pipe = _load_transformer_pos()
+    if pipe is None:
+        return result
+    try:
+        text = " ".join(t.surface for t in tokens)
+        predictions = pipe(text)
+        for pred in predictions:
+            word = pred.get("word", "").replace("##", "")
+            tag = pred.get("entity", "NOUN").replace("B-", "").replace("I-", "")
+            if word:
+                result[word] = tag
+    except Exception as e:
+        logger.warning("Transformer POS tagging failed: %s", e)
+    return result
+
 
 def _strip_prefixes(surface: str) -> tuple:
     """Strip Hebrew proclitics from surface form.
@@ -532,8 +589,11 @@ class HebPipeMorphAnalyzer(Processor):
     def process(self, input_data: List[Token], config: Dict[str, Any]) -> ProcessorResult:
         start = time.time()
         try:
+            use_transformer_pos = config.get("use_transformer_pos", True)
             if _HEBPIPE_AVAILABLE:
                 analyses = self._process_hebpipe(input_data, config)
+            elif _TRANSFORMER_POS_AVAILABLE and use_transformer_pos:
+                analyses = self._process_transformer(input_data)
             else:
                 analyses = self._process_rules(input_data)
 
@@ -549,6 +609,34 @@ class HebPipeMorphAnalyzer(Processor):
                 data=None, errors=[str(e)],
                 processing_time_ms=(time.time() - start) * 1000,
             )
+
+    def _process_transformer(self, tokens: List[Token]) -> List[MorphAnalysis]:
+        """POS tagging via transformers pipeline (Hebrew POS model)."""
+        analyses = []
+        pos_tags = _get_pos_transformer(tokens)
+
+        for token in tokens:
+            surface = token.surface
+            pos = pos_tags.get(surface, "NOUN")
+
+            # Strip prefixes for base/lemma
+            base, prefix_chain, has_det = _strip_prefixes(surface)
+            lemma = base
+
+            # Override POS for function words (they're always correct)
+            if surface in _FUNCTION_WORDS:
+                pos = _FUNCTION_WORDS[surface]
+
+            analyses.append(MorphAnalysis(
+                surface=surface,
+                base=base,
+                lemma=lemma,
+                pos=pos,
+                features={},
+                is_det=has_det,
+                prefix_chain=prefix_chain,
+            ))
+        return analyses
 
     def _process_rules(self, tokens: List[Token]) -> List[MorphAnalysis]:
         """Rule-based morphological analysis (fallback)."""
