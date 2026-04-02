@@ -1,6 +1,6 @@
 # Current Status — KADIMA
 # Обновляй этот файл после каждого значимого изменения!
-# Последнее обновление: 2026-04-01
+# Последнее обновление: 2026-04-02
 
 ---
 
@@ -82,8 +82,7 @@
 | — | audit_v1.md создан (1106+ строк, все 15 противоречий устранены) |
 | — | M8 Term Extractor: POS-aware filtering (+21% precision), 111 tests |
 | — | M8 Term Extractor: 4 режима term_mode (distinct/canonical/clustered/related), UI selector, help panel, 14 колонок, 30 тестов, integration test script |
-| — | T7-3: AlephBERT Fine-Tuning infrastructure — M8Backend (ABC) + StatisticalBackend + AlephBERTBackend, training CLI (export/train/eval), PipelineView Extraction Method selector, ResultsView backend badge, 17 тестов, config default.yaml |
-| — | M3 Morph Analyzer: transformer POS fallback chain |
+| — | T7-3: AlephBERT Fine-Tuning infrastructure — M8Backend (ABC) + StatisticalBackend + AlephBERTBackend, training CLI (export/train/eval), PipelineView Extraction Method selector, ResultsView backend badge,
 | — | .cline/skills/ создан (13 skills) |
 | — | §§5.1-5.4 M1-M4 актуализированы: статусы, строки кода, тесты, баг min_n/max_n исправлен |
 
