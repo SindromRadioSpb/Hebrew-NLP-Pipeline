@@ -86,6 +86,12 @@ No business logic inline in routers
 ### 10. Commit Scopes
 `engine | pipeline | api | ui | data | config | docker | ci | kb | llm | annotation | validation`
 
+### 10b. Git Command Anti-Hang Rule (CRITICAL)
+**NEVER chain `git add && git commit && git push` in a single execute_command call.**
+On Windows with HTTPS git auth, `git push` can hang indefinitely waiting for credential input.
+**Always execute as 3 SEPARATE execute_command calls** — this allows the user to interact with
+credential prompts between commands.
+
 ### 11. Audit Document Maintenance
 При каждом изменении кода (новый функционал, исправление бага, рефакторинг):
 1. Обновить соответствующий раздел §5.x в `doc/audit_v1.md` (Functional Matrix by Module)

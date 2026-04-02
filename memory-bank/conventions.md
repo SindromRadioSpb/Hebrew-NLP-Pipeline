@@ -1,5 +1,16 @@
 # Conventions — KADIMA
 
+## Git Command Rule (CRITICAL — avoid hang)
+**NEVER chain `git add && git commit && git push` in one command.**
+This causes hangs on Windows when `git push` requires interactive credential input (HTTPS auth, token prompt).
+
+**Correct pattern — 3 separate commands:**
+1. `git add <files>` — stage
+2. `git commit -m "msg"` — commit
+3. `git push` — push (separate, allows user interaction if needed)
+
+**Why:** On Windows, git credential manager may prompt for auth. If push is chained, the terminal blocks waiting for input the user can't provide.
+
 ## Code Style
 
 | Rule | Value |
