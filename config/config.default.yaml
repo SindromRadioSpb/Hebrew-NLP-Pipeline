@@ -39,14 +39,17 @@ pipeline:
       min_freq: 3
       pmi_threshold: 5.0
       hapax_filter: true
+      term_mode: canonical
     balanced:
       min_freq: 2
       pmi_threshold: 3.0
       hapax_filter: true
+      term_mode: canonical
     recall:
       min_freq: 1
       pmi_threshold: 1.0
       hapax_filter: false
+      term_mode: distinct
 
 # ── Generative Module Configs ────────────────────────────────────────────────
 # Each section configures a generative module (M13-M25).
