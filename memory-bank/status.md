@@ -79,8 +79,9 @@
 | T5 UI | NLPToolsView, LLMView, ChatWidget, 60 smoke tests |
 | T6 D4 | API vertical slices: validation (5ep), kb (5ep), annotation (4ep), llm (5ep) = 19 endpoints, 80 tests |
 | — | Generative router расширен до 12 endpoints (M15/M16/M18/M20 добавлены) |
-| — | audit_v1.md создан (1106+ строк, все 7 противоречий устранены) |
+| — | audit_v1.md создан (1106+ строк, все 9 противоречий устранены) |
 | — | .cline/skills/ создан (13 skills) |
+| — | §§5.1-5.4 M1-M4 актуализированы: статусы, строки кода, тесты, баг min_n/max_n исправлен |
 
 ---
 

@@ -246,3 +246,47 @@ docs(claude): update CLAUDE.md — T6 D4 done, 29 endpoints
 
 7. Commit: feat(engine): add M<XX> <ModuleName>
 ```
+
+---
+
+## UI Contextual Help — "Живая программа"
+
+KADIMA — образовательный инструмент. Пользователь может не знать статистику, лингвистику, ML.
+Каждая вкладка с метриками/статистикой **обязана** объяснять пользователя:
+
+### Правило: Info-панель
+Каждая служебная вкладка с метриками должна иметь info-панель вверху:
+```python
+info_panel = QLabel(
+    "<b>📊 Название раздела</b> — краткое объяснение простыми словами.<br><br>"
+    "• <b>Метрика 1 > 0</b> — что означает<br>"
+    "• <b>Метрика 2 > порог</b> — что означает<br>"
+    "..."
+)
+info_panel.setWordWrap(True)
+info_panel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+```
+
+### Правило: Tooltips на заголовках
+Каждый заголовок колонки с метрикой должен иметь tooltip:
+```python
+table.horizontalHeaderItem(col).setToolTip(
+    "Название метрики — простое объяснение.\n"
+    "Диапазон значений, пороги значимости, интерпретация"
+)
+```
+
+### Правило: Пороговые значения
+Числа без интерпретации бесполезны. Всегда добавляй колонку "Interpretation":
+```python
+def metric_interp(value: float) -> str:
+    if value > threshold_high: return "Strong"
+    if value > threshold_mid:  return "Moderate"
+    return "Weak"
+```
+
+### Примеры применения
+- ✅ AM Scores: info-панель + tooltips на PMI/LLR/Dice/T-score/Chi²/Phi + Interpretation колонка
+- ✅ Terms: PMI, LLR, Dice колонки имеют значения + ранжирование
+- 🔄 N-grams: добавить tooltip к колонке "Freq"
+- 🔄 NP Chunks: добавить tooltip к колонке "Score"
