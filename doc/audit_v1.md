@@ -444,25 +444,34 @@ ul
 
 ### 5.8 M8 — Term Extractor (TermExtractor)
 
-**Статус: ✅ Production-ready** | **Тесты: 24/24 PASS** | **Файл: `kadima/engine/term_extractor.py` (166 строк)**
+**Статус: ✅ Production-ready** | **Тесты: 30/30 PASS** | **Файл: `kadima/engine/term_extractor.py` (297 строк)**
 
 #### A) Реализованный функционал
 
 | # | Функциональность | Строки | Связанные процессы |
 |---|-----------------|--------|-------------------|
-| 1 | Агрегация n-gram + AM scores + NP chunks → ранжированные термины | 78-127 | M4→M7→M5→M8 pipeline |
-| 2 | **Canonical deduplication** через M6 `canonical_mappings` (הפלדה→פלדה) | 88-112 | M6 → M8: term dedup |
-| 3 | **NP-aware kind classification**: NOUN+ADJ, NOUN+NOUN, NOUN+ADP+NOUN из NP chunks | 114-125 | M5 → M8: syntactic boosting |
-| 4 | **6 AM метрик propagation**: PMI, LLR, Dice, T-score, Chi², Phi | 95-98 | M7 → M8: full metrics |
-| 5 | **Corpus-level metrics**: mean_pmi, mean_llr, mean_dice, mean_t_score, mean_chi_square, mean_phi | 133-140 | Pipeline monitoring |
-| 6 | Ранжирование по freq + pmi (убывание) | 117-127 | Term ranking |
-| 7 | Фильтрация по min_freq | 83-84 | Config-driven filtering |
-| 8 | `process_batch()` для пакетной обработки | 155-161 | Batch pipeline |
-| 9 | `TermResult` с total_candidates, filtered, profile | 141-153 | Pipeline aggregation |
-| 10 | Graceful degradation: ProcessorStatus.FAILED на ошибку | 150-154 | Error handling |
+| 1 | Агрегация n-gram + AM scores + NP chunks → ранжированные термины | 87-284 | M4→M7→M5→M8 pipeline |
+| 2 | **Canonical deduplication** через M6 `canonical_mappings` (הפלדה→פלדה) | 143-146 | M6 → M8: term dedup |
+| 3 | **NP-aware kind classification**: NOUN+ADJ, NOUN+NOUN, NOUN+ADP+NOUN из NP chunks | 116-133 | M5 → M8: syntactic boosting |
+| 4 | **6 AM метрик propagation**: PMI, LLR, Dice, T-score, Chi², Phi | 175-176 | M7 → M8: full metrics |
+| 5 | **Corpus-level metrics**: mean_pmi, mean_llr, mean_dice, mean_t_score, mean_chi_square, mean_phi | 261-268 | Pipeline monitoring |
+| 6 | Ранжирование по freq + pmi (убывание) | 184, 209 | Term ranking |
+| 7 | Фильтрация по min_freq | 138-139 | Config-driven filtering |
+| 8 | `process_batch()` для пакетной обработки | 293-297 | Batch pipeline |
+| 9 | `TermResult` с total_candidates, filtered, profile | 274-282 | Pipeline aggregation |
+| 10 | Graceful degradation: ProcessorStatus.FAILED на ошибку | 285-291 | Error handling |
 | 11 | UI: **12 колонок** в TermsTableModel (Rank, Surface, Canonical, Kind, Freq, Doc Freq, PMI, LLR, Dice, **T-score, Chi², Phi**) | `ui/results_view.py:57` | ResultsView Terms tab |
 | 12 | Sortable columns в UI | `ui/results_view.py:103-121` | Interactive sorting |
 | 13 | Export CSV для Terms | `ui/results_view.py:590-602` | Results export |
+| 14 | **POS-aware filtering** — skip n-grams with disallowed POS tokens (NOUN, PROPN, ADJ only) | 158-168 | M3 → M8: quality filtering |
+| 15 | **4 term_mode** — distinct/canonical/clustered/related с cluster_id/variant_count/variants | 182-259 | UI PipelineView selector |
+| 16 | **term_extractor_backend** — statistical/alephbert config parameter | 96 | T7-3: AlephBERT fine-tuning |
+| 17 | **UI: PipelineView term_mode selector** — QComboBox с 4 режимами + help text | `ui/pipeline_view.py` | Interactive mode selection |
+| 18 | **UI: ResultsView backend badge** — показывает backend, mode, term count | `ui/results_view.py` | Visual feedback |
+| 19 | **Training CLI** — `scripts/train_term_extractor.py` export/train/eval (465 строк) | `scripts/train_term_extractor.py` | T7-3: AlephBERT fine-tuning |
+| 20 | **CoNLL-U + JSON training data** — поддержка обоих форматов | `scripts/train_term_extractor.py:167-207` | NEMO-Corpus compatibility |
+| 21 | **Fine-tuned AlephBERT model** — F1=0.943, P=0.934, R=0.953 на NEMO-Corpus (160K tokens) | `models/term_extractor_v1/` | T7-3: ML backend |
+| 22 | **Config profiles** — precise/balanced/recall с разными term_mode | `config/config.default.yaml` | Pipeline config |
 
 #### B) Запланировано, не реализовано
 
@@ -470,6 +479,7 @@ ul
 |-----------------|---------------|-------------------|---------|---------|
 | API endpoint `/pipeline/terms` | Нет в router | REST access to extracted terms | Low priority | ⚠️ **Отложить** — термины доступны через `/pipeline/run`, standalone endpoint нужен только для interactive review |
 | Noise-based filtering (M12 feedback) | Упоминание в audit | Фильтрация шумовых n-grams | M12 noise → M8 связь не настроена | ⚠️ **Отложить до M12 доработки** — noise classifier сейчас rule-based, интеграция тривиальна |
+| **AlephBERT backend integration в process()** | `term_extractor_backend` config есть, но ML backend не вызывается в process() | ML-based term extraction | Model loading, VRAM | ⚠️ **В работе** — модель fine-tuned (F1=0.943), но не интегрирована в pipeline process() |
 
 #### C) Технически возможно, не планировалось
 
@@ -479,11 +489,10 @@ ul
 | TF-IDF scoring | Doc_freq уже в Term dataclass | Corpus-level term relevance | Medium | ⚠️ **Отложить до M24** — Keyphrase Extractor уже использует TF-IDF |
 | Multi-word synonym lookup | Canonical mappings уже реализованы | KB enrichment, semantic search | Medium | ❌ **Не реализовывать** — это KB функция, не term extraction |
 | NeoDictaBERT clustering (Вариант 3) | NeoDictaBERT уже загружен для M5 | Semantic term grouping | Medium | ⚠️ **Отложить** — требует VRAM, см. Фаза T7-2 roadmap |
-| AlephBERT Fine-Tuning (Вариант 6) | onlplab/alephbert-base уже в deps | Domain-specific term extraction | High | ⚠️ **Планируется** — см. Фаза T7-3 roadmap |
 
 #### Резюме модуля
 
-**Зрелость: Production-ready**. 24 теста в 6 классах: базовая экстракция (8), canonical dedup (4), NP-aware kind (3), process_batch (3), corpus-level metrics (4), error handling (2). Дедупликация по canonical формам от M6 устраняет дубликаты (הפלדה→פלדה). NP-aware kind classification использует синтаксические паттерны от M5 для точной классификации терминов (NOUN+ADJ vs NOUN+NOUN vs NOUN+ADP+NOUN). Все 6 AM метрик propagруются из M7 и отображаются в UI (12 колонок в TermsTableModel).
+**Зрелость: Production-ready (statistical backend) / Beta (AlephBERT backend)**. 30 тестов в 7 классах: базовая экстракция (8), canonical dedup (4), NP-aware kind (3), process_batch (3), corpus-level metrics (4), error handling (2), term_mode (6). Дедупликация по canonical формам от M6 устраняет дубликаты (הפלדה→פלדה). NP-aware kind classification использует синтаксические паттерны от M5 для точной классификации терминов (NOUN+ADJ vs NOUN+NOUN vs NOUN+ADP+NOUN). Все 6 AM метрик propagруются из M7 и отображаются в UI (12 колонок в TermsTableModel).
 
 **Режимы работы (`term_mode`)**: 4 режима настраиваются через config:
 - **`distinct`** — Все surface-формы отдельно (פלדה, הפלדה, פלדות — каждая отдельно)
@@ -493,6 +502,20 @@ ul
 
 Каждый термин получает поля: `cluster_id` (>-1 = в кластере), `variant_count` (сколько surface форм объединено), `variants` (список surface форм).
 
+**UI/UX — закрывает ли боль?**:
+- ✅ **PipelineView**: QComboBox для term_mode (4 режима) + QComboBox для backend (statistical/alephbert) + help text с объяснением режимов
+- ✅ **ResultsView**: Backend badge показывает текущий backend, mode, количество терминов — цветовая индикация (зелёный для alephbert, серый для statistical)
+- ✅ **TermsTableModel**: 12 колонок с сортировкой + export CSV
+- ✅ **Help panel**: Объяснение term_mode прямо в UI — пользователь видит что делает каждый режим
+
+**T7-3 AlephBERT Fine-Tuning — статус**:
+- ✅ Модель fine-tuned на NEMO-Corpus: 160K tokens, 11.5K term tokens, 5168 examples
+- ✅ Результаты: F1=0.943, Precision=0.934, Recall=0.953
+- ✅ Training CLI: `scripts/train_term_extractor.py` (465 строк, export/train/eval)
+- ✅ CoNLL-U + JSON формат training data
+- ✅ Model saved: `models/term_extractor_v1/` (478MB, не в git — превышает 100MB limit)
+- ⚠️ **Не интегрировано в process()** — `term_extractor_backend` config есть, но AlephBERT backend не вызывается в runtime
+
 **Исправления (2026-04-02)**:
 1. **`process_batch()`** — добавлен для консистентности с другими processor модулями (M13-M24 все имеют process_batch).
 2. **Corpus-level metrics** — mean_pmi, mean_llr, mean_dice, mean_t_score, mean_chi_square, mean_phi добавлены в TermResult для pipeline monitoring.
@@ -501,6 +524,15 @@ ul
 5. **Тесты расширены** — 7 → 24 теста (6 test classes): добавлены CanonicalDedup, NPAwareKind, ProcessBatch, Metrics, ErrorHandling.
 6. **`term_mode` — 4 режима** (distinct/canonical/clustered/related) + поля cluster_id/variant_count/variants в Term.
 7. **T7-3: `term_extractor_backend`** — M8Backend (ABC) + StatisticalBackend + AlephBERTBackend + training CLI (`export/train/eval`) + 17 тестов. UI: PipelineView Extraction Method selector, ResultsView backend badge.
+8. **Тесты верифицированы запуском** — 30/30 PASS (2026-04-02).
+9. **AlephBERT fine-tuned** — F1=0.943, P=0.934, R=0.953 на NEMO-Corpus (160K tokens, 5168 examples).
+10. **Training CLI** — `scripts/train_term_extractor.py` (465 строк, export/train/eval, CoNLL-U + JSON).
+
+**Рекомендации по M8**:
+1. ⚠️ **Интегрировать AlephBERT backend в process()** — модель fine-tuned, но не вызывается в runtime. Добавить M8Backend ABC вызов при `term_extractor_backend=alephbert`.
+2. ⚠️ **Добавить API endpoint `/pipeline/terms`** — для interactive term review (аналогично `/pipeline/run` но только terms).
+3. ⚠️ **Подключить M12 noise filtering** — noise classifier готов, интеграция тривиальна (skip n-grams с noise tokens).
+4. ✅ **UI/UX закрывает боль** — 4 режима term_mode, backend badge, help panel, 12 колонок с сортировкой, export CSV.
 
 ---
 
