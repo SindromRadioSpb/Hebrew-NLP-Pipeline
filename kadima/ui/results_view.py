@@ -105,18 +105,18 @@ class TermsTableModel(QAbstractTableModel):
         """Sort by the given column."""
         reverse = order == Qt.SortOrder.DescendingOrder
         key_fns = [
-            lambda t: self._get_val(t, "rank", 0),
+            lambda t: int(self._get_val(t, "rank", 0)),          # force int for numeric sort
             lambda t: self._get_val(t, "surface", ""),
             lambda t: self._get_val(t, "canonical", ""),
             lambda t: self._get_val(t, "kind", ""),
-            lambda t: self._get_val(t, "freq", 0),
-            lambda t: self._get_val(t, "doc_freq", 0),
-            lambda t: self._get_val(t, "pmi", 0.0),
-            lambda t: self._get_val(t, "llr", 0.0),
-            lambda t: self._get_val(t, "dice", 0.0),
-            lambda t: self._get_val(t, "t_score", 0.0),
-            lambda t: self._get_val(t, "chi_square", 0.0),
-            lambda t: self._get_val(t, "phi", 0.0),
+            lambda t: int(self._get_val(t, "freq", 0)),           # force int
+            lambda t: int(self._get_val(t, "doc_freq", 0)),       # force int
+            lambda t: float(self._get_val(t, "pmi", 0.0)),        # force float
+            lambda t: float(self._get_val(t, "llr", 0.0)),        # force float
+            lambda t: float(self._get_val(t, "dice", 0.0)),       # force float
+            lambda t: float(self._get_val(t, "t_score", 0.0)),    # force float
+            lambda t: float(self._get_val(t, "chi_square", 0.0)), # force float
+            lambda t: float(self._get_val(t, "phi", 0.0)),        # force float
         ]
         if 0 <= column < len(key_fns):
             self.beginResetModel()
