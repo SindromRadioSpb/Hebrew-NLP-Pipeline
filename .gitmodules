@@ -1,3 +1,6 @@
 [submodule "Tasks/Gold Corpus v2 upgrade maximum"]
 	path = Tasks/Gold Corpus v2 upgrade maximum
 	url = https://github.com/SindromRadioSpb/Hebrew-NLP-Pipeline.git
+[submodule "data/nemo-corpus"]
+	path = data/nemo-corpus
+	url = https://github.com/OnlpLab/NEMO-Corpus.git
