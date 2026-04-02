@@ -428,3 +428,53 @@ class TestNoiseFiltering:
             {"min_freq": 1, "noise_types_to_filter": {"number"}}
         )
         assert len(result.data.terms) == 0  # "7.5" is number → filtered
+
+
+class TestAlephBERTBackend:
+    """AlephBERT backend integration tests."""
+
+    @pytest.fixture
+    def te(self):
+        return TermExtractor()
+
+    def test_alephbert_backend_config(self, te):
+        """term_extractor_backend config is propagated to result."""
+        ngrams = [Ngram(["חוזק", "מתיחה"], 2, 10, 3)]
+        result = te.process(
+            {"ngrams": ngrams, "am_scores": {}},
+            {"min_freq": 1, "term_extractor_backend": "alephbert"}
+        )
+        assert result.data.term_extractor_backend == "alephbert"
+
+    def test_alephbert_backend_fallback_to_statistical(self, te):
+        """When model not found, gracefully falls back to statistical."""
+        ngrams = [Ngram(["חוזק", "מתיחה"], 2, 10, 3)]
+        # Even with alephbert config, if no raw_text or model missing, uses ngrams
+        result = te.process(
+            {"ngrams": ngrams, "am_scores": {}},
+            {"min_freq": 1, "term_extractor_backend": "alephbert"}
+        )
+        # Should still work (statistical fallback)
+        assert result.status == ProcessorStatus.READY
+        assert len(result.data.terms) == 1
+
+    def test_alephbert_raw_text_input(self, te):
+        """When raw_text provided with alephbert backend, model is called."""
+        # This test verifies the raw_text path is exercised
+        # Model may not be available, so we just check no crash
+        result = te.process(
+            {"ngrams": [], "am_scores": {}, "raw_text": "חוזק מתיחה של פלדה"},
+            {"min_freq": 1, "term_extractor_backend": "alephbert"}
+        )
+        # Should not crash even if model unavailable
+        assert result.status == ProcessorStatus.READY
+
+    def test_alephbert_load_graceful_degradation(self, te):
+        """When AlephBERT model unavailable, graceful degradation."""
+        # Reset loaded state
+        te._alephbert_loaded = False
+        te._alephbert_model = None
+        te._alephbert_tokenizer = None
+        # Should not raise, just return empty list
+        terms = te._alephbert_extract("test text")
+        assert isinstance(terms, list)

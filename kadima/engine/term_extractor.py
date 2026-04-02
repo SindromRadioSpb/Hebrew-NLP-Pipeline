@@ -16,7 +16,7 @@ import logging
 import re
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from kadima.engine.base import Processor, ProcessorResult, ProcessorStatus
 
@@ -128,6 +128,16 @@ class TermExtractor(Processor):
             np_chunks = input_data.get("np_chunks", [])
             canonical_mappings: dict[str, str] = input_data.get("canonical_mappings", {})
             morph_analyses: list[Any] = input_data.get("morph_analyses", [])
+            raw_text: str = input_data.get("raw_text", "")
+
+            # AlephBERT backend: extract terms from raw text
+            if term_extractor_backend == "alephbert" and raw_text:
+                alephbert_terms = self._alephbert_extract(raw_text)
+                # Convert AlephBERT terms to ngrams for downstream processing
+                if alephbert_terms and not ngrams:
+                    from kadima.engine.ngram_extractor import Ngram
+                    ngrams = [Ngram(t.split(), len(t.split()), 1, 1) for t in alephbert_terms]
+                    am_scores = {tuple(t.split()): {"pmi": 1.0, "llr": 1.0, "dice": 0.5, "t_score": 1.0, "chi_square": 1.0, "phi": 0.5} for t in alephbert_terms}
 
             # Build POS map from M3 morph analyses
             pos_map: dict[str, str] = {}
@@ -334,3 +344,75 @@ class TermExtractor(Processor):
     ) -> list[ProcessorResult]:
         """Batch processing: process each input dict independently."""
         return [self.process(inp, config) for inp in inputs]
+
+    # ── AlephBERT Backend ──────────────────────────────────────────────
+
+    _alephbert_model: Any = None
+    _alephbert_tokenizer: Any = None
+    _alephbert_loaded: bool = False
+
+    def _load_alephbert(self) -> bool:
+        """Lazy-load AlephBERT model for term extraction."""
+        if self._alephbert_loaded:
+            return True
+        try:
+            from transformers import AutoTokenizer, AutoModelForTokenClassification
+            import torch
+
+            model_path = "models/term_extractor_v1"
+            self._alephbert_tokenizer = AutoTokenizer.from_pretrained(model_path)
+            self._alephbert_model = AutoModelForTokenClassification.from_pretrained(model_path)
+            self._alephbert_model.eval()
+            self._alephbert_loaded = True
+            logger.info("AlephBERT term extractor loaded from %s", model_path)
+            return True
+        except Exception as e:
+            logger.warning("AlephBERT load failed: %s — falling back to statistical", e)
+            self._alephbert_loaded = False
+            return False
+
+    def _alephbert_extract(self, text: str) -> List[str]:
+        """Extract terms from text using AlephBERT token classification.
+
+        Returns list of extracted term surfaces.
+        """
+        if not self._load_alephbert():
+            return []
+
+        try:
+            import torch
+
+            tokens = text.split()
+            inputs = self._alephbert_tokenizer(
+                tokens, is_split_into_words=True, return_tensors="pt", truncation=True, max_length=512
+            )
+
+            with torch.no_grad():
+                outputs = self._alephbert_model(**inputs)
+                predictions = torch.argmax(outputs.logits, dim=-1)[0]
+
+            # Decode predictions
+            terms = []
+            current_term = []
+            for i, pred_id in enumerate(predictions):
+                pred_label = self._alephbert_model.config.id2label[int(pred_id)]
+                word_idx = inputs.word_ids()[i]
+                if word_idx is None or word_idx >= len(tokens):
+                    continue
+                if pred_label == "B-TERM":
+                    if current_term:
+                        terms.append(" ".join(current_term))
+                    current_term = [tokens[word_idx]]
+                elif pred_label == "I-TERM" and current_term:
+                    current_term.append(tokens[word_idx])
+                else:
+                    if current_term:
+                        terms.append(" ".join(current_term))
+                        current_term = []
+            if current_term:
+                terms.append(" ".join(current_term))
+
+            return terms
+        except Exception as e:
+            logger.error("AlephBERT extraction failed: %s", e, exc_info=True)
+            return []
