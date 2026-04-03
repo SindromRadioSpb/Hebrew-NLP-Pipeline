@@ -672,6 +672,7 @@ ul
 4. **UI: ML availability badges** — ✅/⬜ для phonikud и dicta, обновляются при инициализации вкладки.
 5. **UI: Char/word counters** — live update при вводе текста, reset при clear.
 6. **BUG FIX: Raw dataclass repr в output** — `_on_diacritize_result()` использовал `getattr(result.data, "text", result.data)`, но `DiacritizeResult` имеет поле `result`, не `text`. Исправлено на `getattr(result.data, "result", "")`. До исправления: показывал `DiacritizeResult(result='...', source='...', backend='phonikud', char_count=343, word_count=30)`. После: показывает чистый диакритизированный текст.
+7. **BUG FIX: Dicta backend возвращал текст без диакритики** — `_process_dicta()` использовал `hf_pipeline("token-classification", ...)` который возвращает токены без niqqud marks. Исправлено на `model.predict([text], tokenizer)` с `trust_remote_code=True` как указано в документации HuggingFace модели. До исправления: input == output. После: `תהליך ייצור הפלדה` → `תַּהֲלִיךְ יִיצּוּר הַפְּלָדָה`. Добавлены 2 теста: `test_dicta_produces_diacritics`, `test_dicta_long_text` (30/30 PASS).
 
 ---
 
