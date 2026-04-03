@@ -181,6 +181,29 @@ M14 Translator (3GB VRAM) ────────────────┘─
 - Интеграция: NER entities → M8 TermExtractor (кандидаты терминов)
 - VRAM: <1GB
 
+**M17 follow-up hardening track (2026-04-04):**
+- PATCH-01 Contract cleanup — DONE:
+  - backend contract выровнен между engine/API/config/UI;
+  - `heq_ner` зафиксирован как product default;
+  - `rules` оставлен safe fallback;
+  - `neodictabert` честно позиционируется как experimental/fallback-only path.
+- PATCH-02 UI/UX productization — DONE:
+  - добавлены help text, ready/changed status, empty-input feedback;
+  - итоговый summary: backend used, entity count, label summary, fallback note;
+  - вкладка NER теперь закрывает боль “что реально произошло” без логов.
+- PATCH-03 Tests + smoke — DONE:
+  - добавлены NER-specific API tests;
+  - добавлены NER-specific UI regression tests;
+  - живой smoke artifact сохранён в `artefacts/ner_m17_smoke.json`.
+- Smart-model backlog:
+  - `GLiNER` / `NuNER Zero` рассматривать только как optional experimental layer;
+  - `dicta-il/dictabert-large-parse` держать как отдельный heavier future path для joint parsing/NER, не смешивая с текущим release-pass.
+
+**Closed evidence (2026-04-04):**
+- `158 PASS`: `tests/engine/test_ner_extractor.py`, `tests/engine/test_ner_tab_ui.py`, `tests/api/test_generative_router.py`, `tests/test_config.py`, `tests/ui/test_generative.py`
+- live smoke artifact:
+  - `artefacts/ner_m17_smoke.json`
+
 **M14 — Translator**
 - Вход: `{text, src_lang, tgt_lang}` → Выход: `str`
 - Backend: facebook/mbart-large-50-many-to-many-mmt

@@ -946,15 +946,21 @@ M16 доведён до product-grade baseline: engine, API, product-facing STT 
 
 | Функциональность | Доказательство | Связанные процессы |
 |-----------------|---------------|-------------------|
-| NeoDictaBERT backend (embedding-based NE detection) | `ner_extractor.py:339-454` | R-2.2 |
-| HeQ-NER backend (`dicta-il/dictabert-large-ner`) | `ner_extractor.py:312-337` | ML-based NER |
-| Rules fallback (gazetteer: GPE, ORG, DATE patterns) | `ner_extractor.py:114-183` | Always available |
-| Fallback chain: neodictabert → heq_ner → rules | `ner_extractor.py:246-281` | Graceful degradation |
-| Deduplication overlapping spans | `ner_extractor.py:186-197` | Clean output |
-| Метрики: precision, recall, F1 | `ner_extractor.py:58-108` | Validation |
-| `process_batch()` | `ner_extractor.py:298-310` | Batch API |
-| API endpoint `/generative/ner` | `api/routers/generative.py:164-185` | REST API |
-| GenerativeView NER tab с EntityTable widget | CLAUDE.md | Desktop UI |
+| HeQ-NER backend (`dicta-il/dictabert-large-ner`) | `ner_extractor.py` | Product default NER path |
+| Rules fallback (gazetteer: GPE, ORG, DATE patterns) | `ner_extractor.py` | Safe fallback path |
+| Experimental `neodictabert` path with honest fallback note | `ner_extractor.py` | R-2.2 contract without false release promise |
+| Fallback chain: neodictabert → heq_ner → rules | `ner_extractor.py` | Graceful degradation |
+| Deduplication overlapping spans | `ner_extractor.py` | Clean output |
+| Метрики: precision, recall, F1 | `ner_extractor.py` | Validation |
+| `process_batch()` | `ner_extractor.py` | Batch API |
+| API endpoint `/generative/ner` with aligned backend/device contract | `api/routers/generative.py` | REST API |
+| API response includes `note` for fallback/experimental runtime state | `api/routers/generative.py` | Honest API contract |
+| GenerativeView NER tab: help text, ready/changed status, summary status, empty-input feedback | `ui/generative_view.py` | Product-grade desktop UX |
+| EntityTable renders entity span/type/score table | `ui/widgets/entity_table.py` | Inspectable NER output |
+| NER-specific API regression coverage | `tests/api/test_generative_router.py` | Router regression protection |
+| NER-specific UI regression coverage | `tests/engine/test_ner_tab_ui.py` | UX regression protection |
+| M17 verification suite: 158 PASS | `pytest tests/engine/test_ner_extractor.py tests/engine/test_ner_tab_ui.py tests/api/test_generative_router.py tests/test_config.py tests/ui/test_generative.py -q` | Engine + API + UI + config verification |
+| Live M17 smoke artifact | `artefacts/ner_m17_smoke.json` | Real user-path evidence |
 
 #### B) Запланировано, не реализовано
 
@@ -962,10 +968,50 @@ M16 доведён до product-grade baseline: engine, API, product-facing STT 
 |-----------------|---------------|-------------------|---------|
 | Fine-tuned NER head на HeQ данных | AnnotationView → NER training pipeline | Domain-specific NER | Требует аннотированных данных |
 | Nested entities | — | Legal, medical domain | High complexity |
+| Production-safe `neodictabert` runtime | Experimental backend path | Более сильный structured Hebrew path | Текущий upstream требует custom model code; без отдельного решения backend нельзя считать release-ready |
+
+#### C) Технически возможно, не планировалось
+
+| Функциональность | Основание | Потенциальная ценность | Риски/цена |
+|-----------------|-----------|------------------------|------------|
+| `GLiNER` как optional zero-shot NER layer | Zero-shot NER ecosystem | Быстрые эксперименты с новыми label sets | Hebrew quality нужно валидировать отдельно |
+| `NuNER Zero` как optional experimental backend | Zero-shot NER model family | Более сильный zero-shot baseline без fine-tune | Неизвестное качество на иврите, дополнительный runtime path |
+| `dicta-il/dictabert-large-parse` как joint parsing/NER path | Более богатый Hebrew structured layer | Единый structured pipeline для syntax + NER | Более тяжёлая интеграция и отдельная model-validation ветка |
+
+#### Recommendations After Audit
+
+1. Новый NER backend сейчас не нужен: максимальный ROI для M17 даст честный release-contract, понятный UI/UX и живой smoke evidence.
+2. `heq_ner` выглядит лучшим product default; `rules` должны оставаться safe fallback, а не first impression path.
+3. `neodictabert` нельзя обещать как production-ready backend, пока не принято отдельное решение по custom model loading.
+4. Любую “умную” NER-модель сравнивать только по Hebrew quality, latency, устойчивости UX и простоте offline bootstrap.
+5. `dicta-il/dictabert-large-parse` стоит держать в backlog как отдельный heavier structured path для joint parsing/NER, а не смешивать с текущим release-pass M17.
+
+#### Follow-up Implementation (2026-04-04)
+
+1. **PATCH-01 M17 factual sync + contract cleanup — DONE**
+   - Backend contract выровнен между engine/API/config/UI.
+   - Product default зафиксирован как `heq_ner`.
+   - `rules` оставлен safe fallback.
+   - `neodictabert` честно переведён в experimental/fallback-only path.
+
+2. **PATCH-02 NER UI/UX productization — DONE**
+   - Добавлены help text, ready/changed status и empty-input feedback.
+   - В UI поднимаются `backend used`, `entity count`, label summary и fallback note.
+   - Вкладка NER теперь закрывает боль “непонятно, что произошло” без чтения логов.
+
+3. **PATCH-03 Tests + smoke + artifacts — DONE**
+   - Добавлены NER-specific API tests.
+   - Добавлены NER-specific UI regression tests.
+   - Прогнан живой M17 smoke и сохранён артефакт в `artefacts/ner_m17_smoke.json`.
+   - Этот раздел аудита обновлён по факту прогона.
+
+4. **Smart-model backlog**
+   - `GLiNER` / `NuNER Zero` рассматривать только как optional experimental layer после базовой продуктовой стабилизации M17.
+   - `dicta-il/dictabert-large-parse` держать как отдельную future integration ветку для joint parsing/NER path.
 
 #### Резюме модуля
 
-Зрелый. Три уровня backends. HeQ-NER модель (`dicta-il/dictabert-large-ner`) — лицензия требует проверки.
+M17 доведён до product-grade baseline: engine, API, NER-specific UI/UX, regression coverage и live smoke подтверждены. Остаточный backlog — fine-tuned domain NER, nested entities и отдельная безопасная стратегия для `neodictabert`/heavier structured Hebrew models.
 
 ---
 
