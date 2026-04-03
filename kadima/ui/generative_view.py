@@ -10,8 +10,10 @@ All engine imports are lazy and wrapped in try/except ImportError.
 from __future__ import annotations
 
 import logging
+import shutil
 import time
 import traceback
+from pathlib import Path
 from typing import Any, Optional
 
 try:
@@ -23,6 +25,7 @@ try:
         QHBoxLayout,
         QLabel,
         QLineEdit,
+        QProgressBar,
         QPushButton,
         QSizePolicy,
         QTabWidget,
@@ -366,9 +369,9 @@ class GenerativeView(QWidget):
     def _build_tts_tab(self) -> QWidget:
         w, lay = self._make_tab_container()
 
-        # Backend selector: xtts, mms, bark (piper disabled — no Hebrew model)
+        tts_backends = ["auto", "f5tts", "lightblue", "phonikud", "mms", "bark"]
         self._tts_backend = BackendSelector(
-            backends=["xtts", "mms", "bark"], default_backend="mms"
+            backends=tts_backends, default_backend="auto"
         )
         self._tts_backend.setObjectName("generative_tts_backend")
         lay.addWidget(self._tts_backend)
@@ -376,10 +379,12 @@ class GenerativeView(QWidget):
         # Help text explaining backend differences
         help_text = QLabel(
             "🔊 Backends: "
-            "<b>piper</b>=fast MIT (~50MB, CPU), "
-            "<b>xtts</b>=quality (4GB VRAM), "
-            "<b>mms</b>=lightweight (<1GB), "
-            "<b>bark</b>=voice cloning (2GB VRAM)"
+            "<b>auto</b>=F5-TTS → LightBlue → Phonikud → MMS, "
+            "<b>f5tts</b>=best quality + cloning, "
+            "<b>lightblue</b>=fast CPU ONNX, "
+            "<b>phonikud</b>=Hebrew Piper ONNX, "
+            "<b>mms</b>=last-resort fallback, "
+            "<b>bark</b>=legacy explicit cloning only"
         )
         help_text.setWordWrap(True)
         help_text.setStyleSheet("color: #8888aa; font-size: 11px; padding: 4px 8px; "
@@ -388,12 +393,20 @@ class GenerativeView(QWidget):
 
         # ML availability badges
         badges_row = QHBoxLayout()
-        self._tts_piper_badge = QLabel("⬜ piper")
-        self._tts_xtts_badge = QLabel("⬜ xtts")
+        self._tts_f5tts_badge = QLabel("⬜ f5tts")
+        self._tts_lightblue_badge = QLabel("⬜ lightblue")
+        self._tts_phonikud_badge = QLabel("⬜ phonikud")
         self._tts_mms_badge = QLabel("⬜ mms")
+        self._tts_zonos_badge = QLabel("⬜ zonos")
         self._tts_bark_badge = QLabel("⬜ bark")
-        for badge in [self._tts_piper_badge, self._tts_xtts_badge,
-                       self._tts_mms_badge, self._tts_bark_badge]:
+        for badge in [
+            self._tts_f5tts_badge,
+            self._tts_lightblue_badge,
+            self._tts_phonikud_badge,
+            self._tts_mms_badge,
+            self._tts_zonos_badge,
+            self._tts_bark_badge,
+        ]:
             badge.setStyleSheet("color: #a0a0c0; font-size: 10px;")
             badges_row.addWidget(badge)
         badges_row.addStretch()
@@ -446,15 +459,35 @@ class GenerativeView(QWidget):
         vc_row.addWidget(self._tts_speaker_browse_btn)
         lay.addLayout(vc_row)
 
-        btn_row, run_btn, clear_btn, _, _ = self._make_button_row(
-            run_label="Synthesize", copy_label=None
+        voice_row = QHBoxLayout()
+        voice_lbl = QLabel("Voice:")
+        voice_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        voice_row.addWidget(voice_lbl)
+        self._tts_voice_input = QLineEdit()
+        self._tts_voice_input.setObjectName("generative_tts_voice")
+        self._tts_voice_input.setPlaceholderText("Optional voice, e.g. Yonatan or michael")
+        voice_row.addWidget(self._tts_voice_input, stretch=1)
+        lay.addLayout(voice_row)
+
+        btn_row, run_btn, clear_btn, _, export_btn = self._make_button_row(
+            run_label="Synthesize", copy_label=None, export_label="Save WAV..."
         )
         run_btn.setObjectName("generative_tts_run_btn")
         clear_btn.setObjectName("generative_tts_clear_btn")
+        if export_btn is not None:
+            export_btn.setObjectName("generative_tts_export_btn")
+            export_btn.setEnabled(False)
+            self._tts_export_btn = export_btn
         if _TTSCls is None:
             run_btn.setEnabled(False)
             run_btn.setToolTip("TTSSynthesizer not available (install [gpu] extras)")
         lay.addLayout(btn_row)
+
+        self._tts_progress = QProgressBar()
+        self._tts_progress.setObjectName("generative_tts_progress")
+        self._tts_progress.setRange(0, 0)
+        self._tts_progress.setVisible(False)
+        lay.addWidget(self._tts_progress)
 
         self._tts_audio_player = AudioPlayer()
         self._tts_audio_player.setObjectName("generative_tts_audio_player")
@@ -465,8 +498,11 @@ class GenerativeView(QWidget):
         self._tts_status.setObjectName("generative_tts_status")
         lay.addWidget(self._tts_status)
 
+        self._tts_last_audio_path: Path | None = None
         run_btn.clicked.connect(self._on_tts_run)
         clear_btn.clicked.connect(self._on_tts_clear)
+        if export_btn is not None:
+            export_btn.clicked.connect(self._on_tts_export)
 
         return w
 
@@ -476,34 +512,67 @@ class GenerativeView(QWidget):
             return
         backend = self._tts_backend.backend
         device = self._tts_backend.device
+        speaker_ref = self._tts_speaker_ref_input.text().strip() or None
+        voice = self._tts_voice_input.text().strip() or None
         worker = GenerativeWorker(
             tab_name="tts",
             module_cls=_TTSCls,
             module_config={},
             input_data=text,
-            runtime_config={"backend": backend, "device": device},
+            runtime_config={
+                "backend": backend,
+                "device": device,
+                "speaker_ref_path": speaker_ref,
+                "voice": voice,
+                "use_g2p": True,
+            },
         )
         worker.signals.started.connect(
-            lambda t: self._tts_status.setText("Running...")
+            lambda t: self._on_tts_started()
         )
         worker.signals.finished.connect(self._on_tts_result)
         worker.signals.failed.connect(
-            lambda t, e: self._tts_status.setText(f"Error: {e}")
+            lambda t, e: self._on_tts_failed(e)
         )
         self._pool.start(worker)
 
+    def _on_tts_started(self) -> None:
+        self._tts_progress.setVisible(True)
+        self._tts_status.setText(
+            "Synthesizing... F5-TTS may take 30-90 sec, CPU fallbacks are faster."
+        )
+
     def _on_tts_result(self, tab_name: str, result: Any) -> None:
-        self._tts_status.setText("Done")
+        self._tts_progress.setVisible(False)
         self.generative_finished_signal.emit(tab_name, result)
         try:
             audio_path = getattr(result.data, "audio_path", None) if result.data else None
             if audio_path:
+                self._tts_last_audio_path = Path(audio_path)
                 self._tts_audio_player.load(audio_path)
+                if hasattr(self, "_tts_export_btn"):
+                    self._tts_export_btn.setEnabled(True)
+                backend = getattr(result.data, "backend", "unknown")
+                duration = getattr(result.data, "duration_seconds", 0.0)
+                sample_rate = getattr(result.data, "sample_rate", 0)
+                self._tts_status.setText(
+                    f"Done ({backend}) · {duration:.1f}s · {sample_rate} Hz"
+                )
             else:
+                self._tts_last_audio_path = None
+                if hasattr(self, "_tts_export_btn"):
+                    self._tts_export_btn.setEnabled(False)
                 self._tts_status.setText("Error: no audio_path in result")
         except Exception as exc:
             logger.warning("tts result display error: %s", exc)
             self._tts_status.setText(f"Display error: {exc}")
+
+    def _on_tts_failed(self, error: str) -> None:
+        self._tts_progress.setVisible(False)
+        self._tts_last_audio_path = None
+        if hasattr(self, "_tts_export_btn"):
+            self._tts_export_btn.setEnabled(False)
+        self._tts_status.setText(f"Error: {error}")
 
     def _on_tts_speaker_browse(self) -> None:
         """Open file dialog to select speaker reference WAV for voice cloning."""
@@ -520,8 +589,13 @@ class GenerativeView(QWidget):
         self._tts_input.clear()
         self._tts_audio_player.clear()
         self._tts_speaker_ref_input.clear()
+        self._tts_voice_input.clear()
         self._tts_char_count.setText("0 chars")
         self._tts_word_count.setText("0 words")
+        self._tts_progress.setVisible(False)
+        self._tts_last_audio_path = None
+        if hasattr(self, "_tts_export_btn"):
+            self._tts_export_btn.setEnabled(False)
         self._tts_status.setText("Ready")
 
     def _on_tts_input_changed(self) -> None:
@@ -532,65 +606,77 @@ class GenerativeView(QWidget):
         self._tts_char_count.setText(f"{char_count} chars")
         self._tts_word_count.setText(f"{word_count} words")
 
+    def _on_tts_export(self) -> None:
+        if self._tts_last_audio_path is None or not self._tts_last_audio_path.exists():
+            self._tts_status.setText("No WAV to export")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save synthesized WAV",
+            self._tts_last_audio_path.name,
+            "Audio files (*.wav);;All files (*)",
+        )
+        if not path:
+            return
+        shutil.copyfile(self._tts_last_audio_path, path)
+        self._tts_status.setText(f"Saved WAV to {path}")
+
+    def _set_tts_badge(self, badge: QLabel, ok: bool, ready_text: str, missing_text: str) -> None:
+        if ok:
+            badge.setText(f"✅ {ready_text}")
+            badge.setStyleSheet("color: #22c55e; font-size: 10px;")
+        else:
+            badge.setText(f"⬜ {missing_text}")
+            badge.setStyleSheet("color: #a0a0c0; font-size: 10px;")
+
     def _update_tts_ml_badges(self) -> None:
         """Update ML availability badges for TTS tab."""
-        # Check each backend availability
-        # piper: check if piper package is available
         try:
-            from kadima.engine.tts_synthesizer import _PIPER_AVAILABLE
-            piper_ok = _PIPER_AVAILABLE
+            from kadima.engine.tts_synthesizer import _F5TTS_AVAILABLE
+            f5tts_ok = _F5TTS_AVAILABLE
         except Exception:
-            piper_ok = False
+            f5tts_ok = False
 
-        # xtts: check if TTS package is available
         try:
-            from kadima.engine.tts_synthesizer import _COQUI_AVAILABLE
-            xtts_ok = _COQUI_AVAILABLE
+            from kadima.engine.tts_synthesizer import _LIGHTBLUE_AVAILABLE
+            lightblue_ok = _LIGHTBLUE_AVAILABLE
         except Exception:
-            xtts_ok = False
+            lightblue_ok = False
 
-        # mms: check if transformers + torch are available
+        try:
+            from kadima.engine.tts_synthesizer import _PHONIKUD_TTS_AVAILABLE
+            phonikud_ok = _PHONIKUD_TTS_AVAILABLE
+        except Exception:
+            phonikud_ok = False
+
         try:
             from kadima.engine.tts_synthesizer import _MMS_AVAILABLE
             mms_ok = _MMS_AVAILABLE
         except Exception:
             mms_ok = False
 
-        # bark: check if bark package is available
         try:
             from kadima.engine.tts_synthesizer import _BARK_AVAILABLE
             bark_ok = _BARK_AVAILABLE
         except Exception:
             bark_ok = False
 
-        # Style badges
-        if piper_ok:
-            self._tts_piper_badge.setText("✅ piper")
-            self._tts_piper_badge.setStyleSheet("color: #22c55e; font-size: 10px;")
-        else:
-            self._tts_piper_badge.setText("⬜ piper")
-            self._tts_piper_badge.setStyleSheet("color: #a0a0c0; font-size: 10px;")
+        try:
+            from kadima.engine.tts_synthesizer import _ZONOS_AVAILABLE
+            zonos_ok = _ZONOS_AVAILABLE
+        except Exception:
+            zonos_ok = False
 
-        if xtts_ok:
-            self._tts_xtts_badge.setText("✅ xtts")
-            self._tts_xtts_badge.setStyleSheet("color: #22c55e; font-size: 10px;")
-        else:
-            self._tts_xtts_badge.setText("⬜ xtts")
-            self._tts_xtts_badge.setStyleSheet("color: #a0a0c0; font-size: 10px;")
-
-        if mms_ok:
-            self._tts_mms_badge.setText("✅ mms")
-            self._tts_mms_badge.setStyleSheet("color: #22c55e; font-size: 10px;")
-        else:
-            self._tts_mms_badge.setText("⬜ mms")
-            self._tts_mms_badge.setStyleSheet("color: #a0a0c0; font-size: 10px;")
-
-        if bark_ok:
-            self._tts_bark_badge.setText("✅ bark")
-            self._tts_bark_badge.setStyleSheet("color: #22c55e; font-size: 10px;")
-        else:
-            self._tts_bark_badge.setText("⬜ bark")
-            self._tts_bark_badge.setStyleSheet("color: #a0a0c0; font-size: 10px;")
+        self._set_tts_badge(self._tts_f5tts_badge, f5tts_ok, "f5tts ready", "f5tts missing")
+        self._set_tts_badge(
+            self._tts_lightblue_badge, lightblue_ok, "lightblue ready", "lightblue missing"
+        )
+        self._set_tts_badge(
+            self._tts_phonikud_badge, phonikud_ok, "phonikud ready", "phonikud missing"
+        )
+        self._set_tts_badge(self._tts_mms_badge, mms_ok, "mms ready", "mms fallback")
+        self._set_tts_badge(self._tts_zonos_badge, zonos_ok, "zonos ready", "zonos wsl only")
+        self._set_tts_badge(self._tts_bark_badge, bark_ok, "bark ready", "bark optional")
 
     # ------------------------------------------------------------------
     # Tab 2 — STT

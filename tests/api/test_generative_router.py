@@ -114,6 +114,53 @@ class TestTTSEndpoint:
         )
         assert response.status_code == 422
 
+    def test_tts_passes_speaker_ref_path_to_processor(self, client):
+        """API must forward speaker_ref_path into TTSSynthesizer config."""
+        from pathlib import Path
+        from unittest.mock import patch
+
+        captured = {}
+
+        class DummySynth:
+            def process(self, text, config):
+                captured["text"] = text
+                captured["config"] = config
+                from kadima.engine.base import ProcessorResult, ProcessorStatus
+                from kadima.engine.tts_synthesizer import TTSResult
+
+                return ProcessorResult(
+                    module_name="tts_synthesizer",
+                    status=ProcessorStatus.READY,
+                    data=TTSResult(
+                        audio_path=Path("/tmp/fake.wav"),
+                        backend="bark",
+                        text_length=len(text),
+                        duration_seconds=1.0,
+                        sample_rate=16000,
+                    ),
+                )
+
+        with patch("kadima.engine.tts_synthesizer.TTSSynthesizer", return_value=DummySynth()):
+            response = client.post(
+                "/api/v1/generative/tts",
+                json={
+                    "text": "שלום",
+                    "backend": "bark",
+                    "device": "cpu",
+                    "speaker_ref_path": "C:/voice/ref.wav",
+                    "voice": "michael",
+                    "use_g2p": False,
+                },
+            )
+
+        assert response.status_code == 200
+        assert captured["text"] == "שלום"
+        assert captured["config"]["speaker_ref_path"] == "C:/voice/ref.wav"
+        assert captured["config"]["voice"] == "michael"
+        assert captured["config"]["use_g2p"] is False
+        assert response.json()["sample_rate"] == 16000
+        assert response.json()["backend_used"] == "bark"
+
 
 # ── STT Transcriber (M16) ─────────────────────────────────────────────────────
 
@@ -322,9 +369,11 @@ class TestGenerativeSchema:
     def test_tts_request_schema(self):
         """TTSRequest should validate text length."""
         from kadima.api.routers.generative import TTSRequest
-        req = TTSRequest(text="שלום עולם", backend="auto")
+        req = TTSRequest(text="שלום עולם", backend="auto", voice="Yonatan", use_g2p=False)
         assert req.text == "שלום עולם"
         assert req.backend == "auto"
+        assert req.voice == "Yonatan"
+        assert req.use_g2p is False
 
     def test_stt_request_schema(self):
         """STTRequest should validate audio_path."""

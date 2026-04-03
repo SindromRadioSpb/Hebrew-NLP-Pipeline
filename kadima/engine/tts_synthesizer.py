@@ -1,11 +1,13 @@
 # kadima/engine/tts_synthesizer.py
 """M15: Hebrew Text-to-Speech synthesis.
 
-Backends (fallback chain: piper → xtts → mms → bark_clone → error):
-- piper:  Piper TTS via onnxruntime, Hebrew model (~50MB, MIT license)
-- xtts:   Coqui XTTS v2, model ``tts_models/multilingual/multi-dataset/xtts_v2`` (4GB VRAM)
-- mms:    Facebook MMS-TTS via transformers, model ``facebook/mms-tts-heb`` (<1GB)
-- bark:   Suno Bark for voice cloning (2GB VRAM, MIT license)
+Backends:
+- f5tts:     F5-TTS Hebrew v2, primary quality backend with voice cloning
+- lightblue: LightBlue TTS, CPU ONNX fallback
+- phonikud:  Piper-compatible Hebrew ONNX fallback
+- mms:       Facebook MMS-TTS, always-available final fallback
+- bark:      Suno Bark, optional explicit voice-cloning backend
+- xtts:      Legacy backend kept only to return a clear "unsupported" failure
 
 No rules fallback — audio generation requires a model.
 Returns path to a WAV file on success.
@@ -13,9 +15,12 @@ Returns path to a WAV file on success.
 from __future__ import annotations
 
 import hashlib
+import importlib
 import logging
 import os
+import shutil
 import time
+import wave
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -71,6 +76,15 @@ except ImportError:
 def _text_hash(text: str) -> str:
     """SHA-256 hex digest of text for content-addressed cache keys."""
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def _probe_wav(path: Path) -> tuple[float, int]:
+    """Read WAV metadata without touching any model backend."""
+    with wave.open(str(path), "rb") as wf:
+        frames = wf.getnframes()
+        rate = wf.getframerate()
+    duration = frames / float(rate) if rate > 0 else 0.0
+    return duration, rate
 
 
 # ── Data classes ─────────────────────────────────────────────────────────────
@@ -253,27 +267,29 @@ def _mms_synthesize(text: str, device: str, output_dir: Path) -> TTSResult:
     Returns:
         TTSResult with audio_path, duration, and sample_rate.
     """
-    model, tokenizer = _get_mms(device)
-    import torch
-
-    inputs = tokenizer(text, return_tensors="pt").to(model.device)
-    with torch.no_grad():
-        output = model(**inputs).waveform
-    waveform = output.squeeze().cpu().numpy()
-
-    sample_rate: int = model.config.sampling_rate
     output_dir.mkdir(parents=True, exist_ok=True)
     cache_key = _text_hash(text)
     out_path = output_dir / f"tts_mms_{cache_key}.wav"
     if out_path.exists():
         logger.info("MMS cache hit: %s", out_path.name)
+        duration, sample_rate = _probe_wav(out_path)
         return TTSResult(
             audio_path=out_path,
             backend="mms",
             text_length=len(text),
-            duration_seconds=0.0,
+            duration_seconds=duration,
             sample_rate=sample_rate,
         )
+
+    model, tokenizer = _get_mms(device)
+    import torch
+
+    inputs = tokenizer(text, return_tensors="pt").to(model.device)
+    with torch.inference_mode():
+        output = model(**inputs).waveform
+    waveform = output.squeeze().cpu().numpy()
+
+    sample_rate: int = model.config.sampling_rate
 
     import scipy.io.wavfile as wavfile
 
@@ -289,12 +305,373 @@ def _mms_synthesize(text: str, device: str, output_dir: Path) -> TTSResult:
     )
 
 
-# ── Piper TTS backend ────────────────────────────────────────────────────────
-# MIT license, ~50MB Hebrew model, runs on CPU via onnxruntime
-# NOTE: Piper does NOT include a Hebrew model in rhasspy/piper-voices repo.
-# This backend is a placeholder for future Hebrew model support.
+# ── New Hebrew TTS backends ──────────────────────────────────────────────────
 
-_PIPER_AVAILABLE = False  # Disabled: no Hebrew model available in Piper repo
+_F5TTS_AVAILABLE = False
+try:
+    from f5_tts.model import DiT  # type: ignore[attr-defined]
+    from f5_tts.infer.utils_infer import (  # type: ignore[attr-defined]
+        infer_process as _f5_infer_process,
+        load_model as _f5_load_model,
+        load_vocoder as _f5_load_vocoder,
+        preprocess_ref_audio_text as _f5_preprocess_ref_audio_text,
+    )
+
+    _F5TTS_AVAILABLE = True
+    logger.info("F5-TTS available for synthesis")
+except ImportError:
+    DiT = None  # type: ignore[assignment]
+    _f5_infer_process = None  # type: ignore[assignment]
+    _f5_load_model = None  # type: ignore[assignment]
+    _f5_load_vocoder = None  # type: ignore[assignment]
+    _f5_preprocess_ref_audio_text = None  # type: ignore[assignment]
+
+_LIGHTBLUE_AVAILABLE = False
+_lightblue_module: Any = None
+for _lightblue_name in ("lightblue_tts", "lightblue", "LightBlueTTS"):
+    try:
+        _lightblue_module = importlib.import_module(_lightblue_name)
+        _LIGHTBLUE_AVAILABLE = True
+        logger.info("LightBlue TTS available via %s", _lightblue_name)
+        break
+    except ImportError:
+        continue
+
+_PHONIKUD_TTS_AVAILABLE = False
+try:
+    from piper import PiperVoice  # noqa: F401
+    import onnxruntime as _ort  # noqa: F401
+
+    _PHONIKUD_TTS_AVAILABLE = True
+    logger.info("Phonikud/Piper ONNX available for synthesis")
+except ImportError:
+    pass
+
+_ZONOS_AVAILABLE = False
+
+# Backward-compatible alias used by older tests/UI code.
+_PIPER_AVAILABLE = _PHONIKUD_TTS_AVAILABLE
+
+_f5tts_model: Any = None
+_f5tts_vocoder: Any = None
+_lightblue_runtime: Any = None
+_phonikud_tts_voice: Any = None
+
+_F5TTS_MODEL_PATH = Path(
+    os.environ.get("F5TTS_HEB_MODEL_PATH", "F:/datasets_models/tts/f5tts-hebrew-v2/model.pt")
+)
+_PHONIKUD_TTS_MODEL_PATH = Path(
+    os.environ.get("PHONIKUD_TTS_MODEL_PATH", "F:/datasets_models/tts/phonikud-tts/he_IL-heb-high.onnx")
+)
+_PHONIKUD_TTS_CONFIG_PATH = Path(
+    os.environ.get("PHONIKUD_TTS_CONFIG_PATH", f"{_PHONIKUD_TTS_MODEL_PATH}.json")
+)
+
+
+def _cache_key(text: str, *parts: str | None) -> str:
+    """Stable SHA-256 key for text plus backend-specific parameters."""
+    payload = "\x1f".join([text, *[part or "" for part in parts]])
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def _resolve_sample_rate(output: Any, fallback: int) -> int:
+    for attr in ("sample_rate", "sampling_rate"):
+        value = getattr(output, attr, None)
+        if isinstance(value, int) and value > 0:
+            return value
+    return fallback
+
+
+def _apply_hebrew_g2p(text: str, use_g2p: bool = True) -> str:
+    """Best-effort Hebrew vocalization for backends that benefit from G2P."""
+    if not use_g2p:
+        return text
+
+    try:
+        import phonikud  # type: ignore[import-not-found]
+
+        for attr in ("add_nikud", "add_niqqud", "add_diacritics"):
+            fn = getattr(phonikud, attr, None)
+            if callable(fn):
+                return fn(text)
+    except ImportError:
+        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("phonikud G2P failed: %s", exc)
+
+    try:
+        from phonikud_onnx import Phonikud as _PhOnnx  # type: ignore[import-not-found]
+
+        model_path = os.environ.get("PHONIKUD_ONNX_MODEL_PATH")
+        if model_path and Path(model_path).exists():
+            return _PhOnnx(model_path).add_diacritics(text)
+    except ImportError:
+        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("phonikud-onnx G2P failed: %s", exc)
+
+    return text
+
+
+def _write_wav_from_array(audio: Any, out_path: Path, sample_rate: int) -> tuple[float, int]:
+    import numpy as np
+    from scipy.io import wavfile
+
+    waveform = np.asarray(audio)
+    if waveform.ndim > 1:
+        waveform = waveform.squeeze()
+    wavfile.write(str(out_path), sample_rate, waveform)
+    duration = len(waveform) / float(sample_rate) if sample_rate > 0 else 0.0
+    return duration, sample_rate
+
+
+def _materialize_audio_output(output: Any, out_path: Path, default_sample_rate: int) -> tuple[float, int]:
+    """Normalize backend-specific output into a WAV file on disk."""
+    if output is None:
+        raise RuntimeError("backend returned no audio output")
+
+    if isinstance(output, (str, Path)):
+        src = Path(output)
+        if not src.exists():
+            raise FileNotFoundError(f"audio output not found: {src}")
+        if src.resolve() != out_path.resolve():
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src, out_path)
+        return _probe_wav(out_path)
+
+    if isinstance(output, tuple):
+        for item in output:
+            if isinstance(item, (str, Path)):
+                return _materialize_audio_output(item, out_path, default_sample_rate)
+        for item in output:
+            if hasattr(item, "shape") or isinstance(item, list):
+                return _write_wav_from_array(item, out_path, _resolve_sample_rate(output, default_sample_rate))
+
+    if isinstance(output, list):
+        return _write_wav_from_array(output, out_path, default_sample_rate)
+
+    if hasattr(output, "shape") or hasattr(output, "numpy"):
+        if hasattr(output, "detach"):
+            output = output.detach().cpu().numpy()
+        elif hasattr(output, "cpu") and hasattr(output, "numpy"):
+            output = output.cpu().numpy()
+        return _write_wav_from_array(output, out_path, _resolve_sample_rate(output, default_sample_rate))
+
+    raise RuntimeError(f"unsupported audio output type: {type(output)!r}")
+
+
+def _get_f5tts(device: str) -> tuple[Any, Any]:
+    """Lazy-load F5-TTS model + vocoder."""
+    global _f5tts_model, _f5tts_vocoder
+    if _f5tts_model is None or _f5tts_vocoder is None:
+        if not _F5TTS_AVAILABLE:
+            raise ImportError("f5-tts not installed")
+        if not _F5TTS_MODEL_PATH.exists():
+            raise FileNotFoundError(f"F5-TTS model not found: {_F5TTS_MODEL_PATH}")
+        import torch
+
+        dev = "cuda" if (device == "cuda" and torch.cuda.is_available()) else "cpu"
+        kwargs = {"device": dev}
+        try:
+            _f5tts_model = _f5_load_model(DiT, str(_F5TTS_MODEL_PATH), **kwargs)
+        except TypeError:
+            _f5tts_model = _f5_load_model(DiT, str(_F5TTS_MODEL_PATH))
+        try:
+            _f5tts_vocoder = _f5_load_vocoder(device=dev)
+        except TypeError:
+            _f5tts_vocoder = _f5_load_vocoder()
+        logger.info("F5-TTS model loaded on device=%s", dev)
+    return _f5tts_model, _f5tts_vocoder
+
+
+def _f5tts_synthesize(
+    text: str,
+    device: str,
+    output_dir: Path,
+    speaker_ref_path: Path | None = None,
+    use_g2p: bool = True,
+) -> TTSResult:
+    """Synthesize Hebrew speech via F5-TTS."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    speaker_key = str(speaker_ref_path.resolve()) if speaker_ref_path and speaker_ref_path.exists() else ""
+    cache_key = _cache_key(text, speaker_key, "g2p" if use_g2p else "raw")
+    out_path = output_dir / f"tts_f5tts_{cache_key}.wav"
+    if out_path.exists():
+        logger.info("F5-TTS cache hit: %s", out_path.name)
+        duration, sample_rate = _probe_wav(out_path)
+        return TTSResult(out_path, "f5tts", len(text), duration, sample_rate)
+
+    model, vocoder = _get_f5tts(device)
+    synth_text = _apply_hebrew_g2p(text, use_g2p=use_g2p)
+
+    ref_audio = None
+    ref_text = None
+    if speaker_ref_path and speaker_ref_path.exists() and _f5_preprocess_ref_audio_text is not None:
+        try:
+            preprocessed = _f5_preprocess_ref_audio_text(str(speaker_ref_path), "")
+            if isinstance(preprocessed, tuple) and len(preprocessed) >= 2:
+                ref_audio, ref_text = preprocessed[0], preprocessed[1]
+            else:
+                ref_audio = preprocessed
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("F5-TTS speaker preprocessing failed: %s", exc)
+
+    output = None
+    infer_errors: list[str] = []
+    call_variants = [
+        lambda: _f5_infer_process(ref_audio, ref_text, synth_text, model, vocoder=vocoder),
+        lambda: _f5_infer_process(ref_audio, ref_text, synth_text, model, vocoder),
+        lambda: _f5_infer_process(synth_text, model, vocoder=vocoder, ref_audio=ref_audio, ref_text=ref_text),
+        lambda: _f5_infer_process(synth_text, model, vocoder),
+    ]
+    for variant in call_variants:
+        try:
+            output = variant()
+            break
+        except TypeError as exc:
+            infer_errors.append(str(exc))
+            continue
+    if output is None:
+        raise RuntimeError(f"F5-TTS infer_process signature mismatch: {' | '.join(infer_errors)}")
+
+    duration, sample_rate = _materialize_audio_output(output, out_path, default_sample_rate=24000)
+    return TTSResult(out_path, "f5tts", len(text), duration, sample_rate)
+
+
+def _get_lightblue_runtime() -> Any:
+    """Resolve a usable LightBlue runtime object or module."""
+    global _lightblue_runtime
+    if _lightblue_runtime is None:
+        if not _LIGHTBLUE_AVAILABLE or _lightblue_module is None:
+            raise ImportError("LightBlue TTS is not installed")
+        module = _lightblue_module
+        runtime_cls = getattr(module, "LightBlueTTS", None) or getattr(module, "Engine", None)
+        _lightblue_runtime = runtime_cls() if callable(runtime_cls) else module
+    return _lightblue_runtime
+
+
+def _lightblue_synthesize(
+    text: str,
+    output_dir: Path,
+    voice: str | None = None,
+    use_g2p: bool = True,
+) -> TTSResult:
+    """Synthesize Hebrew speech via LightBlue CPU backend."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    synth_text = _apply_hebrew_g2p(text, use_g2p=use_g2p)
+    voice_name = voice or "Yonatan"
+    cache_key = _cache_key(synth_text, voice_name)
+    out_path = output_dir / f"tts_lightblue_{cache_key}.wav"
+    if out_path.exists():
+        logger.info("LightBlue cache hit: %s", out_path.name)
+        duration, sample_rate = _probe_wav(out_path)
+        return TTSResult(out_path, "lightblue", len(text), duration, sample_rate)
+
+    runtime = _get_lightblue_runtime()
+    output = None
+    method_names = ("synthesize_to_file", "tts_to_file", "save", "synthesize")
+    for method_name in method_names:
+        method = getattr(runtime, method_name, None)
+        if not callable(method):
+            continue
+        try:
+            output = method(synth_text, str(out_path), voice=voice_name)
+            break
+        except TypeError:
+            try:
+                output = method(synth_text, voice=voice_name, output_path=str(out_path))
+                break
+            except TypeError:
+                try:
+                    output = method(synth_text, voice_name, str(out_path))
+                    break
+                except TypeError:
+                    continue
+    if output is None and out_path.exists():
+        output = out_path
+    if output is None:
+        raise RuntimeError("LightBlue runtime does not expose a supported synthesis API")
+
+    duration, sample_rate = _materialize_audio_output(output, out_path, default_sample_rate=22050)
+    return TTSResult(out_path, "lightblue", len(text), duration, sample_rate)
+
+
+def _get_phonikud_tts_voice() -> Any:
+    """Lazy-load Piper-compatible Hebrew ONNX voice."""
+    global _phonikud_tts_voice
+    if _phonikud_tts_voice is None:
+        if not _PHONIKUD_TTS_AVAILABLE:
+            raise ImportError("piper-tts/onnxruntime not installed")
+        if not _PHONIKUD_TTS_MODEL_PATH.exists():
+            raise FileNotFoundError(f"Phonikud TTS model not found: {_PHONIKUD_TTS_MODEL_PATH}")
+        from piper import PiperVoice
+
+        if _PHONIKUD_TTS_CONFIG_PATH.exists():
+            try:
+                _phonikud_tts_voice = PiperVoice.load(
+                    str(_PHONIKUD_TTS_MODEL_PATH),
+                    config_path=str(_PHONIKUD_TTS_CONFIG_PATH),
+                )
+            except TypeError:
+                _phonikud_tts_voice = PiperVoice.load(
+                    str(_PHONIKUD_TTS_MODEL_PATH),
+                    str(_PHONIKUD_TTS_CONFIG_PATH),
+                )
+        else:
+            _phonikud_tts_voice = PiperVoice.load(str(_PHONIKUD_TTS_MODEL_PATH))
+        logger.info("Phonikud TTS voice loaded from %s", _PHONIKUD_TTS_MODEL_PATH)
+    return _phonikud_tts_voice
+
+
+def _phonikud_tts_synthesize(
+    text: str,
+    output_dir: Path,
+    voice: str | None = None,
+    use_g2p: bool = True,
+) -> TTSResult:
+    """Synthesize Hebrew speech via Piper-compatible ONNX voice."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    synth_text = _apply_hebrew_g2p(text, use_g2p=use_g2p)
+    voice_name = voice or "michael"
+    cache_key = _cache_key(synth_text, voice_name)
+    out_path = output_dir / f"tts_phonikud_{cache_key}.wav"
+    if out_path.exists():
+        logger.info("Phonikud TTS cache hit: %s", out_path.name)
+        duration, sample_rate = _probe_wav(out_path)
+        return TTSResult(out_path, "phonikud", len(text), duration, sample_rate)
+
+    runtime = _get_phonikud_tts_voice()
+    output = None
+    for method_name in ("synthesize", "synthesize_to_file", "tts_to_file"):
+        method = getattr(runtime, method_name, None)
+        if not callable(method):
+            continue
+        try:
+            output = method(synth_text, str(out_path))
+            break
+        except TypeError:
+            try:
+                output = method(synth_text, out_path)
+                break
+            except TypeError:
+                continue
+    if output is None and out_path.exists():
+        output = out_path
+    if output is None:
+        raise RuntimeError("Phonikud TTS runtime does not expose a supported synthesis API")
+
+    duration, sample_rate = _materialize_audio_output(output, out_path, default_sample_rate=22050)
+    return TTSResult(out_path, "phonikud", len(text), duration, sample_rate)
+
+
+def _piper_synthesize(
+    text: str,
+    output_dir: Path,
+    voice: str | None = None,
+    use_g2p: bool = True,
+) -> TTSResult:
+    """Backward-compatible alias to the Hebrew Phonikud/Piper backend."""
+    return _phonikud_tts_synthesize(text, output_dir, voice=voice, use_g2p=use_g2p)
 
 
 # ── Suno Bark backend (voice cloning) ────────────────────────────────────────
@@ -366,16 +743,18 @@ def _bark_synthesize(
 
     _get_bark(speaker_ref_path)
     output_dir.mkdir(parents=True, exist_ok=True)
-    cache_key = _text_hash(text)
+    speaker_key = str(speaker_ref_path.resolve()) if speaker_ref_path and speaker_ref_path.exists() else ""
+    cache_key = _cache_key(text, speaker_key)
     out_path = output_dir / f"tts_bark_{cache_key}.wav"
     if out_path.exists():
         logger.info("Bark cache hit: %s", out_path.name)
+        duration, sample_rate = _probe_wav(out_path)
         return TTSResult(
             audio_path=out_path,
             backend="bark",
             text_length=len(text),
-            duration_seconds=0.0,
-            sample_rate=16000,
+            duration_seconds=duration,
+            sample_rate=sample_rate,
         )
 
     # Bark uses history_prompt for voice cloning (path to speaker ref or preset)
@@ -409,14 +788,16 @@ _MAX_TEXT_LENGTH = 5000
 class TTSSynthesizer(Processor):
     """M15 — Hebrew TTS synthesizer.
 
-    Fallback chain: piper → xtts → mms → bark → FAILED.
+    Fallback chain: f5tts → lightblue → phonikud → mms → FAILED.
 
     Args:
         config: Module config dict. Expected keys:
-            - backend: "piper" | "xtts" | "mms" | "bark" | "auto" (default "auto")
+            - backend: "f5tts" | "lightblue" | "phonikud" | "mms" | "bark" | "xtts" | "auto"
             - device: "cuda" | "cpu" (default "cpu")
             - output_dir: str path for WAV output (default ~/.kadima/tts_output)
             - speaker_ref_path: optional path to speaker reference WAV for voice cloning
+            - voice: optional voice name for LightBlue/Phonikud
+            - use_g2p: apply best-effort Hebrew G2P before synthesis
     """
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
@@ -447,7 +828,7 @@ class TTSSynthesizer(Processor):
     def process(self, input_data: Any, config: dict[str, Any]) -> ProcessorResult:
         """Synthesize speech from Hebrew text.
 
-        Tries backends in order: piper → xtts → mms → bark (or specific backend).
+        Tries backends in order: f5tts → lightblue → phonikud → mms (or specific backend).
         Returns FAILED if no backend is available or all attempts raise.
 
         Args:
@@ -472,6 +853,8 @@ class TTSSynthesizer(Processor):
         device = merged.get("device", "cpu")
         output_dir = Path(merged.get("output_dir", str(_DEFAULT_OUTPUT_DIR)))
         speaker_ref_path = merged.get("speaker_ref_path")
+        voice = merged.get("voice")
+        use_g2p = bool(merged.get("use_g2p", True))
         if speaker_ref_path:
             speaker_ref_path = Path(speaker_ref_path)
 
@@ -480,17 +863,42 @@ class TTSSynthesizer(Processor):
 
         # Build ordered list of backends to try
         _BACKEND_MAP: dict[str, list[str]] = {
-            "piper": ["piper"],
+            "auto": ["f5tts", "lightblue", "phonikud", "mms"],
+            "f5tts": ["f5tts"],
+            "lightblue": ["lightblue"],
+            "phonikud": ["phonikud"],
+            "piper": ["phonikud"],
             "xtts": ["xtts"],
             "mms": ["mms"],
             "bark": ["bark"],
+            "premium": ["zonos", "f5tts", "lightblue", "phonikud", "mms"],
         }
-        backends_to_try = _BACKEND_MAP.get(backend, ["piper", "xtts", "mms", "bark"])
+        backends_to_try = _BACKEND_MAP.get(backend, _BACKEND_MAP["auto"])
 
         for bk in backends_to_try:
             try:
-                if bk == "piper":
-                    result = _piper_synthesize(input_data, output_dir)
+                if bk == "f5tts":
+                    result = _f5tts_synthesize(
+                        input_data,
+                        device,
+                        output_dir,
+                        speaker_ref_path=speaker_ref_path,
+                        use_g2p=use_g2p,
+                    )
+                elif bk == "lightblue":
+                    result = _lightblue_synthesize(
+                        input_data,
+                        output_dir,
+                        voice=voice,
+                        use_g2p=use_g2p,
+                    )
+                elif bk == "phonikud":
+                    result = _phonikud_tts_synthesize(
+                        input_data,
+                        output_dir,
+                        voice=voice,
+                        use_g2p=use_g2p,
+                    )
                 elif bk == "xtts":
                     # XTTS does not support Hebrew ('he' not in supported languages)
                     msg = "XTTS: Hebrew (he) is not supported — skipping"
@@ -500,7 +908,10 @@ class TTSSynthesizer(Processor):
                     result = _mms_synthesize(input_data, device, output_dir)
                 elif bk == "bark":
                     result = _bark_synthesize(input_data, output_dir, speaker_ref_path)
-                break
+                elif bk == "zonos":
+                    raise ImportError("Zonos backend is not implemented on Windows runtime yet")
+                if result is not None:
+                    break
             except ImportError as exc:
                 msg = f"{bk} backend unavailable: {exc}"
                 logger.warning(msg)
@@ -512,7 +923,7 @@ class TTSSynthesizer(Processor):
 
         if result is None:
             errors.append(
-                "No TTS backend available — install piper-tts, TTS, transformers, or suno-bark"
+                "No TTS backend available — install f5-tts, LightBlue, Piper/Phonikud, transformers, or suno-bark"
             )
             return ProcessorResult(
                 module_name=self.name,

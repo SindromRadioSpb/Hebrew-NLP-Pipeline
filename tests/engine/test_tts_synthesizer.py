@@ -11,7 +11,7 @@ Tests do NOT load any real model.  They verify:
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -119,7 +119,9 @@ def test_process_mms_unavailable_errors_contain_message(synth: TTSSynthesizer) -
 
 def test_process_auto_both_unavailable_returns_failed(synth: TTSSynthesizer) -> None:
     with (
-        patch("kadima.engine.tts_synthesizer._COQUI_AVAILABLE", False),
+        patch("kadima.engine.tts_synthesizer._F5TTS_AVAILABLE", False),
+        patch("kadima.engine.tts_synthesizer._LIGHTBLUE_AVAILABLE", False),
+        patch("kadima.engine.tts_synthesizer._PHONIKUD_TTS_AVAILABLE", False),
         patch("kadima.engine.tts_synthesizer._MMS_AVAILABLE", False),
     ):
         result = synth.process(HEBREW_TEXT, {"backend": "auto"})
@@ -143,7 +145,9 @@ def test_process_processing_time_non_negative(synth: TTSSynthesizer) -> None:
 
 def test_process_failed_audio_path_is_none(synth: TTSSynthesizer) -> None:
     with (
-        patch("kadima.engine.tts_synthesizer._COQUI_AVAILABLE", False),
+        patch("kadima.engine.tts_synthesizer._F5TTS_AVAILABLE", False),
+        patch("kadima.engine.tts_synthesizer._LIGHTBLUE_AVAILABLE", False),
+        patch("kadima.engine.tts_synthesizer._PHONIKUD_TTS_AVAILABLE", False),
         patch("kadima.engine.tts_synthesizer._MMS_AVAILABLE", False),
     ):
         result = synth.process(HEBREW_TEXT, {"backend": "auto"})
@@ -191,7 +195,9 @@ def test_process_batch_empty_list(synth: TTSSynthesizer) -> None:
 def test_process_batch_returns_same_length(synth: TTSSynthesizer) -> None:
     inputs = [HEBREW_TEXT, "בוקר טוב", ""]
     with (
-        patch("kadima.engine.tts_synthesizer._COQUI_AVAILABLE", False),
+        patch("kadima.engine.tts_synthesizer._F5TTS_AVAILABLE", False),
+        patch("kadima.engine.tts_synthesizer._LIGHTBLUE_AVAILABLE", False),
+        patch("kadima.engine.tts_synthesizer._PHONIKUD_TTS_AVAILABLE", False),
         patch("kadima.engine.tts_synthesizer._MMS_AVAILABLE", False),
     ):
         results = synth.process_batch(inputs, {"backend": "auto"})
@@ -203,7 +209,9 @@ def test_process_batch_each_item_is_processor_result(synth: TTSSynthesizer) -> N
 
     inputs = [HEBREW_TEXT, "בוקר טוב"]
     with (
-        patch("kadima.engine.tts_synthesizer._COQUI_AVAILABLE", False),
+        patch("kadima.engine.tts_synthesizer._F5TTS_AVAILABLE", False),
+        patch("kadima.engine.tts_synthesizer._LIGHTBLUE_AVAILABLE", False),
+        patch("kadima.engine.tts_synthesizer._PHONIKUD_TTS_AVAILABLE", False),
         patch("kadima.engine.tts_synthesizer._MMS_AVAILABLE", False),
     ):
         results = synth.process_batch(inputs, {"backend": "auto"})
@@ -214,56 +222,27 @@ def test_process_batch_each_item_is_processor_result(synth: TTSSynthesizer) -> N
 # ── Mock-model success path ───────────────────────────────────────────────────
 
 
-def test_process_xtts_success_with_mocked_model(
+def test_process_xtts_hebrew_returns_failed_even_if_package_available(
     synth: TTSSynthesizer, tmp_path: Path
 ) -> None:
-    """Verify process() returns READY when xtts backend succeeds (mocked)."""
-    mock_tts = MagicMock()
-    # Simulate tts_to_file writing a valid WAV file
-    import wave
-    import struct
-
-    wav_path = tmp_path / "out.wav"
-    # Write a minimal valid WAV (1 second, 22050 Hz, mono, 16-bit)
-    sample_rate = 22050
-    n_frames = sample_rate
-    with wave.open(str(wav_path), "w") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(sample_rate)
-        wf.writeframes(struct.pack("<" + "h" * n_frames, *([0] * n_frames)))
-
-    def fake_tts_to_file(text: str, language: str, file_path: str) -> None:
-        import shutil
-        shutil.copy(str(wav_path), file_path)
-
-    mock_tts.tts_to_file.side_effect = fake_tts_to_file
-
+    """XTTS must not be used for Hebrew even when Coqui is installed."""
     with (
         patch("kadima.engine.tts_synthesizer._COQUI_AVAILABLE", True),
-        patch("kadima.engine.tts_synthesizer._xtts_model", None),
-        patch(
-            "kadima.engine.tts_synthesizer._get_xtts", return_value=mock_tts
-        ),
+        patch("kadima.engine.tts_synthesizer._get_xtts", side_effect=AssertionError("_get_xtts must not be called")),
     ):
         result = synth.process(HEBREW_TEXT, {"backend": "xtts", "output_dir": str(tmp_path)})
 
-    assert result.status == ProcessorStatus.READY
+    assert result.status == ProcessorStatus.FAILED
     assert result.data is not None
-    assert result.data.audio_path is not None
-    assert result.data.backend == "xtts"
-    assert result.data.duration_seconds > 0
+    assert result.data.audio_path is None
+    assert any("xtts" in error.lower() and "supported" in error.lower() for error in result.errors)
 
 
 def test_process_mms_success_with_mocked_model(
     synth: TTSSynthesizer, tmp_path: Path
 ) -> None:
     """Verify process() returns READY when mms backend succeeds (mocked)."""
-    import numpy as np
-
     sample_rate = 16000
-    n_frames = sample_rate
-    waveform = np.zeros(n_frames, dtype=np.float32)
 
     fake_result = TTSResult(
         audio_path=tmp_path / "mms_out.wav",

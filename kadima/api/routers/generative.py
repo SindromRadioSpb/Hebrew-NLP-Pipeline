@@ -475,16 +475,20 @@ async def qa(req: QARequest) -> QAResponse:
 
 class TTSRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=5000, description="Hebrew text to synthesize")
-    backend: str = Field(default="auto", pattern=r"^(auto|piper|xtts|mms|bark)$")
+    backend: str = Field(default="auto", pattern=r"^(auto|f5tts|lightblue|phonikud|mms|zonos|bark|xtts|piper)$")
     device: str = Field(default="cpu", pattern=r"^(cpu|cuda)$")
     speaker_ref_path: str | None = Field(default=None, description="Path to speaker reference WAV for voice cloning")
+    voice: str | None = Field(default=None, description="Voice name for LightBlue/Phonikud backends")
+    use_g2p: bool = Field(default=True, description="Apply Hebrew G2P/niqqud preprocessing before synthesis")
 
 
 class TTSResponse(BaseModel):
     audio_path: str | None
     backend: str
+    backend_used: str
     text_length: int
     duration_seconds: float
+    sample_rate: int
 
 
 @router.post("/tts", response_model=TTSResponse)
@@ -492,14 +496,24 @@ async def tts(req: TTSRequest) -> TTSResponse:
     """Synthesize Hebrew text to speech (M15 TTS Synthesizer).
 
     Returns audio file path on server and metadata.
-    Backend auto-selects: piper → XTTS v2 → MMS-TTS → Bark fallback.
+    Backend auto-selects: F5-TTS → LightBlue → Phonikud/Piper ONNX → MMS.
+    Bark remains explicit-only. XTTS is kept only as a legacy unsupported option.
     Returns audio_path=null if no TTS backend is installed.
     """
     from pathlib import Path
     from kadima.engine.tts_synthesizer import TTSSynthesizer
 
     proc = TTSSynthesizer()
-    result = proc.process(req.text, {"backend": req.backend, "device": req.device})
+    result = proc.process(
+        req.text,
+        {
+            "backend": req.backend,
+            "device": req.device,
+            "speaker_ref_path": req.speaker_ref_path,
+            "voice": req.voice,
+            "use_g2p": req.use_g2p,
+        },
+    )
     # TTS returns FAILED if no backend available but still fills data for text_length
     data = result.data
     if data is None:
@@ -509,8 +523,10 @@ async def tts(req: TTSRequest) -> TTSResponse:
     return TTSResponse(
         audio_path=audio_path_str,
         backend=data.backend,
+        backend_used=data.backend,
         text_length=data.text_length,
         duration_seconds=data.duration_seconds,
+        sample_rate=data.sample_rate,
     )
 
 
