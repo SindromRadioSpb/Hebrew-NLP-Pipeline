@@ -29,6 +29,7 @@ from kadima.engine.tts_synthesizer import (
     _split_f5tts_segments,
     _split_tts_segments,
     _text_hash,
+    list_f5tts_voice_presets,
 )
 
 
@@ -132,6 +133,16 @@ class TestF5TTSBackend:
 
         assert ref_file == voices / "preset1.wav"
         assert ref_text == "שלום"
+
+    def test_list_f5tts_voice_presets_returns_sorted_wav_stems(self, tmp_path: Path) -> None:
+        voices = tmp_path / "voices"
+        voices.mkdir()
+        (voices / "beta.wav").write_bytes(b"RIFF")
+        (voices / "alpha.wav").write_bytes(b"RIFF")
+        (voices / "ignore.txt").write_text("x", encoding="utf-8")
+
+        with patch("kadima.engine.tts_synthesizer._F5TTS_VOICE_PRESETS_DIR", voices):
+            assert list_f5tts_voice_presets() == ["alpha", "beta"]
 
     def test_f5tts_uses_direct_segmented_sample_path(self, tmp_path: Path) -> None:
         with (

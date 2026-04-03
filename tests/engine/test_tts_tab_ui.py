@@ -71,13 +71,13 @@ def test_tts_clear_resets_voice_progress_and_export(qtbot) -> None:
         view = _make_view()
         qtbot.add_widget(view)
     view._tts_input.setPlainText("שלום עולם")
-    view._tts_voice_input.setText("Yonatan")
+    view._tts_voice_input.setCurrentText("Yonatan")
     view._tts_status.setText("Running...")
     view._tts_progress.setVisible(True)
     view._tts_export_btn.setEnabled(True)
     view._on_tts_clear()
     assert view._tts_input.toPlainText() == ""
-    assert view._tts_voice_input.text() == ""
+    assert view._tts_voice_input.currentText() == ""
     assert view._tts_status.text() == "Ready"
     assert not view._tts_progress.isVisible()
     assert not view._tts_export_btn.isEnabled()
@@ -103,3 +103,27 @@ def test_tts_result_updates_status_and_enables_export(qtbot, tmp_path: Path) -> 
     assert view._tts_export_btn.isEnabled()
     assert "lightblue" in view._tts_status.text()
     assert "22050 Hz" in view._tts_status.text()
+
+
+def test_tts_voice_combo_loads_local_f5_presets(qtbot) -> None:
+    with ExitStack() as stack:
+        for ctx in _tts_patches():
+            stack.enter_context(ctx)
+        stack.enter_context(
+            patch(
+                "kadima.ui.generative_view._list_f5tts_voice_presets",
+                return_value=["fleurs-he-m1513", "fleurs-he-m1517"],
+            )
+        )
+        stack.enter_context(
+            patch(
+                "kadima.ui.generative_view._get_f5tts_voice_presets_dir",
+                return_value=Path(r"F:\datasets_models\tts\f5tts-hebrew-v2\voices"),
+            )
+        )
+        view = _make_view()
+        qtbot.add_widget(view)
+
+    values = [view._tts_voice_input.itemText(i) for i in range(view._tts_voice_input.count())]
+    assert values == ["", "fleurs-he-m1513", "fleurs-he-m1517"]
+    assert "Local F5 preset voices loaded from" in view._tts_voice_input.toolTip()

@@ -425,6 +425,22 @@ def _cache_key(text: str, *parts: str | None) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
+def get_f5tts_voice_presets_dir() -> Path:
+    """Return the local directory scanned for F5-TTS preset voices."""
+    return _F5TTS_VOICE_PRESETS_DIR
+
+
+def list_f5tts_voice_presets() -> list[str]:
+    """Return sorted preset names that have a matching ``.wav`` file."""
+    if not _F5TTS_VOICE_PRESETS_DIR.exists():
+        return []
+    return sorted(
+        preset.stem
+        for preset in _F5TTS_VOICE_PRESETS_DIR.glob("*.wav")
+        if preset.is_file()
+    )
+
+
 def _resolve_sample_rate(output: Any, fallback: int) -> int:
     for attr in ("sample_rate", "sampling_rate"):
         value = getattr(output, attr, None)

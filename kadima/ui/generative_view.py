@@ -49,9 +49,15 @@ except ImportError:
     _SentimentCls = None  # type: ignore[assignment,misc]
 
 try:
-    from kadima.engine.tts_synthesizer import TTSSynthesizer as _TTSCls
+    from kadima.engine.tts_synthesizer import (
+        TTSSynthesizer as _TTSCls,
+        get_f5tts_voice_presets_dir as _get_f5tts_voice_presets_dir,
+        list_f5tts_voice_presets as _list_f5tts_voice_presets,
+    )
 except ImportError:
     _TTSCls = None  # type: ignore[assignment,misc]
+    _get_f5tts_voice_presets_dir = None  # type: ignore[assignment,misc]
+    _list_f5tts_voice_presets = None  # type: ignore[assignment,misc]
 
 try:
     from kadima.engine.stt_transcriber import STTTranscriber as _STTCls
@@ -463,10 +469,15 @@ class GenerativeView(QWidget):
         voice_lbl = QLabel("Voice:")
         voice_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
         voice_row.addWidget(voice_lbl)
-        self._tts_voice_input = QLineEdit()
+        self._tts_voice_input = QComboBox()
         self._tts_voice_input.setObjectName("generative_tts_voice")
-        self._tts_voice_input.setPlaceholderText("Optional voice preset name; F5 needs local voices/<name>.wav")
+        self._tts_voice_input.setEditable(True)
+        self._tts_voice_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        line_edit = self._tts_voice_input.lineEdit()
+        if line_edit is not None:
+            line_edit.setPlaceholderText("Optional voice preset; F5 reads local voices/<name>.wav")
         voice_row.addWidget(self._tts_voice_input, stretch=1)
+        self._populate_f5_voice_presets()
         lay.addLayout(voice_row)
 
         btn_row, run_btn, clear_btn, _, export_btn = self._make_button_row(
@@ -513,7 +524,7 @@ class GenerativeView(QWidget):
         backend = self._tts_backend.backend
         device = self._tts_backend.device
         speaker_ref = self._tts_speaker_ref_input.text().strip() or None
-        voice = self._tts_voice_input.text().strip() or None
+        voice = self._tts_voice_input.currentText().strip() or None
         worker = GenerativeWorker(
             tab_name="tts",
             module_cls=_TTSCls,
@@ -589,7 +600,7 @@ class GenerativeView(QWidget):
         self._tts_input.clear()
         self._tts_audio_player.clear()
         self._tts_speaker_ref_input.clear()
-        self._tts_voice_input.clear()
+        self._tts_voice_input.setCurrentText("")
         self._tts_char_count.setText("0 chars")
         self._tts_word_count.setText("0 words")
         self._tts_progress.setVisible(False)
@@ -620,6 +631,27 @@ class GenerativeView(QWidget):
             return
         shutil.copyfile(self._tts_last_audio_path, path)
         self._tts_status.setText(f"Saved WAV to {path}")
+
+    def _populate_f5_voice_presets(self) -> None:
+        if _list_f5tts_voice_presets is None:
+            return
+        current = self._tts_voice_input.currentText().strip()
+        presets = _list_f5tts_voice_presets()
+        self._tts_voice_input.blockSignals(True)
+        self._tts_voice_input.clear()
+        self._tts_voice_input.addItem("")
+        self._tts_voice_input.addItems(presets)
+        self._tts_voice_input.blockSignals(False)
+        self._tts_voice_input.setCurrentText(current)
+        if presets:
+            presets_dir = _get_f5tts_voice_presets_dir() if _get_f5tts_voice_presets_dir else None
+            self._tts_voice_input.setToolTip(
+                f"Local F5 preset voices loaded from {presets_dir}"
+            )
+        else:
+            self._tts_voice_input.setToolTip(
+                "No local F5 preset voices found; use speaker reference WAV for cloning."
+            )
 
     def _set_tts_badge(self, badge: QLabel, ok: bool, ready_text: str, missing_text: str) -> None:
         if ok:

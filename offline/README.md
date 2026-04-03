@@ -55,6 +55,8 @@ $env:PHONIKUD_TTS_CONFIG_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-hig
 - Hebrew fine-tunes must use direct `model.sample()` with the custom vocab path; the generic F5 CLI/batch path is not used here.
 - `speaker_ref_path` no longer requires `F5TTS_REF_TEXT`. If no transcript is supplied, upstream ASR is used for the reference WAV.
 - Optional voice presets can be staged under `F:\datasets_models\tts\f5tts-hebrew-v2\voices\` as `<voice>.wav` plus optional `<voice>.txt`.
+- A local open-source preset pack can live in that directory. Current staged pack uses `google/fleurs` `he_il` references under `cc-by-4.0`; see `voices\README.txt` and `voices\manifest.csv` for attribution and exact source rows.
+- Current local preset names are: `fleurs-he-m1511`, `fleurs-he-m1512`, `fleurs-he-m1513`, `fleurs-he-m1515`, `fleurs-he-m1516`, `fleurs-he-m1517`, `fleurs-he-m1660`, `fleurs-he-m1661`, `fleurs-he-m1664`, `fleurs-he-m1666`.
 - The Hugging Face model repo currently publishes only `model.safetensors` and `vocab.txt`; it does not publish the 58 preset reference WAV/TXT files, so preset voice selection is supported by runtime but not bundled by default.
 - Without `voices\*.wav` or an explicit `speaker_ref_path`, `f5tts` falls back to the packaged demo reference voice from the upstream `f5-tts` wheel.
 
