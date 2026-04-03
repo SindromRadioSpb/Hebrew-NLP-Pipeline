@@ -60,22 +60,25 @@ KB (kb/)                     ← Knowledge Base
 
 ## Development
 
-```bash
-# Setup
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[all]"
+```powershell
+# Setup (Windows / primary workflow)
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[all]"
 
 # Test
-pytest tests/ -v
+python -m pytest tests\ -v
 
 # Lint
-ruff check kadima/
+python -m ruff check kadima\
 
 # Database migrations
-kadima migrate --new my_change    # Create migration
-kadima migrate                    # Apply pending
-kadima migrate --status           # Show version
+python -m kadima migrate --new my_change    # Create migration
+python -m kadima migrate                    # Apply pending
+python -m kadima migrate --status           # Show version
 ```
+
+Only `.venv` is supported as the working virtual environment for this repository. Legacy directories such as `.venv-311` should not be used and may be removed.
 
 ## Docker
 
