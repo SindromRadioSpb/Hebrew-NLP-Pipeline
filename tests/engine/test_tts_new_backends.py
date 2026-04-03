@@ -3,7 +3,6 @@
 
 Tests do NOT load any real model. They verify:
 - F5-TTS / LightBlue / Phonikud explicit backend behavior
-- Bark speaker_ref_path routing
 - Auto fallback order
 - Cache behavior for MMS
 """
@@ -194,6 +193,7 @@ class TestF5TTSBackend:
         assert mock_segmented.call_count == 2
         assert mock_segmented.call_args_list[0].args[3] == custom_ref
         assert mock_segmented.call_args_list[1].args[3] == default_ref
+        assert result.note == "Selected F5 preset/reference failed; bundled default voice used."
 
 
 class TestLightBlueBackend:
@@ -254,32 +254,18 @@ class TestPhonikudBackend:
         assert mock_ph.call_args.kwargs["voice"] == "michael"
 
 
-class TestBarkBackend:
-    def test_process_bark_unavailable_returns_failed(self, synth: TTSSynthesizer) -> None:
-        with patch("kadima.engine.tts_synthesizer._BARK_AVAILABLE", False):
-            result = synth.process(HEBREW_TEXT, {"backend": "bark"})
+class TestRemovedBackends:
+    def test_process_bark_returns_unsupported_backend(self, synth: TTSSynthesizer) -> None:
+        result = synth.process(HEBREW_TEXT, {"backend": "bark"})
         assert result.status == ProcessorStatus.FAILED
+        assert result.data is not None
+        assert any(error == "Unsupported TTS backend: bark" for error in result.errors)
 
-    def test_process_bark_with_speaker_ref(self, synth: TTSSynthesizer, tmp_path: Path) -> None:
-        ref_path = tmp_path / "speaker.wav"
-        ref_path.touch()
-        fake_result = TTSResult(
-            audio_path=tmp_path / "bark_voice.wav",
-            backend="bark",
-            text_length=len(HEBREW_TEXT),
-            duration_seconds=3.0,
-            sample_rate=16000,
-        )
-        with (
-            patch("kadima.engine.tts_synthesizer._BARK_AVAILABLE", True),
-            patch("kadima.engine.tts_synthesizer._bark_synthesize", return_value=fake_result) as mock_bark,
-        ):
-            result = synth.process(
-                HEBREW_TEXT,
-                {"backend": "bark", "output_dir": str(tmp_path), "speaker_ref_path": str(ref_path)},
-            )
-        assert result.status == ProcessorStatus.READY
-        assert mock_bark.call_args[0][2] == ref_path
+    def test_process_zonos_returns_unsupported_backend(self, synth: TTSSynthesizer) -> None:
+        result = synth.process(HEBREW_TEXT, {"backend": "zonos"})
+        assert result.status == ProcessorStatus.FAILED
+        assert result.data is not None
+        assert any(error == "Unsupported TTS backend: zonos" for error in result.errors)
 
 
 class TestFallbackChain:

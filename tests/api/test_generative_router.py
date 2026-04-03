@@ -133,10 +133,11 @@ class TestTTSEndpoint:
                     status=ProcessorStatus.READY,
                     data=TTSResult(
                         audio_path=Path("/tmp/fake.wav"),
-                        backend="bark",
+                        backend="f5tts",
                         text_length=len(text),
                         duration_seconds=1.0,
                         sample_rate=16000,
+                        note="Selected F5 preset/reference failed; bundled default voice used.",
                     ),
                 )
 
@@ -145,7 +146,7 @@ class TestTTSEndpoint:
                 "/api/v1/generative/tts",
                 json={
                     "text": "שלום",
-                    "backend": "bark",
+                    "backend": "f5tts",
                     "device": "cpu",
                     "speaker_ref_path": "C:/voice/ref.wav",
                     "voice": "michael",
@@ -159,7 +160,8 @@ class TestTTSEndpoint:
         assert captured["config"]["voice"] == "michael"
         assert captured["config"]["use_g2p"] is False
         assert response.json()["sample_rate"] == 16000
-        assert response.json()["backend_used"] == "bark"
+        assert response.json()["backend_used"] == "f5tts"
+        assert "bundled default voice used" in response.json()["note"]
 
 
 # ── STT Transcriber (M16) ─────────────────────────────────────────────────────

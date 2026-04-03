@@ -64,8 +64,6 @@ gpu = [
     "phonikud-onnx>=1.0.0",
     # M15 TTS — Piper TTS (MIT license, Hebrew support)
     "piper-tts>=1.2.0",
-    # M15 TTS — Suno Bark (voice cloning, MIT license)
-    "suno-bark>=0.1.0",
     # M16 STT
     "openai-whisper>=20231117",
 ]

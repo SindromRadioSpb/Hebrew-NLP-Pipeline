@@ -126,7 +126,7 @@ class CanonicalizeResponse(BaseModel):
 @router.post("/canonicalize", response_model=CanonicalizeResponse)
 async def canonicalize(req: CanonicalizeRequest) -> CanonicalizeResponse:
     """Canonicalize Hebrew surface forms: det removal, niqqud stripping, clitic decomposition.
-    
+
     M6: Canonicalizer — приведение поверхностных форм к каноническим.
     Supports hebpipe (full lemma) and rule-based (det/final/niqqud/clitic) backends.
     """
@@ -475,7 +475,7 @@ async def qa(req: QARequest) -> QAResponse:
 
 class TTSRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=5000, description="Hebrew text to synthesize")
-    backend: str = Field(default="auto", pattern=r"^(auto|f5tts|lightblue|phonikud|mms|zonos|bark|xtts|piper)$")
+    backend: str = Field(default="auto", pattern=r"^(auto|f5tts|lightblue|phonikud|mms)$")
     device: str = Field(default="cpu", pattern=r"^(cpu|cuda)$")
     speaker_ref_path: str | None = Field(default=None, description="Path to speaker reference WAV for voice cloning")
     voice: str | None = Field(default=None, description="Voice name for LightBlue/Phonikud backends")
@@ -489,6 +489,7 @@ class TTSResponse(BaseModel):
     text_length: int
     duration_seconds: float
     sample_rate: int
+    note: str | None = None
 
 
 @router.post("/tts", response_model=TTSResponse)
@@ -497,10 +498,8 @@ async def tts(req: TTSRequest) -> TTSResponse:
 
     Returns audio file path on server and metadata.
     Backend auto-selects: F5-TTS → LightBlue → Phonikud/Piper ONNX → MMS.
-    Bark remains explicit-only. XTTS is kept only as a legacy unsupported option.
     Returns audio_path=null if no TTS backend is installed.
     """
-    from pathlib import Path
     from kadima.engine.tts_synthesizer import TTSSynthesizer
 
     proc = TTSSynthesizer()
@@ -527,6 +526,7 @@ async def tts(req: TTSRequest) -> TTSResponse:
         text_length=data.text_length,
         duration_seconds=data.duration_seconds,
         sample_rate=data.sample_rate,
+        note=data.note,
     )
 
 

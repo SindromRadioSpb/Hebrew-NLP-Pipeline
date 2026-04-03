@@ -61,12 +61,13 @@ $env:PHONIKUD_TTS_CONFIG_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-hig
 - Current `google/fleurs` preset references are treated as experimental. If one produces a non-finite F5 waveform, runtime logs a warning and falls back to the bundled default voice so synthesis still completes.
 - Without `voices\*.wav` or an explicit `speaker_ref_path`, `f5tts` falls back to the packaged demo reference voice from the upstream `f5-tts` wheel.
 
-## Bark
+## Removed Backends
 
-`bark` is optional and is not bundled into the offline bootstrap for the prototype release.
+`zonos` and `bark` are intentionally excluded from the prototype release contract.
 
-- Readiness should show `bark` as optional unless `bark`/`suno-bark` is installed separately.
-- Primary product path for Hebrew remains `f5tts -> lightblue -> phonikud -> mms`.
+- `zonos` was dropped because the Windows runtime never had a production-ready implementation and the earlier WSL2/premium idea would have been a false backend promise in UI/API.
+- `bark` was dropped because it is not bundled offline, is slow/heavy for the prototype, and overlaps with the now-working `f5tts` cloning flow while worsening UX clarity.
+- Release-supported Hebrew path is `f5tts -> lightblue -> phonikud -> mms`.
 
 ## Readiness Check
 

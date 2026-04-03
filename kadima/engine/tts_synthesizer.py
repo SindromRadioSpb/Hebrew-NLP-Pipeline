@@ -1,13 +1,16 @@
 # kadima/engine/tts_synthesizer.py
 """M15: Hebrew Text-to-Speech synthesis.
 
-Backends:
+Release backends:
 - f5tts:     F5-TTS Hebrew v2, primary quality backend with voice cloning
 - lightblue: LightBlue TTS, CPU ONNX fallback
 - phonikud:  Piper-compatible Hebrew ONNX fallback
 - mms:       Facebook MMS-TTS, always-available final fallback
-- bark:      Suno Bark, optional explicit voice-cloning backend
-- xtts:      Legacy backend kept only to return a clear "unsupported" failure
+
+Legacy backend handling:
+- xtts:      Explicit unsupported branch kept only to return a clear failure
+- bark:      Removed from release contract
+- zonos:     Removed from release contract
 
 No rules fallback — audio generation requires a model.
 Returns path to a WAV file on success.
@@ -47,6 +50,10 @@ logger = logging.getLogger(__name__)
 
 # ── Optional ML imports ─────────────────────────────────────────────────────
 
+if os.environ.get("TRANSFORMERS_CACHE") and not os.environ.get("HF_HOME"):
+    os.environ["HF_HOME"] = os.environ["TRANSFORMERS_CACHE"]
+    os.environ.pop("TRANSFORMERS_CACHE", None)
+
 _COQUI_AVAILABLE = False
 try:
     from TTS.api import TTS as CoquiTTS  # noqa: F401
@@ -75,17 +82,6 @@ try:
     logger.info("Piper TTS available for synthesis (MIT license)")
 except ImportError:
     pass
-
-_BARK_AVAILABLE = False
-try:
-    from bark import SAMPLE_RATE, generate_audio  # noqa: F401
-    import numpy as _np  # noqa: F401
-
-    _BARK_AVAILABLE = True
-    logger.info("Suno Bark available for voice cloning (MIT license)")
-except ImportError:
-    pass
-
 
 # ── Content-addressed cache helpers ─────────────────────────────────────────
 
@@ -130,6 +126,7 @@ class TTSResult:
     text_length: int = 0
     duration_seconds: float = 0.0
     sample_rate: int = 22050
+    note: str | None = None
 
 
 # ── XTTS backend ─────────────────────────────────────────────────────────────
@@ -389,8 +386,6 @@ try:
     logger.info("Phonikud/Piper ONNX available for synthesis")
 except ImportError:
     pass
-
-_ZONOS_AVAILABLE = False
 
 # Backward-compatible alias used by older tests/UI code.
 _PIPER_AVAILABLE = _PHONIKUD_TTS_AVAILABLE
@@ -1019,6 +1014,14 @@ def _f5tts_synthesize(
             out_path,
             device=device,
         )
+        return TTSResult(
+            out_path,
+            "f5tts",
+            len(text),
+            duration,
+            sample_rate,
+            note="Selected F5 preset/reference failed; bundled default voice used.",
+        )
     return TTSResult(out_path, "f5tts", len(text), duration, sample_rate)
 
 
@@ -1212,111 +1215,6 @@ def _piper_synthesize(
     return _phonikud_tts_synthesize(text, output_dir, voice=voice, use_g2p=use_g2p)
 
 
-# ── Suno Bark backend (voice cloning) ────────────────────────────────────────
-# MIT license, ~2GB VRAM, requires speaker reference WAV for voice cloning
-
-_bark_loaded: bool = False
-_bark_speaker_ref: Path | None = None
-
-_BARK_LOCAL_PATH = os.environ.get(
-    "BARK_MODELS_PATH",
-    str(Path(os.path.expanduser("~")) / ".cache" / "bark" / "models"),
-)
-
-
-def _patch_torch_for_bark() -> None:
-    """Patch torch.load globally to use weights_only=False for Bark compatibility.
-
-    PyTorch 2.6 changed the default weights_only=False → True, which breaks
-    libraries like Bark that use pickle with numpy types. This patch restores
-    the old behavior globally.
-    """
-    import torch
-    if getattr(torch, "_kadima_patched_tts_bark", False):
-        return
-    _original_load = torch.load
-    def _safe_load(*args, **kwargs):
-        kwargs.pop("weights_only", None)
-        return _original_load(*args, weights_only=False, **kwargs)
-    torch.load = _safe_load
-    torch._kadima_patched_tts_bark = True
-    logger.debug("Patched torch.load for Bark/XTTS compatibility")
-
-
-def _get_bark(speaker_ref_path: Path | None = None) -> None:
-    """Ensure Bark is loaded.
-
-    Args:
-        speaker_ref_path: Optional path to speaker reference WAV for voice cloning.
-    """
-    global _bark_loaded, _bark_speaker_ref
-    if not _bark_loaded:
-        if not _BARK_AVAILABLE:
-            raise ImportError(
-                "suno-bark not installed — install with: pip install suno-bark"
-            )
-        # Patch torch.load globally before anyone uses it (including Bark internal)
-        _patch_torch_for_bark()
-        _bark_speaker_ref = speaker_ref_path
-        _bark_loaded = True
-        logger.info("Suno Bark loaded; speaker_ref=%s", speaker_ref_path)
-
-
-def _bark_synthesize(
-    text: str, output_dir: Path, speaker_ref_path: Path | None = None
-) -> TTSResult:
-    """Synthesize speech using Suno Bark with optional voice cloning.
-
-    Args:
-        text: Hebrew input text.
-        output_dir: Directory to write the WAV file into.
-        speaker_ref_path: Optional path to speaker reference WAV (2-3 sec).
-
-    Returns:
-        TTSResult with audio_path, duration, and sample_rate.
-    """
-    from bark import SAMPLE_RATE, generate_audio
-    from scipy.io.wavfile import write as wav_write
-    import numpy as np
-
-    _get_bark(speaker_ref_path)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    speaker_key = str(speaker_ref_path.resolve()) if speaker_ref_path and speaker_ref_path.exists() else ""
-    cache_key = _cache_key(text, speaker_key)
-    out_path = output_dir / f"tts_bark_{cache_key}.wav"
-    if out_path.exists():
-        logger.info("Bark cache hit: %s", out_path.name)
-        duration, sample_rate = _probe_wav(out_path)
-        return TTSResult(
-            audio_path=out_path,
-            backend="bark",
-            text_length=len(text),
-            duration_seconds=duration,
-            sample_rate=sample_rate,
-        )
-
-    # Bark uses history_prompt for voice cloning (path to speaker ref or preset)
-    history_prompt: str | None = None
-    if speaker_ref_path and speaker_ref_path.exists():
-        history_prompt = str(speaker_ref_path)
-    elif _bark_speaker_ref and _bark_speaker_ref.exists():
-        history_prompt = str(_bark_speaker_ref)
-
-    # generate_audio returns numpy array of audio samples
-    audio_array = generate_audio(text, history_prompt=history_prompt)
-
-    wav_write(str(out_path), SAMPLE_RATE, audio_array)
-    duration = len(audio_array) / SAMPLE_RATE
-
-    return TTSResult(
-        audio_path=out_path,
-        backend="bark",
-        text_length=len(text),
-        duration_seconds=duration,
-        sample_rate=SAMPLE_RATE,
-    )
-
-
 # ── Processor ─────────────────────────────────────────────────────────────────
 
 _DEFAULT_OUTPUT_DIR = Path(os.path.expanduser("~/.kadima/tts_output"))
@@ -1330,7 +1228,7 @@ class TTSSynthesizer(Processor):
 
     Args:
         config: Module config dict. Expected keys:
-            - backend: "f5tts" | "lightblue" | "phonikud" | "mms" | "bark" | "xtts" | "auto"
+            - backend: "f5tts" | "lightblue" | "phonikud" | "mms" | "xtts" | "auto"
             - device: "cuda" | "cpu" (default "cpu")
             - output_dir: str path for WAV output (default ~/.kadima/tts_output)
             - speaker_ref_path: optional path to speaker reference WAV for voice cloning
@@ -1400,7 +1298,7 @@ class TTSSynthesizer(Processor):
         result: TTSResult | None = None
 
         # Build ordered list of backends to try
-        _BACKEND_MAP: dict[str, list[str]] = {
+        backend_map: dict[str, list[str]] = {
             "auto": ["f5tts", "lightblue", "phonikud", "mms"],
             "f5tts": ["f5tts"],
             "lightblue": ["lightblue"],
@@ -1408,10 +1306,16 @@ class TTSSynthesizer(Processor):
             "piper": ["phonikud"],
             "xtts": ["xtts"],
             "mms": ["mms"],
-            "bark": ["bark"],
-            "premium": ["zonos", "f5tts", "lightblue", "phonikud", "mms"],
         }
-        backends_to_try = _BACKEND_MAP.get(backend, _BACKEND_MAP["auto"])
+        if backend not in backend_map:
+            return ProcessorResult(
+                module_name=self.name,
+                status=ProcessorStatus.FAILED,
+                data=TTSResult(audio_path=None, backend="none", text_length=len(input_data)),
+                errors=[f"Unsupported TTS backend: {backend}"],
+                processing_time_ms=(time.monotonic() - t0) * 1000,
+            )
+        backends_to_try = backend_map[backend]
 
         for bk in backends_to_try:
             try:
@@ -1445,10 +1349,6 @@ class TTSSynthesizer(Processor):
                     errors.append(msg)
                 elif bk == "mms":
                     result = _mms_synthesize(input_data, device, output_dir)
-                elif bk == "bark":
-                    result = _bark_synthesize(input_data, output_dir, speaker_ref_path)
-                elif bk == "zonos":
-                    raise ImportError("Zonos backend is not implemented on Windows runtime yet")
                 if result is not None:
                     break
             except ImportError as exc:
@@ -1462,7 +1362,7 @@ class TTSSynthesizer(Processor):
 
         if result is None:
             errors.append(
-                "No TTS backend available — install f5-tts, LightBlue, Piper/Phonikud, transformers, or suno-bark"
+                "No TTS backend available — install f5-tts, LightBlue, Piper/Phonikud, or transformers"
             )
             return ProcessorResult(
                 module_name=self.name,

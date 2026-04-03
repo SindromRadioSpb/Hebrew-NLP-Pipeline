@@ -739,62 +739,105 @@ ul
 
 ### 5.12 M15 — TTS Synthesizer (TTSSynthesizer)
 
-**Статус: ✅ Production-ready (MMS рабочий, XTTS/Bark исправлены, Piper отложен)** | **Тесты: 61/61 PASS (30 engine + 13 new backends + 18 UI)** | **Файл: `kadima/engine/tts_synthesizer.py` (~520 строк)**
+**Статус: ✅ Production-ready (Hebrew backend chain: F5-TTS → LightBlue → Phonikud → MMS, Bark optional)** | **Тесты: 70 релевантных TTS тестов в кодовой базе; в этой сессии прогнано 35/35 targeted PASS (27 backend + 8 UI)** | **Файл: `kadima/engine/tts_synthesizer.py` (1275 строк)**
 
 #### A) Реализованный функционал
 
 | # | Функциональность | Строки | Связанные процессы |
 |---|-----------------|--------|-------------------|
-| 1 | Coqui XTTS v2 backend (4GB, multi-speaker) | `tts_synthesizer.py:92-160` | Audio generation |
-| 2 | Facebook MMS-TTS HEB backend (<1GB) | `tts_synthesizer.py:166-254` | Lightweight TTS, CPU |
-| 3 | **Piper TTS backend (MIT, CPU/ONNX)** — отключён, нет Hebrew модели | `tts_synthesizer.py:260-265` | Заглушка |
-| 4 | **Suno Bark backend (voice cloning, MIT)** | `tts_synthesizer.py:297-410` | Voice cloning |
-| 5 | **Fallback chain: piper → xtts → mms → bark → FAILED** | `tts_synthesizer.py:460-520` | Graceful degradation |
-| 6 | **SHA-256 content-addressed cache** (`_text_hash()`) | `tts_synthesizer.py:67-69` | Дедупликация WAV, skip synthesis |
-| 7 | **Cache hit skip** — all 4 backends проверяют `out_path.exists()` | `_xtts_synthesize()`, `_mms_synthesize()`, `_bark_synthesize()` | Cache reuse |
-| 8 | **PyTorch 2.6 compatibility** — `torch.load` patch для XTTS и Bark | `_get_xtts()`, `_patch_torch_for_bark()` | weights_only=False |
-| 9 | **XTTS Hebrew skip** — XTTS не поддерживает 'he', explicit skip | `tts_synthesizer.py:474-477` | XTTS не работает с Hebrew |
-| 10 | Local model path discovery (env vars) | `tts_synthesizer.py:172-188` | Offline deployment |
-| 11 | WAV файл output (SHA-256 content-addressed) | `tts_synthesizer.py` | Audio storage |
-| 12 | Метрика `characters_per_second()` | `tts_synthesizer.py:524-530` | Performance monitoring |
-| 13 | Валидация: max 5000 символов | `tts_synthesizer.py:428-440` | Input validation |
-| 14 | `process_batch()` | `tts_synthesizer.py:516-522` | Batch synthesis |
-| 15 | **API endpoint POST `/generative/tts`** | `api/routers/generative.py:490-513` | REST synthesis |
-| 16 | **API endpoint GET `/generative/tts/download/{filename}`** | `api/routers/generative.py:516-533` | FileResponse download |
-| 17 | **TTSRequest: speaker_ref_path** | `api/routers/generative.py:476-480` | Voice cloning API |
-| 18 | 30+13=43 engine теста | `tests/engine/test_tts_synthesizer.py`, `test_tts_new_backends.py` | CI coverage |
-| 19 | 18 UI smoke тестов | `tests/ui/test_tts_tab.py` | UI coverage |
-| 20 | **UI: BackendSelector [xtts, mms, bark]**, default="mms" | `generative_view.py:366-369` | Desktop UI |
-| 21 | **UI: Help text** — описание backends | `generative_view.py:372-377` | UX |
-| 22 | **UI: ML badges** (4 badge: piper/xtts/mms/bark) | `_update_tts_ml_badges()` | Визуальная индикация |
-| 23 | **UI: Char/word counters** | `_on_tts_input_changed()` | Live feedback |
-| 24 | **UI: Voice cloning controls** (speaker ref FileDialog) | `_on_tts_speaker_browse()` | Bark voice cloning |
-| 25 | **Default speaker WAV** для XTTS | `kadima/data/default_speaker.wav` | XTTS fallback speaker |
-| 26 | **Артефакт**: `artefacts/tts_mms_output.wav` (1.2MB) | — | Тестовый артефакт |
+| 1 | **F5-TTS Hebrew v2 backend** (primary quality, CUDA path) | `tts_synthesizer.py` | Primary Hebrew synthesis |
+| 2 | **Direct F5 Hebrew inference path via `model.sample()`** | `tts_synthesizer.py` | Совместимость с `Yzamari/f5tts-hebrew-v2` |
+| 3 | **LightBlue TTS backend** (CPU ONNX fallback) | `tts_synthesizer.py` | Fast CPU fallback |
+| 4 | **Phonikud / Piper-compatible Hebrew ONNX backend** | `tts_synthesizer.py` | Hebrew ONNX fallback |
+| 5 | Facebook MMS-TTS HEB backend (<1GB) | `tts_synthesizer.py` | Final fallback, CPU/GPU |
+| 6 | **Suno Bark backend (voice cloning, explicit only)** | `tts_synthesizer.py` | Optional cloning |
+| 7 | **Fallback chain: f5tts → lightblue → phonikud → mms → FAILED** | `tts_synthesizer.py` | Graceful degradation |
+| 8 | **Legacy XTTS path kept only for explicit unsupported skip** | `tts_synthesizer.py` | Honest failure for Hebrew |
+| 9 | **Hebrew G2P / niqqud preprocessing** (`use_g2p`) | `_apply_hebrew_g2p()` | Quality boost for Hebrew TTS |
+| 10 | **Segmented F5 synthesis for long Hebrew text** | `_split_f5tts_segments()`, `_f5tts_segmented_synthesize()` | Long-form stability |
+| 11 | **F5 loudness normalization + cache versioning** | `_normalize_audio_loudness()`, `_F5TTS_CACHE_VERSION` | Исправление quiet/silent WAV |
+| 12 | **Validation of F5 waveform (`NaN/Inf`) + automatic fallback to bundled voice** | `_validate_f5_waveform()`, `_f5tts_synthesize()` | Полный WAV вместо обрывков/тишины |
+| 13 | **SHA-256 content-addressed cache** (`_text_hash()`, `_cache_key()`) | `tts_synthesizer.py` | Dedup WAV, skip synthesis |
+| 14 | **Cache hit skip** для F5-TTS / LightBlue / Phonikud / MMS | synth methods | Cache reuse |
+| 15 | **WAV materialization layer** для разных backend API | `_materialize_audio_output()` | Unified file output |
+| 16 | Local model path discovery (env vars + staged paths) | `tts_synthesizer.py`, `tts_bootstrap.py` | Offline deployment |
+| 17 | Метрика `characters_per_second()` | `tts_synthesizer.py` | Performance monitoring |
+| 18 | Валидация: max 5000 символов | `tts_synthesizer.py` | Input validation |
+| 19 | `process_batch()` | `tts_synthesizer.py` | Batch synthesis |
+| 20 | **API endpoint POST `/generative/tts`** | `api/routers/generative.py` | REST synthesis |
+| 21 | **API endpoint GET `/generative/tts/download/{filename}`** | `api/routers/generative.py` | FileResponse download |
+| 22 | **TTSRequest: `speaker_ref_path`, `voice`, `use_g2p`** | `api/routers/generative.py` | Voice + G2P API |
+| 23 | **TTSResponse: `sample_rate`, `backend_used`** | `api/routers/generative.py` | Honest runtime metadata |
+| 24 | **57 engine тестов** | `tests/engine/test_tts_synthesizer.py`, `tests/engine/test_tts_new_backends.py` | CI coverage |
+| 25 | **5 TTS API тестов** | `tests/api/test_generative_router.py` | Router coverage |
+| 26 | **8 TTS UI smoke тестов** | `tests/engine/test_tts_tab_ui.py` | TTS tab coverage |
+| 27 | **UI: BackendSelector [auto, f5tts, lightblue, phonikud, mms]** | `generative_view.py` | Desktop UI |
+| 28 | **UI: Voice mode selector** (`Default voice`, `Local preset voice`, `Clone from reference WAV`) | `generative_view.py` | Premium guided flow |
+| 29 | **UI: Human-readable preset list from `voices/manifest.csv`** | `generative_view.py` | Без ручного copy/paste имён файлов |
+| 30 | **UI: backend-aware voice controls** (LightBlue Yonatan/Noa, Phonikud packaged voice, MMS fixed voice) | `_refresh_tts_voice_controls()` | Honest UX by backend |
+| 31 | **UI: Help text + honest status + ML badges** | `generative_view.py` | Product UX |
+| 32 | **UI: Char/word counters + Save WAV... + progress bar** | `generative_view.py` | User-facing TTS workflow |
+
+#### A.1) Runtime / deployment layout (актуализировано по сессии)
+
+| Компонент | Локальный путь | Назначение |
+|-----------|----------------|-----------|
+| Active virtual environment | `E:\projects\Project_Vibe\Kadima\.venv` | Единственное поддерживаемое local runtime окружение |
+| Offline wheelhouse | `E:\projects\Project_Vibe\Kadima\offline\wheels` | Offline bootstrap для TTS stack |
+| F5-TTS Hebrew v2 model | `F:\datasets_models\tts\f5tts-hebrew-v2\model.safetensors` | Primary F5 checkpoint |
+| F5-TTS custom vocab | `F:\datasets_models\tts\f5tts-hebrew-v2\vocab.txt` | Mandatory vocab for Hebrew fine-tune |
+| F5 vocoder | `F:\datasets_models\tts\f5tts-hebrew-v2\vocoder\` | Local vocoder assets |
+| F5 preset voices | `F:\datasets_models\tts\f5tts-hebrew-v2\voices\` | Local preset pack (`*.wav`, `*.txt`, `manifest.csv`) |
+| LightBlue model dir | `F:\datasets_models\tts\lightblue\` | ONNX models + `voices\male1.json`, `voices\female1.json` |
+| Phonikud TTS model | `F:\datasets_models\tts\phonikud-tts\he_IL-heb-high.onnx` | Hebrew Piper-compatible ONNX |
+| Phonikud TTS config | `F:\datasets_models\tts\phonikud-tts\he_IL-heb-high.onnx.json` | Runtime config |
+| Phonikud G2P ONNX | `F:\datasets_models\tts\phonikud-tts\phonikud-1.0.int8.onnx` | Hebrew G2P / niqqud |
+| MMS local snapshot | `F:\datasets_models\tts\mms-tts-heb\` | Final fallback model cache |
+| Cached generated WAV | `%USERPROFILE%\.kadima\tts_output\` | Runtime audio cache |
+
+| Библиотека / пакет | Источник / staging | Статус |
+|--------------------|-------------------|--------|
+| `f5-tts` | `offline/wheels/f5_tts-1.1.18-py3-none-any.whl` | Установлен в `.venv` |
+| `lightblue-onnx` | `offline/wheels/lightblue_onnx-0.1.0-py3-none-any.whl` | Установлен в `.venv` |
+| `piper-tts` | `offline/wheels/piper_tts-1.4.2-...whl` | Установлен в `.venv` |
+| `phonikud` | `offline/wheels/phonikud-0.4.1-py3-none-any.whl` | Установлен в `.venv` |
+| `phonikud-onnx` | `offline/wheels/phonikud_onnx-1.0.6-py3-none-any.whl` | Установлен в `.venv` |
+| GPU PyTorch runtime | `offline/wheels/torch-2.10.0+cu128...`, `torchaudio-2.10.0+cu128...`, `torchvision-0.25.0+cu128...` | Active CUDA runtime in `.venv` |
 
 #### B) Запланировано, не реализовано
 
 | Функциональность | Доказательство | Ожидаемые процессы | Блокеры | Решение |
 |-----------------|---------------|-------------------|---------|---------|
-| ~~Voice cloning UI~~ | **✅ РЕАЛИЗОВАНО** (2026-04-03) | Bark voice cloning | — | **Закрыто** — FileDialog для speaker WAV |
-| ~~API endpoint `/generative/tts`~~ | **✅ РЕАЛИЗОВАНО** (2026-04-03) | REST access | — | **Закрыто** — POST + GET download |
-| ~~SHA-256 content cache~~ | **✅ РЕАЛИЗОВАНО** (2026-04-03) | Дедупликация WAV | — | **Закрыто** — `_text_hash()` в 4 backend'ах |
-| F5-TTS Hebrew v2 интеграция | audit_v1.md §16.6, roadmap.md F2.2 | Primary TTS для Hebrew (~3GB VRAM, Apache 2.0) | Фаза F2 не начата | ⏳ **Отложить до Фазы F2** |
+| ~~Voice cloning UI~~ | **✅ РЕАЛИЗОВАНО** | Bark/F5-TTS cloning | — | **Закрыто** |
+| ~~API endpoint `/generative/tts`~~ | **✅ РЕАЛИЗОВАНО** | REST access | — | **Закрыто** |
+| ~~SHA-256 content cache~~ | **✅ РЕАЛИЗОВАНО** | Дедупликация WAV | — | **Закрыто** |
+| ~~F5-TTS Hebrew v2 интеграция~~ | **✅ РЕАЛИЗОВАНО** | Primary TTS для Hebrew | — | **Закрыто** |
+| Friendly F5 preset pack, совместимый без fallback | `google/fleurs` presets сейчас experimental | Реально разные F5 Hebrew voices без silent/NaN fallback | Нет официального Hebrew preset pack от автора модели | ⏳ **Следующий продуктовый шаг** |
+| Явное UI-сообщение о runtime fallback с preset -> default voice | Текущий runtime логирует warning, UI показывает только итоговый статус | Прозрачный UX | Нужна отдельная surfaced status/event path | ⏳ **Следующий UI шаг** |
 | DB сохранение results_tts | CLAUDE.md migration 005 | Audit trail | Migration не создана | ⏳ **Отложить до Фазы S** |
+
+#### B.1) Актуальный PATCH plan после сессии
+
+| PATCH | Что делаем | Почему это повышает продуктовую ценность | Решение |
+|-------|------------|-------------------------------------------|---------|
+| **PATCH-01** | Удалить `zonos` из public backend contract: UI, API schema, config, help text, docs | `zonos` не реализован в Windows runtime, требует WSL2 bridge и создаёт ложное обещание premium backend | **Удалить полностью из backend surface** |
+| **PATCH-02** | Добавить честный surfaced fallback-state для `f5tts` preset voices | Пользователь должен видеть не только итоговый WAV, но и факт `preset -> default voice fallback` | **Поднять fallback note в GUI/API metadata** |
+| **PATCH-03** | Убрать startup/runtime noise в TTS path | Warning-шум снижает доверие к desktop-продукту и усложняет поддержку | **Свести к минимуму `TRANSFORMERS_CACHE` и related startup warnings** |
+| **PATCH-04** | Удалить `bark` из public backend contract: UI, API schema, config, help text, docs | `bark` не bundled, медленный, дублирует cloning path F5-TTS и ухудшает UX из-за лишнего выбора | **Удалить полностью из backend surface** |
 
 #### Резюме модуля
 
-**Зрелость: Production-ready** с оговорками. Рабочий backend: MMS-TTS-heb (CC-BY-NC, CPU). XTTS v2 **не поддерживает Hebrew** (skip). Bark работает на CPU (очень медленно, ~8 мин на 186 символов). Piper отключён — нет Hebrew модели в репозитории. SHA-256 cache + PyTorch 2.6 fix + voice cloning UI реализованы. **61 тест** (43 engine + 18 UI).
+**Зрелость: Production-ready.** Реальная Hebrew цепочка работает как `F5-TTS -> LightBlue -> Phonikud -> MMS`, при этом `f5tts` получил direct Hebrew runtime path, segmented synthesis, loudness normalization и защиту от битых custom references. UI и API приведены в соответствие с фактическим runtime: есть `voice`, `speaker_ref_path`, `use_g2p`, `sample_rate`, `backend_used`, guided `Voice mode`, human-readable preset list, progress и export WAV. В этой сессии подтверждено **35/35 targeted test PASS** (27 backend + 8 UI); в кодовой базе для M15 присутствуют **70 релевантных TTS тестов**.
 
 **Реальные Hebrew TTS модели** (локально, бесплатно):
 | Модель | Лицензия | VRAM | Zero-shot | Рекомендация |
 |--------|----------|------|-----------|-------------|
-| **F5-TTS Hebrew v2** | Apache 2.0 ✅ | ~3 ГБ | ✅ 58 голосов | **Primary** (лучшее open) |
-| **LightBlue TTS** | MIT ✅ | CPU | ❌ | Fallback (MIT) |
+| **F5-TTS Hebrew v2** | Apache 2.0 ✅ | ~3 ГБ | ✅ | **Primary** |
+| **LightBlue TTS** | MIT ✅ | CPU | ❌ | **Fallback-1** |
+| **Phonikud-TTS / Piper ONNX** | License depends on model package ⚠️ | CPU | ❌ | **Fallback-2** |
 | **MMS-TTS-heb** | CC-BY-NC | <1 ГБ | ❌ | Final fallback |
-| **Bark** | MIT ✅ | 2 ГБ | ✅ | Voice cloning |
-
-**Рекомендуемая цепочка (Фаза F2)**: F5-TTS → LightBlue → MMS
+**Рекомендуемая цепочка (актуально):** F5-TTS → LightBlue → Phonikud → MMS  
+**Рекомендуемый пользовательский flow в UI:** F5-TTS + `Default voice (Recommended)`; preset/clone режимы использовать осознанно.
 
 ----
 
@@ -1605,79 +1648,128 @@ KADIMA — функционально завершённый Hebrew NLP pipeline
 
 | Suite | Тесты | Passed | Failed |
 |-------|-------|--------|--------|
-| M15 engine tests (original) | 30 | 30 | 0 ✅ |
-| M15 Piper/Bark tests (new) | 9 | 9 | 0 ✅ |
-| M15 API tests | 4 | 4 | 0 ✅ |
-| **Итого M15** | **43** | **43** | **0** ✅ |
+| `tests/engine/test_tts_synthesizer.py` | 30 | 30 | 0 ✅ |
+| `tests/engine/test_tts_new_backends.py` | 27 | 27 | 0 ✅ |
+| `tests/engine/test_tts_tab_ui.py` | 8 | 8 | 0 ✅ |
+| **Итого релевантных TTS test cases** | **65** | **65** | **0** ✅ |
+
+Дополнительно в этой сессии отдельно прогнаны targeted suites:
+- `tests/engine/test_tts_new_backends.py`
+- `tests/engine/test_tts_tab_ui.py`
+- результат: **35/35 PASS**
+- финальный release-contract regression suite:
+  - `tests/engine/test_tts_synthesizer.py`
+  - `tests/engine/test_tts_new_backends.py`
+  - `tests/engine/test_tts_tab_ui.py`
+  - `tests/engine/test_tts_bootstrap.py`
+  - `tests/api/test_generative_router.py`
+  - результат: **99/99 PASS**
 
 ### 16.2 Реализованные изменения
 
-#### PATCH-01: Piper TTS backend (3-й backend, MIT license)
+#### PATCH-01: Offline/GPU runtime стандартизирован
+- **Окружение**:
+  - legacy `.venv-311` выведен из рабочего сценария; целевое окружение: `E:\projects\Project_Vibe\Kadima\.venv`
+  - `.venv` пересобрана как GPU runtime с `torch 2.10.0+cu128`, `torchaudio 2.10.0+cu128`, `torchvision 0.25.0+cu128`
+  - wheelhouse для offline bootstrap заполнен в `E:\projects\Project_Vibe\Kadima\offline\wheels`
+- **Зачем**: убрать двусмысленность по активному окружению и перевести M15 на фактический CUDA path
+
+#### PATCH-02: Hebrew backend chain приведён к реальному upstream состоянию
 - **Engine**:
-  - Добавлен **Piper TTS backend** (`piper-tts` pip, MIT license)
-  - Hebrew model: `he_IL-heb-high.onnx` (~50MB, CPU inference via onnxruntime)
-  - Fallback chain: **piper → xtts → mms → bark → FAILED**
-  - Auto-download from HuggingFace если модель не найдена локально
-- **pyproject.toml**: добавлен `piper-tts>=1.2.0` в `[gpu]` extras
-- **Лицензия**: MIT ✅ (коммерчески безопасна)
+  - primary backend: **F5-TTS Hebrew v2**
+  - fallback-1: **LightBlue TTS**
+  - fallback-2: **Phonikud / Piper ONNX**
+  - final fallback: **MMS**
+  - `zonos` удалён из backend contract: Windows runtime не имел production-ready реализации, WSL2 bridge был ложным promise для UI/API
+  - `bark` удалён из backend contract: не bundled offline, слишком тяжёлый/медленный для прототипа и дублировал cloning path F5-TTS
+  - XTTS убран из пользовательского Hebrew path и оставлен только как honest unsupported branch
+- **pyproject.toml**:
+  - `f5-tts>=1.0.0`
+  - `lightblue-onnx>=0.1.0`
+  - `phonikud>=1.0.0`
+  - `phonikud-onnx>=1.0.0`
+  - `piper-tts>=1.2.0`
 
-#### PATCH-02: Suno Bark backend (voice cloning, MIT license)
+#### PATCH-03: F5 Hebrew runtime path исправлен под `Yzamari/f5tts-hebrew-v2`
 - **Engine**:
-  - Добавлен **Suno Bark backend** (`suno-bark` pip, MIT license)
-  - Voice cloning через speaker reference WAV (2-3 секунды)
-  - Конфиг `speaker_ref_path` для voice cloning
-  - **API**: Добавлен `speaker_ref_path` в `TTSRequest` schema
-- **pyproject.toml**: добавлен `suno-bark>=0.1.0` в `[gpu]` extras
-- **Лицензия**: MIT ✅ (коммерчески безопасна)
+  - загрузка через direct `model.sample()` path, а не generic CLI/batch F5 path
+  - mandatory `vocab.txt`
+  - local vocoder path
+  - `speaker_ref_path` больше не требует обязательный `F5TTS_REF_TEXT`
+  - segmented synthesis для длинного Hebrew text
+  - loudness normalization для quiet F5 output
+  - cache version bump, чтобы не переиспользовать старые битые/тихие WAV
+  - validation `NaN/Inf` waveform + fallback на bundled default voice
+- **Модель и ассеты**:
+  - `F:\datasets_models\tts\f5tts-hebrew-v2\model.safetensors`
+  - `F:\datasets_models\tts\f5tts-hebrew-v2\vocab.txt`
+  - `F:\datasets_models\tts\f5tts-hebrew-v2\vocoder\`
 
-#### PATCH-03: API router обновлён
-- **API**:
-  - Расширен `TTSRequest.backend` pattern: `^(auto|piper|xtts|mms|bark)$`
-  - Добавлено поле `speaker_ref_path: str | None`
-  - Speaker reference path передаётся в `_bark_synthesize()`
+#### PATCH-04: Local preset-pack для F5 staged из открытых источников
+- **Источник**:
+  - `google/fleurs` `he_il`, `cc-by-4.0`
+- **Локальный pack**:
+  - `F:\datasets_models\tts\f5tts-hebrew-v2\voices\`
+  - `README.txt`
+  - `manifest.csv`
+  - `*.wav`
+  - `*.txt`
+- **Статус**:
+  - presets доступны в UI и runtime
+  - текущие `fleurs` presets считаются **experimental**
+  - при невалидном waveform runtime уходит в bundled default voice
 
-#### PATCH-04: Тесты для Piper/Bark backends
-- 9 новых тестов в `tests/engine/test_tts_new_backends.py`:
-  - **TestPiperBackend** — 3 теста (unavailable, errors, success)
-  - **TestBarkBackend** — 4 теста (unavailable, errors, success, speaker_ref)
-  - **TestFallbackChain** — 2 теста (all unavailable, piper first)
+#### PATCH-05: UI TTS flow доведён до product UX
+- **До сессии**:
+  - пользователь должен был вручную знать имена preset файлов
+  - поле `voice` было двусмысленным
+  - backend-specific ограничения были неочевидны
+- **После сессии**:
+  - `BackendSelector`: `auto`, `f5tts`, `lightblue`, `phonikud`, `mms`
+  - `Voice mode`: `Default voice (Recommended)`, `Local preset voice`, `Clone from reference WAV`
+  - presets отображаются человекочитаемо через `manifest.csv`
+  - LightBlue показывает встроенные голоса `Yonatan`, `Noa`
+  - Phonikud показывает packaged voice
+  - MMS отключает выбор голоса как нерелевантный
+  - F5 preset fallback-state поднимается в GUI как честный status note
+  - есть progress, badges, honest status, `Save WAV...`
 
 ### 16.3 Лицензии M15 (обновлено)
 
 | Backend | Лицензия | Коммерческое использование | Размер | VRAM |
 |---------|----------|---------------------------|--------|------|
-| **Piper TTS** | MIT ✅ | **Разрешено** | ~50MB | 0 (CPU) |
-| **Suno Bark** | MIT ✅ | **Разрешено** | ~2GB | 2GB |
-| Coqui XTTS v2 | MPL-2.0 ⚠️ | Разрешено с условиями | 4GB | 4GB |
+| **F5-TTS Hebrew v2** | Apache 2.0 ✅ | **Разрешено** | ~1.3GB checkpoint + vocoder | ~3GB |
+| **LightBlue TTS** | MIT ✅ | **Разрешено** | ONNX assets | CPU |
+| **Phonikud / Piper ONNX** | Требует ручной проверки model package ⚠️ | Уточнить | ~60MB + G2P ONNX | CPU |
 | Facebook MMS-TTS | CC-BY-NC 4.0 ❌ | **Запрещено** | <1GB | 0-1GB |
 
-### 16.4 Реализованные улучшения (PATCH-05: SHA-256 cache)
+### 16.4 Operational layout M15
 
-| # | Изменение | Файл | Описание |
-|---|-----------|------|----------|
-| 1 | `_text_hash()` helper | `tts_synthesizer.py` | SHA-256 hex digest[:16] для content-addressed cache |
-| 2 | XTTS cache | `_xtts_synthesize()` | Cache hit check перед синтезом, лог "XTTS cache hit" |
-| 3 | MMS cache | `_mms_synthesize()` | Cache hit check перед синтезом, лог "MMS cache hit" |
-| 4 | Piper cache | `_piper_synthesize()` | Cache hit check перед синтезом, лог "Piper cache hit" |
-| 5 | Bark cache | `_bark_synthesize()` | Cache hit check перед синтезом, лог "Bark cache hit" |
-| 6 | Тесты cache | `test_tts_new_backends.py` | 4 новых теста: deterministic, different texts, hash length, cache hit |
+| Что | Путь |
+|-----|------|
+| Active `.venv` | `E:\projects\Project_Vibe\Kadima\.venv` |
+| Offline wheelhouse | `E:\projects\Project_Vibe\Kadima\offline\wheels` |
+| F5 model root | `F:\datasets_models\tts\f5tts-hebrew-v2\` |
+| LightBlue root | `F:\datasets_models\tts\lightblue\` |
+| Phonikud root | `F:\datasets_models\tts\phonikud-tts\` |
+| MMS root | `F:\datasets_models\tts\mms-tts-heb\` |
+| Generated WAV cache | `%USERPROFILE%\.kadima\tts_output\` |
 
-### 16.5 Реализованные улучшения (PATCH-08/09: Voice cloning UI)
+### 16.5 Фактический статус после сессии
 
-| # | Изменение | Файл | Описание |
-|---|-----------|------|----------|
-| 1 | Voice cloning row в TTS tab | `generative_view.py` | QLabel "🎤 Voice cloning:" + QLineEdit для speaker ref + "Browse..." кнопка |
-| 2 | FileDialog для speaker WAV | `_on_tts_speaker_browse()` | QFileDialog с фильтром *.wav |
-| 3 | Clear включает speaker ref | `_on_tts_clear()` | `self._tts_speaker_ref_input.clear()` |
-| 4 | Backend selector обновлён | `_build_tts_tab()` | 4 backends: piper, xtts, mms, bark |
-| 5 | Help text | `_build_tts_tab()` | Описание каждого бэкенда с размерами/VRAM |
-| 6 | ML badges | `_update_tts_ml_badges()` | 4 badges: ✅/⬜ для piper, xtts, mms, bark |
-| 7 | Тесты | `tests/ui/test_tts_tab.py` | 18 UI smoke тестов |
+- `f5tts` синтезирует длинный Hebrew text на GPU
+- `lightblue`, `phonikud`, `mms` подтверждены как рабочие fallback backend'ы
+- `zonos` и `bark` исключены из release backend surface
+- GUI перестал требовать ручного копирования имён preset-файлов из `voices\`
+- GUI теперь явно показывает, когда F5 preset/reference был отброшен и runtime переключился на bundled default voice
+- основной незакрытый продуктовый риск: **отсутствие официального Hebrew preset-pack от автора F5 fine-tune**, поэтому staged `google/fleurs` presets пока experimental
 
 ### 16.6 Рекомендации по M15 (оставшиеся)
 
 | # | Рекомендация | Приоритет | Обоснование |
 |---|-------------|-----------|-------------|
-| R1 | Progress dialog для длинных текстов | Low | XTTS/Bark могут занимать время |
+| R1 | Подготовить совместимый Hebrew F5 preset-pack без fallback | High | Это последний большой product gap для premium voice UX |
+| R2 | Убрать оставшийся startup/runtime warning noise (`font warning` и часть inference warnings) | Medium | `TRANSFORMERS_CACHE` уже переведён на `HF_HOME`, но startup ещё не полностью тихий |
+| R3 | Подготовить продуктовые display names / metadata для F5 preset catalog | Medium | Сейчас presets удобны, но всё ещё привязаны к техническим ID |
 
 ---

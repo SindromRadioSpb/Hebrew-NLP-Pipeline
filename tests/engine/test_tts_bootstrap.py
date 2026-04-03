@@ -12,7 +12,7 @@ def test_tts_config_defaults_to_auto() -> None:
 
 
 def test_tts_config_accepts_new_backends() -> None:
-    for backend in ("auto", "f5tts", "lightblue", "phonikud", "mms", "bark", "zonos", "xtts", "piper"):
+    for backend in ("auto", "f5tts", "lightblue", "phonikud", "mms"):
         assert TTSConfig(backend=backend).backend == backend
 
 

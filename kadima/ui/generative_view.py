@@ -12,7 +12,6 @@ from __future__ import annotations
 import csv
 import logging
 import shutil
-import time
 import traceback
 from pathlib import Path
 from typing import Any, Optional
@@ -381,7 +380,7 @@ class GenerativeView(QWidget):
     def _build_tts_tab(self) -> QWidget:
         w, lay = self._make_tab_container()
 
-        tts_backends = ["auto", "f5tts", "lightblue", "phonikud", "mms", "bark"]
+        tts_backends = ["auto", "f5tts", "lightblue", "phonikud", "mms"]
         self._tts_backend = BackendSelector(
             backends=tts_backends, default_backend="auto"
         )
@@ -396,8 +395,7 @@ class GenerativeView(QWidget):
             "<b>f5tts</b>=best quality + cloning (reference WAV or local preset voices), "
             "<b>lightblue</b>=fast CPU ONNX, "
             "<b>phonikud</b>=Hebrew Piper ONNX, "
-            "<b>mms</b>=last-resort fallback, "
-            "<b>bark</b>=legacy explicit cloning only (optional, not bundled)"
+            "<b>mms</b>=last-resort fallback"
         )
         help_text.setWordWrap(True)
         help_text.setStyleSheet("color: #8888aa; font-size: 11px; padding: 4px 8px; "
@@ -414,15 +412,11 @@ class GenerativeView(QWidget):
         self._tts_lightblue_badge = QLabel("⬜ lightblue")
         self._tts_phonikud_badge = QLabel("⬜ phonikud")
         self._tts_mms_badge = QLabel("⬜ mms")
-        self._tts_zonos_badge = QLabel("⬜ zonos")
-        self._tts_bark_badge = QLabel("⬜ bark")
         for badge in [
             self._tts_f5tts_badge,
             self._tts_lightblue_badge,
             self._tts_phonikud_badge,
             self._tts_mms_badge,
-            self._tts_zonos_badge,
-            self._tts_bark_badge,
         ]:
             badge.setStyleSheet("color: #a0a0c0; font-size: 10px;")
             badges_row.addWidget(badge)
@@ -590,9 +584,11 @@ class GenerativeView(QWidget):
                 backend = getattr(result.data, "backend", "unknown")
                 duration = getattr(result.data, "duration_seconds", 0.0)
                 sample_rate = getattr(result.data, "sample_rate", 0)
-                self._tts_status.setText(
-                    f"Done ({backend}) · {duration:.1f}s · {sample_rate} Hz"
-                )
+                note = str(getattr(result.data, "note", "") or "").strip()
+                status_text = f"Done ({backend}) · {duration:.1f}s · {sample_rate} Hz"
+                if note:
+                    status_text = f"{status_text} · {note}"
+                self._tts_status.setText(status_text)
             else:
                 self._tts_last_audio_path = None
                 if hasattr(self, "_tts_export_btn"):
@@ -795,20 +791,13 @@ class GenerativeView(QWidget):
             self._tts_voice_hint.setText("Phonikud: one packaged Hebrew voice is available.")
             return
 
-        if backend == "mms":
-            self._populate_tts_voice_modes([(_TTS_VOICE_MODE_DEFAULT, "Packaged voice")])
-        else:
-            self._populate_tts_voice_modes([(_TTS_VOICE_MODE_CLONE, "Clone from reference WAV")])
+        self._populate_tts_voice_modes([(_TTS_VOICE_MODE_DEFAULT, "Packaged voice")])
         self._populate_tts_voice_choices([])
         self._tts_voice_input.setEnabled(False)
-        self._tts_speaker_ref_input.setEnabled(backend == "bark")
-        self._tts_speaker_browse_btn.setEnabled(backend == "bark")
-        if backend == "mms":
-            self._tts_voice_input.setToolTip("MMS does not support voice selection")
-            self._tts_voice_hint.setText("MMS: voice is fixed, nothing to choose here.")
-        else:
-            self._tts_voice_input.setToolTip("This backend uses reference WAV or built-in defaults")
-            self._tts_voice_hint.setText("Bark: choose a reference WAV to clone a voice.")
+        self._tts_speaker_ref_input.setEnabled(False)
+        self._tts_speaker_browse_btn.setEnabled(False)
+        self._tts_voice_input.setToolTip("MMS does not support voice selection")
+        self._tts_voice_hint.setText("MMS: voice is fixed, nothing to choose here.")
 
     def _on_tts_backend_changed(self) -> None:
         if self._tts_refreshing_voice_controls:
@@ -845,12 +834,6 @@ class GenerativeView(QWidget):
         except Exception:
             statuses = {}
 
-        try:
-            from kadima.engine.tts_synthesizer import _ZONOS_AVAILABLE
-            zonos_ok = _ZONOS_AVAILABLE
-        except Exception:
-            zonos_ok = False
-
         def _badge_text(name: str, fallback_missing: str) -> tuple[bool, str, str]:
             status = statuses.get(name)
             if status is None:
@@ -865,7 +848,6 @@ class GenerativeView(QWidget):
         lb_ok, lb_ready, lb_missing = _badge_text("lightblue", "lightblue missing")
         ph_ok, ph_ready, ph_missing = _badge_text("phonikud", "phonikud missing")
         mms_ok, mms_ready, mms_missing = _badge_text("mms", "mms fallback")
-        bark_ok, bark_ready, bark_missing = _badge_text("bark", "bark optional")
 
         self._set_tts_badge(self._tts_f5tts_badge, f5_ok, f5_ready, f5_missing)
         self._set_tts_badge(
@@ -875,8 +857,6 @@ class GenerativeView(QWidget):
             self._tts_phonikud_badge, ph_ok, ph_ready, ph_missing
         )
         self._set_tts_badge(self._tts_mms_badge, mms_ok, mms_ready, mms_missing)
-        self._set_tts_badge(self._tts_zonos_badge, zonos_ok, "zonos ready", "zonos wsl only")
-        self._set_tts_badge(self._tts_bark_badge, bark_ok, bark_ready, bark_missing)
 
     # ------------------------------------------------------------------
     # Tab 2 — STT

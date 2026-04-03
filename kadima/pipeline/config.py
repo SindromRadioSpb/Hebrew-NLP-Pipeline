@@ -162,11 +162,11 @@ class TranslatorConfig(BaseModel):
 
 
 class TTSConfig(BaseModel):
-    """M15: Синтез речи. backend: auto | f5tts | lightblue | phonikud | mms | bark."""
+    """M15: Синтез речи. backend: auto | f5tts | lightblue | phonikud | mms."""
 
     model_config = ConfigDict(extra="forbid")
 
-    backend: str = Field(default="auto", pattern=r"^(auto|f5tts|lightblue|phonikud|mms|bark|zonos|xtts|piper)$")
+    backend: str = Field(default="auto", pattern=r"^(auto|f5tts|lightblue|phonikud|mms)$")
     device: DeviceEnum = DeviceEnum.CUDA
     output_dir: str = "~/.kadima/audio"
 

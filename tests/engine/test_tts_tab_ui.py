@@ -20,20 +20,18 @@ def _make_view():
     return GenerativeView()
 
 
-def _tts_patches(*, f5: bool = True, lightblue: bool = True, phonikud: bool = True, mms: bool = True, bark: bool = True):
+def _tts_patches(*, f5: bool = True, lightblue: bool = True, phonikud: bool = True, mms: bool = True):
     fake_statuses = {
         "f5tts": SimpleNamespace(package_ready=f5, model_ready=f5, ready=f5),
         "lightblue": SimpleNamespace(package_ready=lightblue, model_ready=lightblue, ready=lightblue),
         "phonikud": SimpleNamespace(package_ready=phonikud, model_ready=phonikud, ready=phonikud),
         "mms": SimpleNamespace(package_ready=mms, model_ready=mms, ready=mms),
-        "bark": SimpleNamespace(package_ready=bark, model_ready=bark, ready=bark),
     }
     return [
         patch("kadima.engine.tts_synthesizer._F5TTS_AVAILABLE", f5),
         patch("kadima.engine.tts_synthesizer._LIGHTBLUE_AVAILABLE", lightblue),
         patch("kadima.engine.tts_synthesizer._PHONIKUD_TTS_AVAILABLE", phonikud),
         patch("kadima.engine.tts_synthesizer._MMS_AVAILABLE", mms),
-        patch("kadima.engine.tts_synthesizer._BARK_AVAILABLE", bark),
         patch("kadima.engine.tts_bootstrap.get_tts_bootstrap_statuses", return_value=fake_statuses),
     ]
 
@@ -48,7 +46,7 @@ def test_tts_selector_has_new_backends(qtbot) -> None:
         view._tts_backend._backend_combo.itemText(i)
         for i in range(view._tts_backend._backend_combo.count())
     ]
-    assert backends == ["auto", "f5tts", "lightblue", "phonikud", "mms", "bark"]
+    assert backends == ["auto", "f5tts", "lightblue", "phonikud", "mms"]
 
 
 def test_tts_badges_reflect_new_backends(qtbot) -> None:
@@ -61,9 +59,6 @@ def test_tts_badges_reflect_new_backends(qtbot) -> None:
     assert "✅" in view._tts_lightblue_badge.text()
     assert "✅" in view._tts_phonikud_badge.text()
     assert "✅" in view._tts_mms_badge.text()
-    assert "✅" in view._tts_bark_badge.text()
-
-
 def test_tts_clear_resets_voice_progress_and_export(qtbot) -> None:
     with ExitStack() as stack:
         for ctx in _tts_patches():
@@ -104,6 +99,27 @@ def test_tts_result_updates_status_and_enables_export(qtbot, tmp_path: Path) -> 
     assert view._tts_export_btn.isEnabled()
     assert "lightblue" in view._tts_status.text()
     assert "22050 Hz" in view._tts_status.text()
+
+
+def test_tts_result_surfaces_f5_fallback_note(qtbot, tmp_path: Path) -> None:
+    with ExitStack() as stack:
+        for ctx in _tts_patches():
+            stack.enter_context(ctx)
+        view = _make_view()
+        qtbot.add_widget(view)
+    wav_path = tmp_path / "result.wav"
+    wav_path.write_bytes(b"RIFFfake")
+    result = SimpleNamespace(
+        data=SimpleNamespace(
+            audio_path=wav_path,
+            backend="f5tts",
+            duration_seconds=2.0,
+            sample_rate=24000,
+            note="Selected F5 preset/reference failed; bundled default voice used.",
+        )
+    )
+    view._on_tts_result("tts", result)
+    assert "bundled default voice used" in view._tts_status.text()
 
 
 def test_tts_voice_combo_loads_local_f5_presets(qtbot) -> None:

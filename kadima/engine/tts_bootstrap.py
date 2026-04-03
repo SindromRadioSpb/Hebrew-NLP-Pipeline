@@ -153,14 +153,6 @@ def get_tts_bootstrap_statuses() -> dict[str, BackendBootstrapStatus]:
         ),
     )
 
-    bark_pkg = _module_available("bark")
-    statuses["bark"] = BackendBootstrapStatus(
-        backend="bark",
-        package_ready=bark_pkg,
-        model_ready=bark_pkg,
-        detail="ready" if bark_pkg else "package missing",
-    )
-
     return statuses
 
 
