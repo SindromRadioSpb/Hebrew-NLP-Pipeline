@@ -739,35 +739,64 @@ ul
 
 ### 5.12 M15 — TTS Synthesizer (TTSSynthesizer)
 
+**Статус: ✅ Production-ready (MMS рабочий, XTTS/Bark исправлены, Piper отложен)** | **Тесты: 61/61 PASS (30 engine + 13 new backends + 18 UI)** | **Файл: `kadima/engine/tts_synthesizer.py` (~520 строк)**
+
 #### A) Реализованный функционал
 
-| Функциональность | Доказательство | Связанные процессы |
-|-----------------|---------------|-------------------|
-| Coqui XTTS v2 backend (`tts_models/multilingual/multi-dataset/xtts_v2`, 4GB) | `tts_synthesizer.py:63-123` | Audio generation |
-| Facebook MMS-TTS HEB backend (`facebook/mms-tts-heb`, <1GB) | `tts_synthesizer.py:128-214` | Lightweight TTS |
-| Fallback chain: xtts → mms → FAILED | `tts_synthesizer.py:292-315` | Graceful degradation |
-| Local model path discovery (env vars) | `tts_synthesizer.py:131-147` | Offline deployment |
-| WAV файл output (контентно-адресованный путь) | `tts_synthesizer.py:107` | Audio storage |
-| Метрика `characters_per_second()` | `tts_synthesizer.py:351-362` | Performance monitoring |
-| Валидация: max 5000 символов | `tts_synthesizer.py:256-258` | Input validation |
-| `process_batch()` | `tts_synthesizer.py:336-348` | Batch synthesis |
-| 30 тестов | `tests/engine/test_tts_synthesizer.py` | CI coverage |
-| GenerativeView TTS tab с AudioPlayer widget | CLAUDE.md | Desktop UI |
-| **API endpoint POST `/generative/tts`** ✅ | `api/routers/generative.py:489-512` | REST synthesis |
-| **API endpoint GET `/generative/tts/download/{id}`** ✅ | `api/routers/generative.py:515-540` | Streaming download |
+| # | Функциональность | Строки | Связанные процессы |
+|---|-----------------|--------|-------------------|
+| 1 | Coqui XTTS v2 backend (4GB, multi-speaker) | `tts_synthesizer.py:92-160` | Audio generation |
+| 2 | Facebook MMS-TTS HEB backend (<1GB) | `tts_synthesizer.py:166-254` | Lightweight TTS, CPU |
+| 3 | **Piper TTS backend (MIT, CPU/ONNX)** — отключён, нет Hebrew модели | `tts_synthesizer.py:260-265` | Заглушка |
+| 4 | **Suno Bark backend (voice cloning, MIT)** | `tts_synthesizer.py:297-410` | Voice cloning |
+| 5 | **Fallback chain: piper → xtts → mms → bark → FAILED** | `tts_synthesizer.py:460-520` | Graceful degradation |
+| 6 | **SHA-256 content-addressed cache** (`_text_hash()`) | `tts_synthesizer.py:67-69` | Дедупликация WAV, skip synthesis |
+| 7 | **Cache hit skip** — all 4 backends проверяют `out_path.exists()` | `_xtts_synthesize()`, `_mms_synthesize()`, `_bark_synthesize()` | Cache reuse |
+| 8 | **PyTorch 2.6 compatibility** — `torch.load` patch для XTTS и Bark | `_get_xtts()`, `_patch_torch_for_bark()` | weights_only=False |
+| 9 | **XTTS Hebrew skip** — XTTS не поддерживает 'he', explicit skip | `tts_synthesizer.py:474-477` | XTTS не работает с Hebrew |
+| 10 | Local model path discovery (env vars) | `tts_synthesizer.py:172-188` | Offline deployment |
+| 11 | WAV файл output (SHA-256 content-addressed) | `tts_synthesizer.py` | Audio storage |
+| 12 | Метрика `characters_per_second()` | `tts_synthesizer.py:524-530` | Performance monitoring |
+| 13 | Валидация: max 5000 символов | `tts_synthesizer.py:428-440` | Input validation |
+| 14 | `process_batch()` | `tts_synthesizer.py:516-522` | Batch synthesis |
+| 15 | **API endpoint POST `/generative/tts`** | `api/routers/generative.py:490-513` | REST synthesis |
+| 16 | **API endpoint GET `/generative/tts/download/{filename}`** | `api/routers/generative.py:516-533` | FileResponse download |
+| 17 | **TTSRequest: speaker_ref_path** | `api/routers/generative.py:476-480` | Voice cloning API |
+| 18 | 30+13=43 engine теста | `tests/engine/test_tts_synthesizer.py`, `test_tts_new_backends.py` | CI coverage |
+| 19 | 18 UI smoke тестов | `tests/ui/test_tts_tab.py` | UI coverage |
+| 20 | **UI: BackendSelector [xtts, mms, bark]**, default="mms" | `generative_view.py:366-369` | Desktop UI |
+| 21 | **UI: Help text** — описание backends | `generative_view.py:372-377` | UX |
+| 22 | **UI: ML badges** (4 badge: piper/xtts/mms/bark) | `_update_tts_ml_badges()` | Визуальная индикация |
+| 23 | **UI: Char/word counters** | `_on_tts_input_changed()` | Live feedback |
+| 24 | **UI: Voice cloning controls** (speaker ref FileDialog) | `_on_tts_speaker_browse()` | Bark voice cloning |
+| 25 | **Default speaker WAV** для XTTS | `kadima/data/default_speaker.wav` | XTTS fallback speaker |
+| 26 | **Артефакт**: `artefacts/tts_mms_output.wav` (1.2MB) | — | Тестовый артефакт |
 
 #### B) Запланировано, не реализовано
 
-| Функциональность | Доказательство | Ожидаемые процессы | Блокеры |
-|-----------------|---------------|-------------------|---------|
-| Voice cloning (XTTS умеет) | XTTS v2 поддерживает speaker reference | Персонализированный TTS | UI не реализует |
-| API endpoint `/generative/tts` | CLAUDE.md "Planned (generative router — Tier 2/3)" | REST access | **Не реализовано в router!** |
-| Audio content-addressed cache | `KADIMA_MASTER_PLAN_v2`: `audio_service` в фазе S | Дедупликация WAV | Фаза S не начата |
-| DB сохранение results_tts | CLAUDE.md migration 005 | Audit trail | Migration не создана |
+| Функциональность | Доказательство | Ожидаемые процессы | Блокеры | Решение |
+|-----------------|---------------|-------------------|---------|---------|
+| ~~Voice cloning UI~~ | **✅ РЕАЛИЗОВАНО** (2026-04-03) | Bark voice cloning | — | **Закрыто** — FileDialog для speaker WAV |
+| ~~API endpoint `/generative/tts`~~ | **✅ РЕАЛИЗОВАНО** (2026-04-03) | REST access | — | **Закрыто** — POST + GET download |
+| ~~SHA-256 content cache~~ | **✅ РЕАЛИЗОВАНО** (2026-04-03) | Дедупликация WAV | — | **Закрыто** — `_text_hash()` в 4 backend'ах |
+| F5-TTS Hebrew v2 интеграция | audit_v1.md §16.6, roadmap.md F2.2 | Primary TTS для Hebrew (~3GB VRAM, Apache 2.0) | Фаза F2 не начата | ⏳ **Отложить до Фазы F2** |
+| DB сохранение results_tts | CLAUDE.md migration 005 | Audit trail | Migration не создана | ⏳ **Отложить до Фазы S** |
 
 #### Резюме модуля
 
-**Зрелость: Production-ready (2 backends: XTTS/MPL-2.0 + MMS/CC-BY-NC)**. API endpoints реализованы: POST `/generative/tts` + GET `/generative/tts/download/{id}`. UI: TTS tab + AudioPlayer. ⏳ **Планируется**: Piper TTS (3rd backend, MIT license), SHA-256 content cache, voice cloning UI.
+**Зрелость: Production-ready** с оговорками. Рабочий backend: MMS-TTS-heb (CC-BY-NC, CPU). XTTS v2 **не поддерживает Hebrew** (skip). Bark работает на CPU (очень медленно, ~8 мин на 186 символов). Piper отключён — нет Hebrew модели в репозитории. SHA-256 cache + PyTorch 2.6 fix + voice cloning UI реализованы. **61 тест** (43 engine + 18 UI).
+
+**Реальные Hebrew TTS модели** (локально, бесплатно):
+| Модель | Лицензия | VRAM | Zero-shot | Рекомендация |
+|--------|----------|------|-----------|-------------|
+| **F5-TTS Hebrew v2** | Apache 2.0 ✅ | ~3 ГБ | ✅ 58 голосов | **Primary** (лучшее open) |
+| **LightBlue TTS** | MIT ✅ | CPU | ❌ | Fallback (MIT) |
+| **MMS-TTS-heb** | CC-BY-NC | <1 ГБ | ❌ | Final fallback |
+| **Bark** | MIT ✅ | 2 ГБ | ✅ | Voice cloning |
+
+**Рекомендуемая цепочка (Фаза F2)**: F5-TTS → LightBlue → MMS
+
+----
 
 ---
 
