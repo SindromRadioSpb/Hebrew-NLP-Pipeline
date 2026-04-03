@@ -95,6 +95,11 @@ class AudioPlayer(QWidget):
     def _init_player(self) -> None:
         """Initialise QMediaPlayer if multimedia is available."""
         self._audio_output = QAudioOutput()
+        try:
+            self._audio_output.setVolume(1.0)
+            self._audio_output.setMuted(False)
+        except Exception:  # noqa: BLE001
+            pass
         self._player = QMediaPlayer()
         self._player.setAudioOutput(self._audio_output)
         self._player.durationChanged.connect(self._on_duration_changed)

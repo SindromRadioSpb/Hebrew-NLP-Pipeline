@@ -56,6 +56,7 @@ $env:PHONIKUD_TTS_CONFIG_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-hig
 - `speaker_ref_path` no longer requires `F5TTS_REF_TEXT`. If no transcript is supplied, upstream ASR is used for the reference WAV.
 - Optional voice presets can be staged under `F:\datasets_models\tts\f5tts-hebrew-v2\voices\` as `<voice>.wav` plus optional `<voice>.txt`.
 - The Hugging Face model repo currently publishes only `model.safetensors` and `vocab.txt`; it does not publish the 58 preset reference WAV/TXT files, so preset voice selection is supported by runtime but not bundled by default.
+- Without `voices\*.wav` or an explicit `speaker_ref_path`, `f5tts` falls back to the packaged demo reference voice from the upstream `f5-tts` wheel.
 
 ## Bark
 

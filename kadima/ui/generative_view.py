@@ -380,7 +380,7 @@ class GenerativeView(QWidget):
         help_text = QLabel(
             "🔊 Backends: "
             "<b>auto</b>=F5-TTS → LightBlue → Phonikud → MMS, "
-            "<b>f5tts</b>=best quality + cloning, "
+            "<b>f5tts</b>=best quality + cloning (reference WAV or local preset voices), "
             "<b>lightblue</b>=fast CPU ONNX, "
             "<b>phonikud</b>=Hebrew Piper ONNX, "
             "<b>mms</b>=last-resort fallback, "
@@ -465,7 +465,7 @@ class GenerativeView(QWidget):
         voice_row.addWidget(voice_lbl)
         self._tts_voice_input = QLineEdit()
         self._tts_voice_input.setObjectName("generative_tts_voice")
-        self._tts_voice_input.setPlaceholderText("Optional voice, e.g. Yonatan or michael")
+        self._tts_voice_input.setPlaceholderText("Optional voice preset name; F5 needs local voices/<name>.wav")
         voice_row.addWidget(self._tts_voice_input, stretch=1)
         lay.addLayout(voice_row)
 
