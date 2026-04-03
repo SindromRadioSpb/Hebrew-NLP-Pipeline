@@ -264,6 +264,56 @@ kadima/infra/reference/hewiki_connector.py — Hebrew Wikipedia как reference
 
 ---
 
+## Фаза F2: TTS Hebrew Models Enhancement
+**Параллельна другим фазам. Оценка: 1 неделя / ~20ч**
+
+### F2.1 — Hebrew TTS Assessment
+```
+Реализовано: 2026-04-03 (аудит)
+- XTTSv2: ❌ Не поддерживает Hebrew (нет 'he' в supported languages)
+- Piper TTS: ❌ Нет Hebrew модели в piper-voices репозитории
+- MMS-TTS-heb: ✅ Работает на CPU, CC-BY-NC 4.0 (<1ms, <1GB)
+- Bark: ✅ Работает на CPU (очень медленно, ~8 мин для 186 chars)
+- Phonikud-TTS: ⏳ MIT, ONNX — требует интеграции
+
+Артефакты: artefacts/tts_mms_output.wav (1.2MB MMS)
+```
+
+### F2.2 — F5-TTS Hebrew v2 Integration (~12ч)
+```
+Модель: Yzamari/f5tts-hebrew-v2
+Лицензия: Apache 2.0 ✅ (коммерчески разрешено)
+VRAM: ~3 ГБ, zero-shot voice cloning (58 голосов)
+Данные: 158ч иврит (SASPEECH Gold + FLEURS + Hebrew Speech Campus)
+        68,569 сегментов, G2P через Phonikud
+
+Новая fallback chain:
+1. F5-TTS Hebrew v2    ← primary (Apache 2.0, voice cloning)
+2. LightBlue TTS       ← fallback (MIT, ONNX/CPU)
+3. MMS-TTS-heb         ← финальный (CC-BY-NC, всегда работает)
+
+kadima/engine/tts_synthesizer.py — добавить _f5tts_synthesize()
+kadima/ui/generative_view.py — backend selector: [f5-tts, mms, bark]
+```
+
+### F2.3 — Hebrew TTS Models Reference Table
+```
+Модели для иврита (локально, бесплатно):
+
+| Модель              │ Лицензия     │ VRAM  │ Zero-shot │ Качество    │
+|---------------------|--------------|-------|-----------|-------------|
+| LightBlue TTS       │ MIT ✅       │ CPU   │ ❌        │ Хорошее     │
+| F5-TTS Hebrew v2    │ Apache 2.0 ✅│ ~3 ГБ │ ✅ 58     │ Лучшее open │
+| MMS-TTS-heb         │ CC-BY-NC     │ <1 ГБ │ ❌        │ Сносное     │
+| Zonos-Hebrew        │ CC-BY-NC     │ 6+ ГБ │ ✅        │ Топ         │
+| Phonikud-TTS        │ CC-NC        │ <1 ГБ │ ❌        │ Хорошее     |
+| Bark (Suno)         │ MIT ✅       │ 2 ГБ  │ ✅        │ Среднее     |
+
+Рекомендация: F5-TTS как primary (Apache 2.0 — чистая лицензия, <3GB VRAM)
+```
+
+---
+
 ## Метрики успеха v2.0
 
 | Метрика | Сейчас | Цель |
