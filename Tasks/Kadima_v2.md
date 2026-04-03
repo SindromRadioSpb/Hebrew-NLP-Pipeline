@@ -195,14 +195,19 @@ M14 Translator (3GB VRAM) ────────────────┘─
   - добавлены NER-specific API tests;
   - добавлены NER-specific UI regression tests;
   - живой smoke artifact сохранён в `artefacts/ner_m17_smoke.json`.
+- PATCH-04 Quality evidence on gold corpus — DONE:
+  - live report сохранён в `artefacts/ner_m17_gold_smoke.json`;
+  - воспроизводимый smoke suite добавлен в `tests/engine/test_ner_gold_corpus_smoke.py`.
 - Smart-model backlog:
   - `GLiNER` / `NuNER Zero` рассматривать только как optional experimental layer;
   - `dicta-il/dictabert-large-parse` держать как отдельный heavier future path для joint parsing/NER, не смешивая с текущим release-pass.
 
 **Closed evidence (2026-04-04):**
-- `158 PASS`: `tests/engine/test_ner_extractor.py`, `tests/engine/test_ner_tab_ui.py`, `tests/api/test_generative_router.py`, `tests/test_config.py`, `tests/ui/test_generative.py`
+- `161 PASS`: `tests/engine/test_ner_extractor.py`, `tests/engine/test_ner_tab_ui.py`, `tests/engine/test_ner_gold_corpus_smoke.py`, `tests/api/test_generative_router.py`, `tests/test_config.py`, `tests/ui/test_generative.py`
 - live smoke artifact:
   - `artefacts/ner_m17_smoke.json`
+- gold-corpus smoke artifact:
+  - `artefacts/ner_m17_gold_smoke.json`
 
 **M14 — Translator**
 - Вход: `{text, src_lang, tgt_lang}` → Выход: `str`
