@@ -25,6 +25,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from scipy.io import wavfile
+
 from kadima.engine.base import Processor, ProcessorResult, ProcessorStatus
 
 logger = logging.getLogger(__name__)
@@ -78,11 +80,24 @@ def _text_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
+def _first_existing_path(*candidates: str | Path) -> str | None:
+    """Return the first existing filesystem path from the candidate list."""
+    for candidate in candidates:
+        path = Path(candidate)
+        if path.exists():
+            return str(path)
+    return None
+
+
 def _probe_wav(path: Path) -> tuple[float, int]:
     """Read WAV metadata without touching any model backend."""
-    with wave.open(str(path), "rb") as wf:
-        frames = wf.getnframes()
-        rate = wf.getframerate()
+    try:
+        with wave.open(str(path), "rb") as wf:
+            frames = wf.getnframes()
+            rate = wf.getframerate()
+    except wave.Error:
+        rate, data = wavfile.read(path)
+        frames = int(getattr(data, "shape", [len(data)])[0]) if data is not None else 0
     duration = frames / float(rate) if rate > 0 else 0.0
     return duration, rate
 
@@ -207,21 +222,19 @@ def _xtts_synthesize(text: str, device: str, output_dir: Path) -> TTSResult:
 _mms_model: Any = None
 _mms_tokenizer: Any = None
 # Prefer local pre-downloaded snapshot; falls back to HF download
-_MMS_LOCAL_PATH = os.environ.get(
-    "MMS_TTS_MODEL_PATH",
-    str(
-        Path(os.path.expanduser("~")).parent.parent
-        / "datasets_models"
-        / "tts"
-        / "mms-tts-heb"
-        / "models--facebook--mms-tts-heb"
-        / "snapshots"
-        / "28f1fce7cf56b2a3a56e19a4a1405ed70b454853"
-    ),
+_MMS_LOCAL_PATH = os.environ.get("MMS_TTS_MODEL_PATH") or _first_existing_path(
+    "F:/datasets_models/tts/mms-tts-heb/models--facebook--mms-tts-heb/snapshots/28f1fce7cf56b2a3a56e19a4a1405ed70b454853",
+    Path(os.path.expanduser("~")).parent.parent
+    / "datasets_models"
+    / "tts"
+    / "mms-tts-heb"
+    / "models--facebook--mms-tts-heb"
+    / "snapshots"
+    / "28f1fce7cf56b2a3a56e19a4a1405ed70b454853",
 )
 _MMS_MODEL_NAME = (
     _MMS_LOCAL_PATH
-    if Path(_MMS_LOCAL_PATH).exists()
+    if _MMS_LOCAL_PATH and Path(_MMS_LOCAL_PATH).exists()
     else "facebook/mms-tts-heb"
 )
 
@@ -249,8 +262,15 @@ def _get_mms(device: str) -> tuple[Any, Any]:
         import torch
 
         dev = "cuda" if (device == "cuda" and torch.cuda.is_available()) else "cpu"
-        _mms_tokenizer = AutoTokenizer.from_pretrained(_MMS_MODEL_NAME)
-        _mms_model = VitsModel.from_pretrained(_MMS_MODEL_NAME).to(dev)
+        local_only = Path(str(_MMS_MODEL_NAME)).exists()
+        _mms_tokenizer = AutoTokenizer.from_pretrained(
+            _MMS_MODEL_NAME,
+            local_files_only=local_only,
+        )
+        _mms_model = VitsModel.from_pretrained(
+            _MMS_MODEL_NAME,
+            local_files_only=local_only,
+        ).to(dev)
         _mms_model.eval()
         logger.info("MMS-TTS model loaded on device=%s", dev)
     return _mms_model, _mms_tokenizer

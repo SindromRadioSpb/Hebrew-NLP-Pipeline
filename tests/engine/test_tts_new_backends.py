@@ -12,10 +12,12 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
 import pytest
+from scipy.io import wavfile
 
 from kadima.engine.base import ProcessorStatus
-from kadima.engine.tts_synthesizer import TTSResult, TTSSynthesizer, _mms_synthesize, _text_hash
+from kadima.engine.tts_synthesizer import TTSResult, TTSSynthesizer, _get_mms, _mms_synthesize, _text_hash
 
 
 @pytest.fixture()
@@ -270,3 +272,47 @@ class TestSHA256Cache:
         assert result.backend == "mms"
         assert result.sample_rate == 16000
         assert result.duration_seconds > 0
+
+    def test_mms_cache_hit_supports_float_wav(self, tmp_path: Path) -> None:
+        text = "שלום עולם"
+        cache_key = _text_hash(text)
+        cached_file = tmp_path / f"tts_mms_{cache_key}.wav"
+
+        waveform = np.zeros(1600, dtype=np.float32)
+        wavfile.write(cached_file, 16000, waveform)
+
+        with patch("kadima.engine.tts_synthesizer._get_mms", side_effect=AssertionError("_get_mms must not be called")):
+            result = _mms_synthesize(text, "cpu", tmp_path)
+
+        assert result.audio_path == cached_file
+        assert result.sample_rate == 16000
+        assert result.duration_seconds > 0
+
+    def test_get_mms_uses_local_files_only_for_local_snapshot(self, tmp_path: Path) -> None:
+        local_model_dir = tmp_path / "mms-local"
+        local_model_dir.mkdir()
+
+        class _FakeModel:
+            def __init__(self) -> None:
+                self.device = "cpu"
+
+            def to(self, _device: str) -> "_FakeModel":
+                return self
+
+            def eval(self) -> "_FakeModel":
+                return self
+
+        fake_model = _FakeModel()
+
+        with (
+            patch("kadima.engine.tts_synthesizer._mms_model", None),
+            patch("kadima.engine.tts_synthesizer._mms_tokenizer", None),
+            patch("kadima.engine.tts_synthesizer._MMS_AVAILABLE", True),
+            patch("kadima.engine.tts_synthesizer._MMS_MODEL_NAME", str(local_model_dir)),
+            patch("transformers.AutoTokenizer.from_pretrained", return_value=object()) as mock_tok,
+            patch("transformers.VitsModel.from_pretrained", return_value=fake_model) as mock_model,
+        ):
+            _get_mms("cpu")
+
+        assert mock_tok.call_args.kwargs["local_files_only"] is True
+        assert mock_model.call_args.kwargs["local_files_only"] is True
