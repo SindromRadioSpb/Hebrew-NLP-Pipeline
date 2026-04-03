@@ -572,6 +572,8 @@ class STTResponse(BaseModel):
     confidence: float
     duration_seconds: float
     backend: str
+    segments: list[dict] = Field(default_factory=list)
+    word_segments: list[dict] = Field(default_factory=list)
     note: str = ""
 
 
@@ -605,5 +607,7 @@ async def stt(req: STTRequest) -> STTResponse:
         confidence=result.data.confidence,
         duration_seconds=result.data.duration_seconds,
         backend=result.data.backend,
+        segments=result.data.segments,
+        word_segments=result.data.word_segments,
         note=result.data.note,
     )

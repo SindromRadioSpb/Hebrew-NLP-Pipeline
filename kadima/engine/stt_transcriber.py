@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import os
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -35,6 +36,27 @@ try:
 
     _WHISPER_AVAILABLE = True
     logger.info("openai-whisper available for STT")
+except ImportError:
+    pass
+
+_SILERO_VAD_AVAILABLE = False
+try:
+    from silero_vad import (
+        get_speech_timestamps as _silero_get_speech_timestamps,
+        load_silero_vad as _silero_load_model,
+    )
+
+    _SILERO_VAD_AVAILABLE = True
+    logger.info("silero-vad available for STT preprocessing")
+except ImportError:
+    pass
+
+_WHISPERX_AVAILABLE = False
+try:
+    import whisperx as _whisperx  # noqa: F401
+
+    _WHISPERX_AVAILABLE = True
+    logger.info("whisperx available for STT alignment")
 except ImportError:
     pass
 
@@ -68,6 +90,7 @@ class STTResult:
         duration_seconds: Audio duration in seconds.
         audio_path: Source audio file path (may be None for batch items).
         segments: Optional list of per-segment dicts with start/end/text.
+        word_segments: Optional word-level alignment dicts.
         note: Optional user-facing runtime note (for example, fallback used).
     """
 
@@ -78,6 +101,7 @@ class STTResult:
     duration_seconds: float = 0.0
     audio_path: Path | None = None
     segments: list[dict[str, Any]] = field(default_factory=list)
+    word_segments: list[dict[str, Any]] = field(default_factory=list)
     note: str = ""
 
 
@@ -232,6 +256,7 @@ _FASTER_WHISPER_DEFAULT_MODEL = (
     if Path(_FASTER_WHISPER_LOCAL_PATH).exists()
     else "Systran/faster-whisper-large-v3"
 )
+_silero_vad_model: Any = None
 
 
 def _get_faster_whisper(model_name: str, device: str) -> Any:
@@ -261,6 +286,19 @@ def _get_faster_whisper(model_name: str, device: str) -> Any:
         _faster_model = WhisperModel(model_name, device=dev, compute_type=compute_type)
         logger.info("faster-whisper %s loaded on device=%s", model_name, dev)
     return _faster_model
+
+
+def _get_silero_vad() -> Any:
+    """Lazy-load silero-vad model (singleton)."""
+    global _silero_vad_model
+    if _silero_vad_model is None:
+        if not _SILERO_VAD_AVAILABLE:
+            raise ImportError(
+                "silero-vad not installed — install with: pip install silero-vad"
+            )
+        _silero_vad_model = _silero_load_model()
+        logger.info("silero-vad loaded for STT preprocessing")
+    return _silero_vad_model
 
 
 def _faster_whisper_transcribe(
@@ -307,6 +345,90 @@ def _faster_whisper_transcribe(
         audio_path=audio_path,
         segments=seg_dicts,
     )
+
+
+def _preprocess_with_vad(audio_path: Path, notes: list[str]) -> Path:
+    """Create a temporary speech-only WAV using silero-vad."""
+    import librosa
+    import numpy as np
+    import soundfile as sf
+    import torch
+
+    model = _get_silero_vad()
+    wav_np, sample_rate = sf.read(str(audio_path), dtype="float32", always_2d=False)
+    if isinstance(wav_np, np.ndarray) and wav_np.ndim > 1:
+        wav_np = wav_np.mean(axis=1)
+    wav_np = np.nan_to_num(
+        np.asarray(wav_np, dtype=np.float32),
+        nan=0.0,
+        posinf=0.0,
+        neginf=0.0,
+    )
+    if sample_rate != 16000:
+        wav_np = librosa.resample(wav_np, orig_sr=sample_rate, target_sr=16000)
+    wav_np = np.nan_to_num(
+        np.asarray(wav_np, dtype=np.float32),
+        nan=0.0,
+        posinf=0.0,
+        neginf=0.0,
+    )
+    wav = torch.from_numpy(np.asarray(wav_np, dtype=np.float32))
+    speech_timestamps = _silero_get_speech_timestamps(
+        wav,
+        model,
+        sampling_rate=16000,
+    )
+    if not speech_timestamps:
+        notes.append("VAD found no speech segments; original audio used.")
+        return audio_path
+
+    silence_gap = torch.zeros(int(0.08 * 16000), dtype=wav.dtype)
+    chunks: list[Any] = []
+    for index, timestamp in enumerate(speech_timestamps):
+        chunks.append(wav[timestamp["start"]: timestamp["end"]])
+        if index < len(speech_timestamps) - 1:
+            chunks.append(silence_gap)
+    merged = torch.cat(chunks)
+
+    with tempfile.NamedTemporaryFile(
+        suffix=".wav",
+        prefix="kadima_stt_vad_",
+        delete=False,
+    ) as handle:
+        temp_path = Path(handle.name)
+    sf.write(temp_path, merged.detach().cpu().numpy(), 16000)
+    notes.append(f"VAD applied: retained {len(speech_timestamps)} speech segment(s).")
+    return temp_path
+
+
+def _align_result_with_whisperx(
+    result: STTResult,
+    audio_path: Path,
+    device: str,
+    notes: list[str],
+) -> STTResult:
+    """Apply optional word-level alignment with whisperx."""
+    if not result.segments:
+        notes.append("Alignment skipped: no STT segments available.")
+        return result
+    if not _WHISPERX_AVAILABLE:
+        raise ImportError(
+            "whisperx not installed — install with: pip install whisperx"
+        )
+
+    import torch
+    import whisperx
+
+    dev = "cuda" if (device == "cuda" and torch.cuda.is_available()) else "cpu"
+    model_a, metadata = whisperx.load_align_model(
+        language_code=result.language,
+        device=dev,
+    )
+    aligned = whisperx.align(result.segments, model_a, metadata, str(audio_path), dev)
+    result.segments = aligned.get("segments", result.segments)
+    result.word_segments = aligned.get("word_segments", [])
+    notes.append(f"Alignment applied with whisperx on {dev}.")
+    return result
 
 
 # ── Processor ─────────────────────────────────────────────────────────────────
@@ -383,10 +505,33 @@ class STTTranscriber(Processor):
         device = merged.get("device", "cpu")
         language = merged.get("language", "he")
         audio_path = Path(input_data)
+        use_vad = bool(merged.get("use_vad", False))
+        use_alignment = bool(merged.get("use_alignment", False))
 
         errors: list[str] = []
         result: STTResult | None = None
         successful_backend: str | None = None
+        notes: list[str] = []
+        cleanup_paths: list[Path] = []
+        processed_audio_path = audio_path
+
+        if use_vad:
+            try:
+                processed_audio_path = _preprocess_with_vad(audio_path, notes)
+                if processed_audio_path != audio_path:
+                    cleanup_paths.append(processed_audio_path)
+            except ImportError as exc:
+                msg = f"VAD unavailable: {exc}"
+                logger.warning(msg)
+                errors.append(msg)
+                notes.append("VAD requested but unavailable; original audio used.")
+                processed_audio_path = audio_path
+            except Exception as exc:  # noqa: BLE001
+                msg = f"VAD preprocessing failed: {exc}"
+                logger.warning(msg)
+                errors.append(msg)
+                notes.append("VAD preprocessing failed; original audio used.")
+                processed_audio_path = audio_path
 
         # Determine backend order
         if backend == "whisper":
@@ -400,11 +545,19 @@ class STTTranscriber(Processor):
             try:
                 if bk == "whisper":
                     model_name = merged.get("model", _WHISPER_DEFAULT_MODEL)
-                    result = _whisper_transcribe(audio_path, device, model_name, language)
+                    result = _whisper_transcribe(
+                        processed_audio_path,
+                        device,
+                        model_name,
+                        language,
+                    )
                 elif bk == "faster-whisper":
                     model_name = merged.get("model", _FASTER_WHISPER_DEFAULT_MODEL)
                     result = _faster_whisper_transcribe(
-                        audio_path, device, model_name, language
+                        processed_audio_path,
+                        device,
+                        model_name,
+                        language,
                     )
                 successful_backend = bk
                 break
@@ -421,27 +574,58 @@ class STTTranscriber(Processor):
             errors.append(
                 "No STT backend available — install openai-whisper or faster-whisper"
             )
-            return ProcessorResult(
+            response = ProcessorResult(
                 module_name=self.name,
                 status=ProcessorStatus.FAILED,
                 data=None,
                 errors=errors,
                 processing_time_ms=(time.monotonic() - t0) * 1000,
             )
+            for path in cleanup_paths:
+                path.unlink(missing_ok=True)
+            return response
 
         if errors and successful_backend is not None:
-            result.note = (
+            notes.append(
                 f"Fallback used: {successful_backend} succeeded after "
                 f"{len(errors)} earlier backend issue(s)."
             )
 
-        return ProcessorResult(
+        result.audio_path = audio_path
+        if use_alignment:
+            if processed_audio_path != audio_path:
+                notes.append(
+                    "Alignment skipped because VAD changed the audio timeline; transcript returned without word timestamps."
+                )
+            else:
+                try:
+                    result = _align_result_with_whisperx(result, audio_path, device, notes)
+                except ImportError as exc:
+                    msg = f"Alignment unavailable: {exc}"
+                    logger.warning(msg)
+                    errors.append(msg)
+                    notes.append(
+                        "Alignment requested but unavailable; transcript returned without word timestamps."
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    msg = f"Alignment failed: {exc}"
+                    logger.warning(msg)
+                    errors.append(msg)
+                    notes.append(
+                        "Alignment failed; transcript returned without word timestamps."
+                    )
+
+        result.note = " | ".join(notes)
+        response = ProcessorResult(
             module_name=self.name,
             status=ProcessorStatus.READY,
             data=result,
             errors=errors,
             processing_time_ms=(time.monotonic() - t0) * 1000,
         )
+        for path in cleanup_paths:
+            path.unlink(missing_ok=True)
+        return response
 
     def process_batch(
         self, inputs: list[Any], config: dict[str, Any]

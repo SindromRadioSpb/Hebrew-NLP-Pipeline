@@ -303,6 +303,8 @@ class TestSTTConfig:
         c = STTConfig()
         assert c.backend == "auto"
         assert c.model_size == "large-v3"
+        assert c.use_vad is False
+        assert c.use_alignment is False
 
     def test_valid_backends(self):
         for backend in ("auto", "whisper", "faster-whisper"):
@@ -321,6 +323,11 @@ class TestSTTConfig:
     def test_invalid_backend(self):
         with pytest.raises(ValidationError):
             STTConfig(backend="faster_whisper")
+
+    def test_optional_processing_flags(self):
+        c = STTConfig(use_vad=True, use_alignment=True)
+        assert c.use_vad is True
+        assert c.use_alignment is True
 
 
 class TestSummarizerConfig:

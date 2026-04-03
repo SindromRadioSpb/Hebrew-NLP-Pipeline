@@ -241,6 +241,76 @@ class TestProcess:
         assert "Fallback used" in r.data.note
         assert any("whisper backend unavailable" in error for error in r.errors)
 
+    def test_vad_requested_but_unavailable_still_returns_transcript(self, tmp_path: Path) -> None:
+        wav = _make_wav(tmp_path / "s.wav")
+        mock_model = MagicMock()
+        mock_model.transcribe.return_value = {
+            "text": "שלום עולם",
+            "language": "he",
+            "segments": [{"start": 0.0, "end": 1.5, "text": "שלום עולם", "avg_logprob": -0.1}],
+        }
+        with (
+            patch("kadima.engine.stt_transcriber._WHISPER_AVAILABLE", True),
+            patch("kadima.engine.stt_transcriber._whisper_model", mock_model),
+            patch(
+                "kadima.engine.stt_transcriber._preprocess_with_vad",
+                side_effect=ImportError("silero-vad missing"),
+            ),
+        ):
+            r = self.t.process(wav, {"backend": "whisper", "use_vad": True})
+        assert r.status == ProcessorStatus.READY
+        assert r.data is not None
+        assert r.data.transcript == "שלום עולם"
+        assert "VAD requested but unavailable" in r.data.note
+
+    def test_alignment_requested_but_unavailable_still_returns_transcript(self, tmp_path: Path) -> None:
+        wav = _make_wav(tmp_path / "s.wav")
+        mock_model = MagicMock()
+        mock_model.transcribe.return_value = {
+            "text": "שלום עולם",
+            "language": "he",
+            "segments": [{"start": 0.0, "end": 1.5, "text": "שלום עולם", "avg_logprob": -0.1}],
+        }
+        with (
+            patch("kadima.engine.stt_transcriber._WHISPER_AVAILABLE", True),
+            patch("kadima.engine.stt_transcriber._whisper_model", mock_model),
+            patch(
+                "kadima.engine.stt_transcriber._align_result_with_whisperx",
+                side_effect=ImportError("whisperx missing"),
+            ),
+        ):
+            r = self.t.process(wav, {"backend": "whisper", "use_alignment": True})
+        assert r.status == ProcessorStatus.READY
+        assert r.data is not None
+        assert r.data.transcript == "שלום עולם"
+        assert "Alignment requested but unavailable" in r.data.note
+
+    def test_alignment_skipped_when_vad_changes_timeline(self, tmp_path: Path) -> None:
+        wav = _make_wav(tmp_path / "s.wav")
+        vad_wav = _make_wav(tmp_path / "vad.wav", duration=0.2)
+        mock_model = MagicMock()
+        mock_model.transcribe.return_value = {
+            "text": "שלום עולם",
+            "language": "he",
+            "segments": [{"start": 0.0, "end": 1.5, "text": "שלום עולם", "avg_logprob": -0.1}],
+        }
+        with (
+            patch("kadima.engine.stt_transcriber._WHISPER_AVAILABLE", True),
+            patch("kadima.engine.stt_transcriber._whisper_model", mock_model),
+            patch(
+                "kadima.engine.stt_transcriber._preprocess_with_vad",
+                return_value=vad_wav,
+            ),
+            patch("pathlib.Path.unlink"),
+        ):
+            r = self.t.process(
+                wav,
+                {"backend": "whisper", "use_vad": True, "use_alignment": True},
+            )
+        assert r.status == ProcessorStatus.READY
+        assert r.data is not None
+        assert "Alignment skipped because VAD changed the audio timeline" in r.data.note
+
 
 # ── process_batch tests ───────────────────────────────────────────────────────
 

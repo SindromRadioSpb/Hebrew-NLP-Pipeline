@@ -179,6 +179,8 @@ class STTConfig(BaseModel):
     backend: str = Field(default="auto", pattern=r"^(auto|whisper|faster-whisper)$")
     device: DeviceEnum = DeviceEnum.CUDA
     model_size: str = Field(default="large-v3", pattern=r"^(tiny|base|small|medium|large-v[23])$")
+    use_vad: bool = False
+    use_alignment: bool = False
 
 
 class NERConfig(BaseModel):

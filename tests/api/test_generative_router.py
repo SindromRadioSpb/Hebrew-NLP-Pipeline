@@ -209,6 +209,7 @@ class TestSTTEndpoint:
                 duration_seconds=2.5,
                 audio_path=Path(audio_path),
                 segments=[{"start": 0.0, "end": 2.5, "text": "שלום עולם"}],
+                word_segments=[{"start": 0.0, "end": 0.8, "word": "שלום"}],
                 note="Fallback used: faster-whisper succeeded after 1 earlier backend issue(s).",
             ),
         )
@@ -226,6 +227,8 @@ class TestSTTEndpoint:
         assert data["language"] == "he"
         assert data["confidence"] == pytest.approx(0.91)
         assert data["duration_seconds"] == pytest.approx(2.5)
+        assert len(data["segments"]) == 1
+        assert len(data["word_segments"]) == 1
         assert "Fallback used" in data["note"]
 
 

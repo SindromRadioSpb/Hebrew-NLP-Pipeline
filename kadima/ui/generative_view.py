@@ -21,6 +21,7 @@ try:
     from PyQt6.QtWidgets import (
         QApplication,
         QComboBox,
+        QCheckBox,
         QFileDialog,
         QHBoxLayout,
         QLabel,
@@ -942,7 +943,8 @@ class GenerativeView(QWidget):
             "<b>auto</b>=Whisper → faster-whisper fallback, "
             "<b>whisper</b>=best compatibility, "
             "<b>faster-whisper</b>=faster CTranslate2 path. "
-            f"Supported formats: {extensions_label}."
+            f"Supported formats: {extensions_label}. "
+            "You can listen to the source audio in this tab and compare it against the transcript."
         )
         self._stt_help_hint.setWordWrap(True)
         self._stt_help_hint.setStyleSheet(
@@ -951,6 +953,21 @@ class GenerativeView(QWidget):
         )
         lay.addWidget(self._stt_help_hint)
 
+        options_row = QHBoxLayout()
+        self._stt_use_vad = QCheckBox("Use VAD for long/noisy audio")
+        self._stt_use_vad.setObjectName("generative_stt_use_vad")
+        self._stt_use_vad.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        self._stt_use_vad.toggled.connect(lambda _: self._on_stt_selection_changed())
+        options_row.addWidget(self._stt_use_vad)
+
+        self._stt_use_alignment = QCheckBox("Word alignment (experimental)")
+        self._stt_use_alignment.setObjectName("generative_stt_use_alignment")
+        self._stt_use_alignment.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        self._stt_use_alignment.toggled.connect(lambda _: self._on_stt_selection_changed())
+        options_row.addWidget(self._stt_use_alignment)
+        options_row.addStretch()
+        lay.addLayout(options_row)
+
         file_row = QHBoxLayout()
         self._stt_file_input = QLineEdit()
         self._stt_file_input.setObjectName("generative_stt_file_input")
@@ -958,7 +975,7 @@ class GenerativeView(QWidget):
             "Path to audio file (.wav, .mp3, .ogg, .flac, .m4a, .mp4, .webm)..."
         )
         self._stt_file_input.setReadOnly(True)
-        self._stt_file_input.textChanged.connect(self._update_stt_dirty_status)
+        self._stt_file_input.textChanged.connect(self._on_stt_file_changed)
         file_row.addWidget(self._stt_file_input, stretch=1)
         self._stt_browse_btn = QPushButton("Browse...")
         self._stt_browse_btn.setObjectName("generative_stt_browse_btn")
@@ -982,6 +999,14 @@ class GenerativeView(QWidget):
         self._stt_progress.setRange(0, 0)
         self._stt_progress.setVisible(False)
         lay.addWidget(self._stt_progress)
+
+        player_lbl = QLabel("Audio:")
+        player_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        lay.addWidget(player_lbl)
+
+        self._stt_audio_player = AudioPlayer()
+        self._stt_audio_player.setObjectName("generative_stt_audio_player")
+        lay.addWidget(self._stt_audio_player)
 
         result_lbl = QLabel("Transcript:")
         result_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
@@ -1032,6 +1057,14 @@ class GenerativeView(QWidget):
         if path:
             self._stt_file_input.setText(path)
 
+    def _on_stt_file_changed(self) -> None:
+        path = self._stt_file_input.text().strip()
+        if path:
+            self._stt_audio_player.load(path)
+        else:
+            self._stt_audio_player.clear()
+        self._update_stt_dirty_status()
+
     def _on_stt_run(self) -> None:
         path = self._stt_file_input.text().strip()
         if not path:
@@ -1049,7 +1082,12 @@ class GenerativeView(QWidget):
             module_cls=_STTCls,
             module_config={},
             input_data=path,
-            runtime_config={"backend": backend, "device": device},
+            runtime_config={
+                "backend": backend,
+                "device": device,
+                "use_vad": self._stt_use_vad.isChecked(),
+                "use_alignment": self._stt_use_alignment.isChecked(),
+            },
         )
         worker.signals.started.connect(
             lambda t: self._on_stt_started()
@@ -1083,11 +1121,14 @@ class GenerativeView(QWidget):
             duration = float(getattr(data, "duration_seconds", 0.0) or 0.0)
             confidence = float(getattr(data, "confidence", 0.0) or 0.0)
             segments = getattr(data, "segments", []) or []
+            word_segments = getattr(data, "word_segments", []) or []
             note = str(getattr(data, "note", "") or "").strip()
             status_text = (
                 f"Done ({backend}) · {duration:.1f}s · conf {confidence:.2f} · "
                 f"{len(segments)} segments"
             )
+            if word_segments:
+                status_text = f"{status_text} · {len(word_segments)} words aligned"
             if note:
                 status_text = f"{status_text} · {note}"
             self._stt_status.setText(status_text)
@@ -1109,7 +1150,15 @@ class GenerativeView(QWidget):
         path = self._stt_file_input.text().strip()
         if not path:
             return None
-        return (path, self._stt_backend.backend, self._stt_backend.device)
+        feature_flags = (
+            "vad" if self._stt_use_vad.isChecked() else "novad",
+            "align" if self._stt_use_alignment.isChecked() else "noalign",
+        )
+        return (
+            path,
+            self._stt_backend.backend,
+            f"{self._stt_backend.device}:{feature_flags[0]}:{feature_flags[1]}",
+        )
 
     def _on_stt_selection_changed(self) -> None:
         self._update_stt_dirty_status()
@@ -1119,7 +1168,7 @@ class GenerativeView(QWidget):
         message = ""
         if current_signature is not None:
             if self._stt_last_run_signature is None:
-                message = "Audio ready — click Transcribe to generate transcript."
+                message = "Audio ready — click Transcribe or listen first to compare later."
             elif current_signature != self._stt_last_run_signature:
                 message = "Selection changed — transcribe again to refresh transcript."
         self._stt_dirty_status.setText(message)
@@ -1128,9 +1177,12 @@ class GenerativeView(QWidget):
     def _on_stt_clear(self) -> None:
         self._stt_file_input.clear()
         self._stt_result.clear()
+        self._stt_audio_player.clear()
         self._stt_progress.setVisible(False)
         self._stt_last_run_signature = None
         self._stt_pending_signature = None
+        self._stt_use_vad.setChecked(False)
+        self._stt_use_alignment.setChecked(False)
         self._stt_status.setText("Ready")
         self._update_stt_dirty_status()
 

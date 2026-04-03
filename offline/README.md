@@ -18,6 +18,8 @@ Place Python wheels into [wheels](E:/projects/Project_Vibe/Kadima/offline/wheels
 - `phonikud-onnx`
 - `openai-whisper`
 - `faster-whisper`
+- `silero-vad` (optional STT preprocessing)
+- `whisperx` (optional STT alignment, staged separately from the main `.venv`)
 
 Recommended install command:
 
@@ -34,7 +36,16 @@ Recommended STT install command:
 cd E:\projects\Project_Vibe\Kadima
 .\.venv\Scripts\Activate.ps1
 python -m pip install --no-index --find-links=offline\wheels `
-  openai-whisper faster-whisper
+  openai-whisper faster-whisper silero-vad
+```
+
+Optional alignment evaluation command:
+
+```powershell
+cd E:\projects\Project_Vibe\Kadima
+.\.venv\Scripts\Activate.ps1
+# Install only in an isolated experimental env if needed.
+python -m pip install --no-index --find-links=offline\wheels whisperx
 ```
 
 ## Models
@@ -91,7 +102,12 @@ $env:FASTER_WHISPER_MODEL_PATH='F:\datasets_models\stt\whisper-large-v3-turbo-he
 - `GenerativeView` STT tab now surfaces:
   - supported formats;
   - ready/changed state after selecting or changing audio/backend/device;
-  - final summary with backend used, duration, confidence and segment count.
+  - final summary with backend used, duration, confidence and segment count;
+  - embedded audio playback for direct audition against the transcript;
+  - optional `Use VAD` and `Word alignment` toggles.
+- `TTS -> STT` round-trip quality gate is implemented in `tests/engine/test_tts_stt_roundtrip.py` and enforces `WER < 0.15` when local models are available.
+- `silero-vad` is installed in the main `.venv` and used as an optional enhancement path. If it finds no speech or preprocessing fails, runtime keeps the transcript path alive and returns a note instead of failing.
+- `whisperx` remains opt-in and is not bundled into the standard `.venv` because the current upstream package pulls a `torch~=2.8` stack that conflicts with the accepted project runtime (`torch 2.10.0+cu128`).
 - Live smoke artifact from the current workspace:
   - transcript: [stt_m16_smoke.txt](E:/projects/Project_Vibe/Kadima/artefacts/stt_m16_smoke.txt)
   - metadata: [stt_m16_smoke.json](E:/projects/Project_Vibe/Kadima/artefacts/stt_m16_smoke.json)

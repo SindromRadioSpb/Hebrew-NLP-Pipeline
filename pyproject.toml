@@ -67,6 +67,7 @@ gpu = [
     # M16 STT
     "openai-whisper>=20231117",
     "faster-whisper>=1.2.1",
+    "silero-vad>=6.2.0",
 ]
 dev = [
     "pytest>=8.0,<9",
@@ -109,6 +110,10 @@ python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 addopts = "-x --tb=short"
+markers = [
+    "integration: end-to-end integration coverage requiring local models",
+    "slow: slower runtime-heavy tests",
+]
 
 [tool.coverage.run]
 source = ["kadima"]

@@ -29,6 +29,8 @@ def test_stt_selector_uses_release_backend_contract(qtbot) -> None:
     ]
     assert backends == ["auto", "whisper", "faster-whisper"]
     assert "Supported formats" in view._stt_help_hint.text()
+    assert not view._stt_use_vad.isChecked()
+    assert not view._stt_use_alignment.isChecked()
 
 
 def test_stt_dirty_status_prompts_before_first_run(qtbot, tmp_path) -> None:
@@ -41,6 +43,14 @@ def test_stt_dirty_status_prompts_before_first_run(qtbot, tmp_path) -> None:
 
     assert not view._stt_dirty_status.isHidden()
     assert "click Transcribe" in view._stt_dirty_status.text()
+    assert view._stt_audio_player._play_btn.isEnabled()
+
+
+def test_stt_help_hint_mentions_audition_workflow(qtbot) -> None:
+    view = _make_view()
+    qtbot.add_widget(view)
+
+    assert "listen to the source audio" in view._stt_help_hint.text()
 
 
 def test_stt_result_displays_transcript_summary_and_note(qtbot, tmp_path) -> None:
@@ -54,7 +64,7 @@ def test_stt_result_displays_transcript_summary_and_note(qtbot, tmp_path) -> Non
     view._stt_pending_signature = (
         str(audio_path),
         view._stt_backend.backend,
-        view._stt_backend.device,
+        f"{view._stt_backend.device}:novad:noalign",
     )
 
     result = SimpleNamespace(
@@ -65,6 +75,7 @@ def test_stt_result_displays_transcript_summary_and_note(qtbot, tmp_path) -> Non
             duration_seconds=2.5,
             confidence=0.91,
             segments=[{"start": 0.0, "end": 2.5, "text": "שלום עולם"}],
+            word_segments=[{"start": 0.0, "end": 0.8, "word": "שלום"}],
             note="Fallback used: faster-whisper succeeded after 1 earlier backend issue(s).",
         ),
         errors=[],
@@ -75,6 +86,7 @@ def test_stt_result_displays_transcript_summary_and_note(qtbot, tmp_path) -> Non
     assert view._stt_result.toPlainText() == "שלום עולם"
     assert "faster-whisper" in view._stt_status.text()
     assert "conf 0.91" in view._stt_status.text()
+    assert "1 words aligned" in view._stt_status.text()
     assert "Fallback used" in view._stt_status.text()
     assert view._stt_dirty_status.isHidden()
 
@@ -89,7 +101,7 @@ def test_stt_dirty_status_warns_after_selection_changes(qtbot, tmp_path) -> None
     view._stt_pending_signature = (
         str(audio_path),
         view._stt_backend.backend,
-        view._stt_backend.device,
+        f"{view._stt_backend.device}:novad:noalign",
     )
     result = SimpleNamespace(
         status=ProcessorStatus.READY,
@@ -106,6 +118,38 @@ def test_stt_dirty_status_warns_after_selection_changes(qtbot, tmp_path) -> None
     view._on_stt_result("stt", result)
 
     view._stt_backend.set_backend("faster-whisper")
+    assert not view._stt_dirty_status.isHidden()
+    assert "transcribe again" in view._stt_dirty_status.text()
+
+
+def test_stt_feature_flags_mark_transcript_stale(qtbot, tmp_path) -> None:
+    view = _make_view()
+    qtbot.add_widget(view)
+
+    audio_path = tmp_path / "sample.wav"
+    audio_path.write_bytes(b"RIFFfake")
+    view._stt_file_input.setText(str(audio_path))
+    view._stt_pending_signature = (
+        str(audio_path),
+        view._stt_backend.backend,
+        "cpu:novad:noalign",
+    )
+    result = SimpleNamespace(
+        status=ProcessorStatus.READY,
+        data=SimpleNamespace(
+            transcript="שלום עולם",
+            backend="whisper",
+            duration_seconds=1.2,
+            confidence=0.88,
+            segments=[{"start": 0.0, "end": 1.2, "text": "שלום עולם"}],
+            word_segments=[],
+            note="",
+        ),
+        errors=[],
+    )
+    view._on_stt_result("stt", result)
+
+    view._stt_use_vad.setChecked(True)
     assert not view._stt_dirty_status.isHidden()
     assert "transcribe again" in view._stt_dirty_status.text()
 
@@ -128,4 +172,7 @@ def test_stt_clear_resets_status_and_dirty_state(qtbot, tmp_path) -> None:
     assert view._stt_result.toPlainText() == ""
     assert view._stt_status.text() == "Ready"
     assert not view._stt_progress.isVisible()
+    assert not view._stt_audio_player._play_btn.isEnabled()
+    assert not view._stt_use_vad.isChecked()
+    assert not view._stt_use_alignment.isChecked()
     assert view._stt_dirty_status.isHidden()
