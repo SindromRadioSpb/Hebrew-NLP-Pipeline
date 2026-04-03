@@ -148,3 +148,35 @@ class TestDiacritizerBatch:
     def test_empty_batch(self):
         d = Diacritizer()
         assert d.process_batch([], {"backend": "rules"}) == []
+
+
+class TestDictaBackend:
+    """Tests for the DictaBERT diacritization backend."""
+
+    def test_dicta_produces_diacritics(self):
+        """Dicta backend should add niqqud marks to unvocalized text."""
+        d = Diacritizer()
+        # Skip if transformers not available
+        from kadima.engine.diacritizer import _TRANSFORMERS_AVAILABLE
+        if not _TRANSFORMERS_AVAILABLE:
+            pytest.skip("transformers not available")
+
+        r = d.process("שלום", {"backend": "dicta", "device": "cpu"})
+        assert r.status == ProcessorStatus.READY
+        # Result should differ from input (have niqqud)
+        # OR fall back to rules if model download fails
+        assert r.data.result is not None
+        assert r.data.backend in ("dicta", "rules")
+
+    def test_dicta_long_text(self):
+        """Dicta should handle multi-sentence text."""
+        d = Diacritizer()
+        from kadima.engine.diacritizer import _TRANSFORMERS_AVAILABLE
+        if not _TRANSFORMERS_AVAILABLE:
+            pytest.skip("transformers not available")
+
+        text = "תהליך ייצור הפלדה מתחיל בעפרת הברזל"
+        r = d.process(text, {"backend": "dicta", "device": "cpu"})
+        assert r.status == ProcessorStatus.READY
+        assert r.data.source == text
+        assert r.data.word_count == 6

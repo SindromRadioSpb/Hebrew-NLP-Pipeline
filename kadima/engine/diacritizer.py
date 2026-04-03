@@ -319,15 +319,29 @@ class Diacritizer(Processor):
         return self._phonikud_model.add_diacritics(text)
 
     def _process_dicta(self, text: str, device: str) -> str:
-        """Diacritize via DictaBERT model."""
+        """Diacritize via DictaBERT model.
+
+        Uses the model's custom ``predict()`` method (requires
+        ``trust_remote_code=True``) rather than the generic HF pipeline,
+        because the model is a character-level seq2seq-style diacritizer.
+        """
         if self._dicta_pipeline is None:
             import torch
+            from transformers import AutoTokenizer, AutoModel
+
             dev = device if device == "cpu" or (torch.cuda.is_available() and device == "cuda") else "cpu"
-            self._dicta_pipeline = hf_pipeline(
-                "token-classification",
-                model="dicta-il/dictabert-large-char-menaked",
-                device=dev,
+            tokenizer = AutoTokenizer.from_pretrained(
+                "dicta-il/dictabert-large-char-menaked",
             )
-        result = self._dicta_pipeline(text)
-        # Pipeline returns list of token dicts — concatenate
-        return "".join(t.get("word", "") for t in result)
+            model = AutoModel.from_pretrained(
+                "dicta-il/dictabert-large-char-menaked",
+                trust_remote_code=True,
+            )
+            if dev == "cuda":
+                model = model.to(dev)
+            self._dicta_pipeline = (tokenizer, model)
+
+        tokenizer, model = self._dicta_pipeline
+        # model.predict() returns a list with one diacritized string per input
+        result = model.predict([text], tokenizer)
+        return result[0] if result else text
