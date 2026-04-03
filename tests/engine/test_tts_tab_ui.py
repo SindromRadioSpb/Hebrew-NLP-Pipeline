@@ -72,9 +72,11 @@ def test_tts_clear_resets_voice_progress_and_export(qtbot) -> None:
     view._tts_export_btn.setEnabled(True)
     view._on_tts_clear()
     assert view._tts_input.toPlainText() == ""
-    assert view._tts_voice_mode.currentData() == "default"
-    assert view._tts_voice_input.currentIndex() == -1
+    assert view._tts_voice_mode.currentData() == "preset"
+    assert view._tts_voice_input.currentData() == "Noa"
     assert view._tts_status.text() == "Ready"
+    assert view._tts_dirty_status.text() == ""
+    assert not view._tts_dirty_status.isVisible()
     assert not view._tts_progress.isVisible()
     assert not view._tts_export_btn.isEnabled()
 
@@ -122,6 +124,44 @@ def test_tts_result_surfaces_f5_fallback_note(qtbot, tmp_path: Path) -> None:
     assert "bundled default voice used" in view._tts_status.text()
 
 
+def test_tts_dirty_status_prompts_before_first_synthesis(qtbot) -> None:
+    with ExitStack() as stack:
+        for ctx in _tts_patches():
+            stack.enter_context(ctx)
+    view = _make_view()
+    qtbot.add_widget(view)
+
+    view._tts_input.setPlainText("שלום עולם")
+    assert not view._tts_dirty_status.isHidden()
+    assert "click Synthesize" in view._tts_dirty_status.text()
+
+
+def test_tts_dirty_status_warns_after_text_changes_post_synthesis(qtbot, tmp_path: Path) -> None:
+    with ExitStack() as stack:
+        for ctx in _tts_patches():
+            stack.enter_context(ctx)
+        view = _make_view()
+        qtbot.add_widget(view)
+
+    wav_path = tmp_path / "result.wav"
+    wav_path.write_bytes(b"RIFFfake")
+    view._tts_input.setPlainText("שלום עולם")
+    result = SimpleNamespace(
+        data=SimpleNamespace(
+            audio_path=wav_path,
+            backend="lightblue",
+            duration_seconds=1.5,
+            sample_rate=22050,
+        )
+    )
+    view._on_tts_result("tts", result)
+    assert view._tts_dirty_status.isHidden()
+
+    view._tts_input.setPlainText("שלום עולם חדש")
+    assert not view._tts_dirty_status.isHidden()
+    assert "synthesize again" in view._tts_dirty_status.text()
+
+
 def test_tts_voice_combo_loads_local_f5_presets(qtbot) -> None:
     with ExitStack() as stack:
         for ctx in _tts_patches():
@@ -140,6 +180,7 @@ def test_tts_voice_combo_loads_local_f5_presets(qtbot) -> None:
         )
         view = _make_view()
         qtbot.add_widget(view)
+        view._tts_backend.set_backend("f5tts")
 
     mode_values = [view._tts_voice_mode.itemData(i) for i in range(view._tts_voice_mode.count())]
     assert mode_values == ["default", "preset", "clone"]
@@ -148,11 +189,25 @@ def test_tts_voice_combo_loads_local_f5_presets(qtbot) -> None:
         "fleurs-he-m1513 (1513 · 4.74s · Male)",
         "fleurs-he-m1517 (1517 · 7.08s · Male)",
     ]
-    assert "safest option" in view._tts_voice_hint.text()
+    assert "experimental" in view._tts_voice_hint.text()
 
     view._tts_voice_mode.setCurrentIndex(1)
     assert "Local F5 preset voices loaded from" in view._tts_voice_input.toolTip()
     assert "experimental" in view._tts_voice_hint.text()
+
+
+def test_tts_auto_defaults_to_lightblue_noa(qtbot) -> None:
+    with ExitStack() as stack:
+        for ctx in _tts_patches():
+            stack.enter_context(ctx)
+        view = _make_view()
+        qtbot.add_widget(view)
+
+    assert view._tts_backend.backend == "auto"
+    assert view._tts_voice_mode.currentData() == "preset"
+    assert view._tts_voice_input.currentData() == "Noa"
+    assert "Noa (Built-in female voice, default)" == view._tts_voice_input.currentText()
+    assert "LightBlue using Noa by default" in view._tts_voice_hint.text()
 
 
 def test_tts_backend_change_updates_voice_choices_for_lightblue(qtbot) -> None:
@@ -172,8 +227,9 @@ def test_tts_backend_change_updates_voice_choices_for_lightblue(qtbot) -> None:
     assert view._tts_voice_mode.currentData() == "preset"
     values = [view._tts_voice_input.itemText(i) for i in range(view._tts_voice_input.count())]
     assert values == ["Yonatan (Built-in male voice)", "Noa (Built-in female voice)"]
+    assert view._tts_voice_input.currentData() == "Noa"
     assert view._tts_voice_input.isEnabled()
-    assert "Yonatan or Noa" in view._tts_voice_hint.text()
+    assert "Noa is selected by default" in view._tts_voice_hint.text()
 
 
 def test_tts_backend_change_disables_voice_for_mms(qtbot) -> None:
@@ -201,6 +257,7 @@ def test_tts_f5_clone_mode_enables_reference_browse(qtbot) -> None:
         )
         view = _make_view()
         qtbot.add_widget(view)
+        view._tts_backend.set_backend("f5tts")
 
     view._tts_voice_mode.setCurrentIndex(2)
     assert view._tts_voice_mode.currentData() == "clone"

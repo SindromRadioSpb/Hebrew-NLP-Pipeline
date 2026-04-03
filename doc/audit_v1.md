@@ -751,7 +751,7 @@ ul
 | 4 | **Phonikud / Piper-compatible Hebrew ONNX backend** | `tts_synthesizer.py` | Hebrew ONNX fallback |
 | 5 | Facebook MMS-TTS HEB backend (<1GB) | `tts_synthesizer.py` | Final fallback, CPU/GPU |
 | 6 | **Suno Bark backend (voice cloning, explicit only)** | `tts_synthesizer.py` | Optional cloning |
-| 7 | **Fallback chain: f5tts → lightblue → phonikud → mms → FAILED** | `tts_synthesizer.py` | Graceful degradation |
+| 7 | **Fallback chain: lightblue (Noa default) → f5tts → phonikud → mms → FAILED** | `tts_synthesizer.py` | Graceful degradation |
 | 8 | **Legacy XTTS path kept only for explicit unsupported skip** | `tts_synthesizer.py` | Honest failure for Hebrew |
 | 9 | **Hebrew G2P / niqqud preprocessing** (`use_g2p`) | `_apply_hebrew_g2p()` | Quality boost for Hebrew TTS |
 | 10 | **Segmented F5 synthesis for long Hebrew text** | `_split_f5tts_segments()`, `_f5tts_segmented_synthesize()` | Long-form stability |
@@ -1677,7 +1677,8 @@ KADIMA — функционально завершённый Hebrew NLP pipeline
 #### PATCH-02: Hebrew backend chain приведён к реальному upstream состоянию
 - **Engine**:
   - primary backend: **F5-TTS Hebrew v2**
-  - fallback-1: **LightBlue TTS**
+  - product default for `auto`: **LightBlue TTS** with built-in voice **Noa**
+  - fallback-1 after LightBlue: **F5-TTS Hebrew v2**
   - fallback-2: **Phonikud / Piper ONNX**
   - final fallback: **MMS**
   - `zonos` удалён из backend contract: Windows runtime не имел production-ready реализации, WSL2 bridge был ложным promise для UI/API
@@ -1726,9 +1727,10 @@ KADIMA — функционально завершённый Hebrew NLP pipeline
   - backend-specific ограничения были неочевидны
 - **После сессии**:
   - `BackendSelector`: `auto`, `f5tts`, `lightblue`, `phonikud`, `mms`
+  - `auto` starts with LightBlue and preselects `Noa (Built-in female voice, default)`
   - `Voice mode`: `Default voice (Recommended)`, `Local preset voice`, `Clone from reference WAV`
   - presets отображаются человекочитаемо через `manifest.csv`
-  - LightBlue показывает встроенные голоса `Yonatan`, `Noa`
+  - LightBlue показывает встроенные голоса `Yonatan`, `Noa`, при этом `Noa` выбрана по умолчанию
   - Phonikud показывает packaged voice
   - MMS отключает выбор голоса как нерелевантный
   - F5 preset fallback-state поднимается в GUI как честный status note
@@ -1758,6 +1760,7 @@ KADIMA — функционально завершённый Hebrew NLP pipeline
 ### 16.5 Фактический статус после сессии
 
 - `f5tts` синтезирует длинный Hebrew text на GPU
+- `auto` по умолчанию стартует с `lightblue` и голосом `Noa`
 - `lightblue`, `phonikud`, `mms` подтверждены как рабочие fallback backend'ы
 - `zonos` и `bark` исключены из release backend surface
 - GUI перестал требовать ручного копирования имён preset-файлов из `voices\`

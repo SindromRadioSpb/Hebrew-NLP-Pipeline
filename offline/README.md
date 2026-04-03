@@ -67,7 +67,7 @@ $env:PHONIKUD_TTS_CONFIG_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-hig
 
 - `zonos` was dropped because the Windows runtime never had a production-ready implementation and the earlier WSL2/premium idea would have been a false backend promise in UI/API.
 - `bark` was dropped because it is not bundled offline, is slow/heavy for the prototype, and overlaps with the now-working `f5tts` cloning flow while worsening UX clarity.
-- Release-supported Hebrew path is `f5tts -> lightblue -> phonikud -> mms`.
+- Release-supported Hebrew path is `lightblue (Noa by default) -> f5tts -> phonikud -> mms`.
 
 ## Readiness Check
 

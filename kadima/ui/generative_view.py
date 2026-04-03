@@ -391,7 +391,7 @@ class GenerativeView(QWidget):
         # Help text explaining backend differences
         help_text = QLabel(
             "🔊 Backends: "
-            "<b>auto</b>=F5-TTS → LightBlue → Phonikud → MMS, "
+            "<b>auto</b>=LightBlue (Noa) → F5-TTS → Phonikud → MMS, "
             "<b>f5tts</b>=best quality + cloning (reference WAV or local preset voices), "
             "<b>lightblue</b>=fast CPU ONNX, "
             "<b>phonikud</b>=Hebrew Piper ONNX, "
@@ -521,11 +521,22 @@ class GenerativeView(QWidget):
         lay.addWidget(self._tts_audio_player)
         lay.addStretch()
 
+        status_row = QHBoxLayout()
+        status_row.setSpacing(8)
         self._tts_status = self._make_status_label()
         self._tts_status.setObjectName("generative_tts_status")
-        lay.addWidget(self._tts_status)
+        status_row.addWidget(self._tts_status, stretch=1)
+
+        self._tts_dirty_status = QLabel("")
+        self._tts_dirty_status.setObjectName("generative_tts_dirty_status")
+        self._tts_dirty_status.setStyleSheet("color: #d9a441; font-size: 11px;")
+        self._tts_dirty_status.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self._tts_dirty_status.setVisible(False)
+        status_row.addWidget(self._tts_dirty_status)
+        lay.addLayout(status_row)
 
         self._tts_last_audio_path: Path | None = None
+        self._tts_last_synth_text: str = ""
         run_btn.clicked.connect(self._on_tts_run)
         clear_btn.clicked.connect(self._on_tts_clear)
         if export_btn is not None:
@@ -577,6 +588,7 @@ class GenerativeView(QWidget):
         try:
             audio_path = getattr(result.data, "audio_path", None) if result.data else None
             if audio_path:
+                self._tts_last_synth_text = self._tts_input.toPlainText().strip()
                 self._tts_last_audio_path = Path(audio_path)
                 self._tts_audio_player.load(audio_path)
                 if hasattr(self, "_tts_export_btn"):
@@ -589,21 +601,27 @@ class GenerativeView(QWidget):
                 if note:
                     status_text = f"{status_text} · {note}"
                 self._tts_status.setText(status_text)
+                self._update_tts_dirty_status()
             else:
+                self._tts_last_synth_text = ""
                 self._tts_last_audio_path = None
                 if hasattr(self, "_tts_export_btn"):
                     self._tts_export_btn.setEnabled(False)
                 self._tts_status.setText("Error: no audio_path in result")
+                self._update_tts_dirty_status()
         except Exception as exc:
             logger.warning("tts result display error: %s", exc)
             self._tts_status.setText(f"Display error: {exc}")
+            self._update_tts_dirty_status()
 
     def _on_tts_failed(self, error: str) -> None:
         self._tts_progress.setVisible(False)
+        self._tts_last_synth_text = ""
         self._tts_last_audio_path = None
         if hasattr(self, "_tts_export_btn"):
             self._tts_export_btn.setEnabled(False)
         self._tts_status.setText(f"Error: {error}")
+        self._update_tts_dirty_status()
 
     def _on_tts_speaker_browse(self) -> None:
         """Open file dialog to select speaker reference WAV for voice cloning."""
@@ -624,10 +642,12 @@ class GenerativeView(QWidget):
         self._tts_char_count.setText("0 chars")
         self._tts_word_count.setText("0 words")
         self._tts_progress.setVisible(False)
+        self._tts_last_synth_text = ""
         self._tts_last_audio_path = None
         if hasattr(self, "_tts_export_btn"):
             self._tts_export_btn.setEnabled(False)
         self._tts_status.setText("Ready")
+        self._update_tts_dirty_status()
         self._refresh_tts_voice_controls()
 
     def _on_tts_input_changed(self) -> None:
@@ -637,6 +657,18 @@ class GenerativeView(QWidget):
         word_count = len(text.split()) if text.strip() else 0
         self._tts_char_count.setText(f"{char_count} chars")
         self._tts_word_count.setText(f"{word_count} words")
+        self._update_tts_dirty_status()
+
+    def _update_tts_dirty_status(self) -> None:
+        current_text = self._tts_input.toPlainText().strip()
+        message = ""
+        if current_text:
+            if self._tts_last_synth_text and current_text != self._tts_last_synth_text:
+                message = "Text changed — synthesize again to refresh audio."
+            elif not self._tts_last_synth_text:
+                message = "Text ready — click Synthesize to generate audio."
+        self._tts_dirty_status.setText(message)
+        self._tts_dirty_status.setVisible(bool(message))
 
     def _on_tts_export(self) -> None:
         if self._tts_last_audio_path is None or not self._tts_last_audio_path.exists():
@@ -710,7 +742,12 @@ class GenerativeView(QWidget):
     def _tts_selected_voice(self) -> str | None:
         if self._tts_selected_voice_mode() != _TTS_VOICE_MODE_PRESET:
             return None
-        return str(self._tts_voice_input.currentData() or "").strip() or None
+        selected = str(self._tts_voice_input.currentData() or "").strip()
+        if selected:
+            return selected
+        if self._tts_backend.backend == "auto":
+            return "Noa"
+        return None
 
     def _tts_selected_speaker_ref(self) -> str | None:
         if self._tts_selected_voice_mode() != _TTS_VOICE_MODE_CLONE:
@@ -728,7 +765,25 @@ class GenerativeView(QWidget):
 
     def _refresh_tts_voice_controls_impl(self) -> None:
         backend = self._tts_backend.backend
-        if backend in {"auto", "f5tts"}:
+        if backend == "auto":
+            self._populate_tts_voice_modes([(_TTS_VOICE_MODE_PRESET, "Built-in auto voice")])
+            self._populate_tts_voice_choices([
+                ("Noa", "Noa (Built-in female voice, default)"),
+                ("Yonatan", "Yonatan (Built-in male voice)"),
+            ])
+            preferred_index = self._tts_voice_input.findData("Noa")
+            if preferred_index >= 0:
+                self._tts_voice_input.setCurrentIndex(preferred_index)
+            self._tts_voice_input.setEnabled(True)
+            self._tts_speaker_ref_input.setEnabled(False)
+            self._tts_speaker_browse_btn.setEnabled(False)
+            self._tts_voice_input.setToolTip("Auto starts with LightBlue built-in voice and falls back to other Hebrew backends")
+            self._tts_voice_hint.setText(
+                "Auto starts with LightBlue using Noa by default, then falls back to F5-TTS, Phonikud, and MMS if needed."
+            )
+            return
+
+        if backend == "f5tts":
             preset_choices = self._f5_voice_presets()
             mode_options = [
                 (_TTS_VOICE_MODE_DEFAULT, "Default voice (Recommended)"),
@@ -771,13 +826,14 @@ class GenerativeView(QWidget):
                 ("Yonatan", "Yonatan (Built-in male voice)"),
                 ("Noa", "Noa (Built-in female voice)"),
             ])
-            if self._tts_voice_input.currentIndex() < 0 and self._tts_voice_input.count() > 0:
-                self._tts_voice_input.setCurrentIndex(0)
+            preferred_index = self._tts_voice_input.findData("Noa")
+            if preferred_index >= 0:
+                self._tts_voice_input.setCurrentIndex(preferred_index)
             self._tts_voice_input.setEnabled(True)
             self._tts_speaker_ref_input.setEnabled(False)
             self._tts_speaker_browse_btn.setEnabled(False)
             self._tts_voice_input.setToolTip("LightBlue preset voices")
-            self._tts_voice_hint.setText("LightBlue: choose one of the built-in voices, Yonatan or Noa.")
+            self._tts_voice_hint.setText("LightBlue: Noa is selected by default; you can switch to Yonatan if needed.")
             return
 
         if backend == "phonikud":
@@ -812,10 +868,14 @@ class GenerativeView(QWidget):
     def _on_tts_voice_selection_changed(self, _index: int) -> None:
         if self._tts_refreshing_voice_controls:
             return
-        if self._tts_backend.backend in {"auto", "f5tts"} and self._tts_selected_voice_mode() == _TTS_VOICE_MODE_PRESET:
+        if self._tts_backend.backend == "f5tts" and self._tts_selected_voice_mode() == _TTS_VOICE_MODE_PRESET:
             selected_label = self._tts_voice_input.currentText().strip()
             if selected_label:
                 self._tts_status.setText(f"Selected F5 preset: {selected_label}")
+        elif self._tts_backend.backend in {"auto", "lightblue"}:
+            selected_label = self._tts_voice_input.currentText().strip()
+            if selected_label:
+                self._tts_status.setText(f"Selected LightBlue voice: {selected_label}")
 
     def _set_tts_badge(self, badge: QLabel, ok: bool, ready_text: str, missing_text: str) -> None:
         if ok:

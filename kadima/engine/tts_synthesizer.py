@@ -1072,7 +1072,7 @@ def _lightblue_synthesize(
     """Synthesize Hebrew speech via LightBlue CPU backend."""
     output_dir.mkdir(parents=True, exist_ok=True)
     synth_text = _apply_hebrew_g2p(text, use_g2p=use_g2p)
-    voice_name = voice or "Yonatan"
+    voice_name = voice or "Noa"
     cache_key = _cache_key(synth_text, voice_name)
     out_path = output_dir / f"tts_lightblue_{cache_key}.wav"
     if out_path.exists():
@@ -1224,7 +1224,7 @@ _MAX_TEXT_LENGTH = 5000
 class TTSSynthesizer(Processor):
     """M15 — Hebrew TTS synthesizer.
 
-    Fallback chain: f5tts → lightblue → phonikud → mms → FAILED.
+    Fallback chain: lightblue → f5tts → phonikud → mms → FAILED.
 
     Args:
         config: Module config dict. Expected keys:
@@ -1264,7 +1264,7 @@ class TTSSynthesizer(Processor):
     def process(self, input_data: Any, config: dict[str, Any]) -> ProcessorResult:
         """Synthesize speech from Hebrew text.
 
-        Tries backends in order: f5tts → lightblue → phonikud → mms (or specific backend).
+        Tries backends in order: lightblue → f5tts → phonikud → mms (or specific backend).
         Returns FAILED if no backend is available or all attempts raise.
 
         Args:
@@ -1299,7 +1299,7 @@ class TTSSynthesizer(Processor):
 
         # Build ordered list of backends to try
         backend_map: dict[str, list[str]] = {
-            "auto": ["f5tts", "lightblue", "phonikud", "mms"],
+            "auto": ["lightblue", "f5tts", "phonikud", "mms"],
             "f5tts": ["f5tts"],
             "lightblue": ["lightblue"],
             "phonikud": ["phonikud"],
@@ -1319,27 +1319,30 @@ class TTSSynthesizer(Processor):
 
         for bk in backends_to_try:
             try:
+                effective_voice = voice
+                if backend == "auto" and not effective_voice and bk == "lightblue":
+                    effective_voice = "Noa"
                 if bk == "f5tts":
                     result = _f5tts_synthesize(
                         input_data,
                         device,
                         output_dir,
                         speaker_ref_path=speaker_ref_path,
-                        voice=voice,
+                        voice=effective_voice,
                         use_g2p=use_g2p,
                     )
                 elif bk == "lightblue":
                     result = _lightblue_synthesize(
                         input_data,
                         output_dir,
-                        voice=voice,
+                        voice=effective_voice,
                         use_g2p=use_g2p,
                     )
                 elif bk == "phonikud":
                     result = _phonikud_tts_synthesize(
                         input_data,
                         output_dir,
-                        voice=voice,
+                        voice=effective_voice,
                         use_g2p=use_g2p,
                     )
                 elif bk == "xtts":

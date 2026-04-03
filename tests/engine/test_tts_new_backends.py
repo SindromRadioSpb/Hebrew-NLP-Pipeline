@@ -280,17 +280,17 @@ class TestFallbackChain:
         assert result.status == ProcessorStatus.FAILED
         assert len(result.errors) >= 4
 
-    def test_f5tts_first_in_auto_chain(self, synth: TTSSynthesizer, tmp_path: Path) -> None:
+    def test_lightblue_first_in_auto_chain(self, synth: TTSSynthesizer, tmp_path: Path) -> None:
         call_order: list[str] = []
 
-        def mock_f5(*args, **kwargs) -> TTSResult:
-            call_order.append("f5tts")
+        def mock_lightblue(*args, **kwargs) -> TTSResult:
+            call_order.append("lightblue")
             return TTSResult(
-                audio_path=tmp_path / "f5.wav",
-                backend="f5tts",
+                audio_path=tmp_path / "lightblue.wav",
+                backend="lightblue",
                 text_length=len(HEBREW_TEXT),
                 duration_seconds=1.0,
-                sample_rate=24000,
+                sample_rate=22050,
             )
 
         with (
@@ -298,12 +298,31 @@ class TestFallbackChain:
             patch("kadima.engine.tts_synthesizer._LIGHTBLUE_AVAILABLE", True),
             patch("kadima.engine.tts_synthesizer._PHONIKUD_TTS_AVAILABLE", True),
             patch("kadima.engine.tts_synthesizer._MMS_AVAILABLE", True),
-            patch("kadima.engine.tts_synthesizer._f5tts_synthesize", side_effect=mock_f5),
+            patch("kadima.engine.tts_synthesizer._lightblue_synthesize", side_effect=mock_lightblue),
         ):
             result = synth.process(HEBREW_TEXT, {"backend": "auto", "output_dir": str(tmp_path)})
-        assert call_order == ["f5tts"]
+        assert call_order == ["lightblue"]
         assert result.status == ProcessorStatus.READY
-        assert result.data.backend == "f5tts"
+        assert result.data.backend == "lightblue"
+
+    def test_auto_uses_noa_as_default_lightblue_voice(self, synth: TTSSynthesizer, tmp_path: Path) -> None:
+        fake_result = TTSResult(
+            audio_path=tmp_path / "lightblue.wav",
+            backend="lightblue",
+            text_length=len(HEBREW_TEXT),
+            duration_seconds=0.8,
+            sample_rate=22050,
+        )
+        with (
+            patch("kadima.engine.tts_synthesizer._LIGHTBLUE_AVAILABLE", True),
+            patch("kadima.engine.tts_synthesizer._F5TTS_AVAILABLE", True),
+            patch("kadima.engine.tts_synthesizer._PHONIKUD_TTS_AVAILABLE", True),
+            patch("kadima.engine.tts_synthesizer._MMS_AVAILABLE", True),
+            patch("kadima.engine.tts_synthesizer._lightblue_synthesize", return_value=fake_result) as mock_lb,
+        ):
+            result = synth.process(HEBREW_TEXT, {"backend": "auto", "output_dir": str(tmp_path)})
+        assert result.status == ProcessorStatus.READY
+        assert mock_lb.call_args.kwargs["voice"] == "Noa"
 
     def test_auto_fallback_reaches_mms_after_new_backends_fail(
         self, synth: TTSSynthesizer, tmp_path: Path
