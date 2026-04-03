@@ -399,7 +399,7 @@ _f5tts_model: Any = None
 _f5tts_vocoder: Any = None
 _lightblue_runtime: dict[str, Any] = {}
 _phonikud_tts_voice: Any = None
-_F5TTS_CACHE_VERSION = "f5he-v2-norm1"
+_F5TTS_CACHE_VERSION = "f5he-v2-norm2"
 _F5TTS_VOICE_PRESETS_DIR = Path(
     os.environ.get("F5TTS_VOICE_PRESETS_DIR", str(_F5TTS_MODEL_PATH.parent / "voices"))
 )
@@ -795,7 +795,7 @@ def _f5tts_sample_segment(
         generated_wave = vocoder.decode(generated)
         if ref_rms < _f5_target_rms:
             generated_wave = generated_wave * ref_rms / _f5_target_rms
-        return generated_wave.squeeze().cpu().numpy()
+        return _validate_f5_waveform(generated_wave.squeeze().cpu().numpy())
 
 
 def _f5tts_segmented_synthesize(
@@ -874,6 +874,18 @@ def _normalize_audio_loudness(
 
     waveform *= gain
     return np.clip(waveform, -target_peak, target_peak)
+
+
+def _validate_f5_waveform(audio: Any) -> Any:
+    """Ensure F5-TTS produced a finite waveform before writing/caching it."""
+    import numpy as np
+
+    waveform = np.asarray(audio, dtype=np.float32)
+    if waveform.size == 0:
+        raise RuntimeError("F5-TTS produced an empty waveform")
+    if not np.isfinite(waveform).all():
+        raise RuntimeError("F5-TTS produced a non-finite waveform")
+    return waveform
 
 
 def _materialize_audio_output(output: Any, out_path: Path, default_sample_rate: int) -> tuple[float, int]:
@@ -979,15 +991,34 @@ def _f5tts_synthesize(
     _patch_torchaudio_load_for_f5()
     _ensure_utf8_stdio()
     segments = _split_f5tts_segments(synth_text)
-    duration, sample_rate = _f5tts_segmented_synthesize(
-        segments,
-        model,
-        vocoder,
-        ref_file,
-        ref_text,
-        out_path,
-        device=device,
-    )
+    try:
+        duration, sample_rate = _f5tts_segmented_synthesize(
+            segments,
+            model,
+            vocoder,
+            ref_file,
+            ref_text,
+            out_path,
+            device=device,
+        )
+    except RuntimeError as exc:
+        has_custom_reference = bool(voice) or bool(speaker_ref_path and speaker_ref_path.exists())
+        if not has_custom_reference:
+            raise
+        default_ref_file, default_ref_text = _get_default_f5_reference()
+        logger.warning(
+            "F5-TTS custom reference failed (%s); falling back to bundled default reference",
+            exc,
+        )
+        duration, sample_rate = _f5tts_segmented_synthesize(
+            segments,
+            model,
+            vocoder,
+            default_ref_file,
+            default_ref_text,
+            out_path,
+            device=device,
+        )
     return TTSResult(out_path, "f5tts", len(text), duration, sample_rate)
 
 

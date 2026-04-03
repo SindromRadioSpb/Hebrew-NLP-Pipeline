@@ -39,6 +39,9 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+_TTS_LIGHTBLUE_VOICE_OPTIONS = ["", "Yonatan", "Noa"]
+_TTS_PHONIKUD_VOICE_OPTIONS = ["", "michael"]
+
 # ---------------------------------------------------------------------------
 # Engine module lazy imports — one block per module
 # ---------------------------------------------------------------------------
@@ -381,6 +384,7 @@ class GenerativeView(QWidget):
         )
         self._tts_backend.setObjectName("generative_tts_backend")
         lay.addWidget(self._tts_backend)
+        self._tts_backend.changed.connect(lambda _backend, _device: self._on_tts_backend_changed())
 
         # Help text explaining backend differences
         help_text = QLabel(
@@ -396,6 +400,10 @@ class GenerativeView(QWidget):
         help_text.setStyleSheet("color: #8888aa; font-size: 11px; padding: 4px 8px; "
                                 "background: #1a1a2e; border-radius: 4px;")
         lay.addWidget(help_text)
+
+        self._tts_language_hint = QLabel("Language: Hebrew only in the current prototype")
+        self._tts_language_hint.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        lay.addWidget(self._tts_language_hint)
 
         # ML availability badges
         badges_row = QHBoxLayout()
@@ -466,19 +474,18 @@ class GenerativeView(QWidget):
         lay.addLayout(vc_row)
 
         voice_row = QHBoxLayout()
-        voice_lbl = QLabel("Voice:")
+        voice_lbl = QLabel("Voice / Preset:")
         voice_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
         voice_row.addWidget(voice_lbl)
         self._tts_voice_input = QComboBox()
         self._tts_voice_input.setObjectName("generative_tts_voice")
-        self._tts_voice_input.setEditable(True)
-        self._tts_voice_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        line_edit = self._tts_voice_input.lineEdit()
-        if line_edit is not None:
-            line_edit.setPlaceholderText("Optional voice preset; F5 reads local voices/<name>.wav")
         voice_row.addWidget(self._tts_voice_input, stretch=1)
-        self._populate_f5_voice_presets()
         lay.addLayout(voice_row)
+
+        self._tts_voice_hint = QLabel("")
+        self._tts_voice_hint.setWordWrap(True)
+        self._tts_voice_hint.setStyleSheet("color: #8888aa; font-size: 11px;")
+        lay.addWidget(self._tts_voice_hint)
 
         btn_row, run_btn, clear_btn, _, export_btn = self._make_button_row(
             run_label="Synthesize", copy_label=None, export_label="Save WAV..."
@@ -514,6 +521,8 @@ class GenerativeView(QWidget):
         clear_btn.clicked.connect(self._on_tts_clear)
         if export_btn is not None:
             export_btn.clicked.connect(self._on_tts_export)
+
+        self._refresh_tts_voice_controls()
 
         return w
 
@@ -632,26 +641,67 @@ class GenerativeView(QWidget):
         shutil.copyfile(self._tts_last_audio_path, path)
         self._tts_status.setText(f"Saved WAV to {path}")
 
-    def _populate_f5_voice_presets(self) -> None:
-        if _list_f5tts_voice_presets is None:
-            return
+    def _populate_tts_voice_choices(self, options: list[str], *, editable: bool) -> None:
         current = self._tts_voice_input.currentText().strip()
-        presets = _list_f5tts_voice_presets()
         self._tts_voice_input.blockSignals(True)
         self._tts_voice_input.clear()
-        self._tts_voice_input.addItem("")
-        self._tts_voice_input.addItems(presets)
+        self._tts_voice_input.addItems(options)
+        self._tts_voice_input.setEditable(editable)
+        self._tts_voice_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        line_edit = self._tts_voice_input.lineEdit()
+        if line_edit is not None:
+            if editable:
+                line_edit.setPlaceholderText("Optional local preset name")
+            else:
+                line_edit.setPlaceholderText("")
         self._tts_voice_input.blockSignals(False)
         self._tts_voice_input.setCurrentText(current)
-        if presets:
+
+    def _refresh_tts_voice_controls(self) -> None:
+        backend = self._tts_backend.backend
+        if backend in {"auto", "f5tts"}:
+            presets = _list_f5tts_voice_presets() if _list_f5tts_voice_presets is not None else []
+            self._populate_tts_voice_choices(["", *presets], editable=True)
+            self._tts_voice_input.setEnabled(True)
             presets_dir = _get_f5tts_voice_presets_dir() if _get_f5tts_voice_presets_dir else None
-            self._tts_voice_input.setToolTip(
-                f"Local F5 preset voices loaded from {presets_dir}"
-            )
+            if presets:
+                self._tts_voice_input.setToolTip(f"Local F5 preset voices loaded from {presets_dir}")
+                self._tts_voice_hint.setText(
+                    "F5-TTS: leave this empty for the stable default voice, choose a local preset, or provide a reference WAV for cloning. "
+                    "Local Hebrew presets are experimental; if one fails, runtime falls back to the bundled default voice."
+                )
+            else:
+                self._tts_voice_input.setToolTip("No local F5 presets found.")
+                self._tts_voice_hint.setText(
+                    "F5-TTS: use the stable default voice or provide a reference WAV for cloning. No local preset voices are currently installed."
+                )
+            return
+
+        if backend == "lightblue":
+            self._populate_tts_voice_choices(_TTS_LIGHTBLUE_VOICE_OPTIONS, editable=False)
+            self._tts_voice_input.setEnabled(True)
+            self._tts_voice_input.setToolTip("LightBlue preset voices")
+            self._tts_voice_hint.setText("LightBlue: preset voices are Yonatan and Noa.")
+            return
+
+        if backend == "phonikud":
+            self._populate_tts_voice_choices(_TTS_PHONIKUD_VOICE_OPTIONS, editable=False)
+            self._tts_voice_input.setEnabled(True)
+            self._tts_voice_input.setToolTip("Phonikud voice selection")
+            self._tts_voice_hint.setText("Phonikud: single packaged Hebrew voice (michael).")
+            return
+
+        self._populate_tts_voice_choices([""], editable=False)
+        self._tts_voice_input.setEnabled(False)
+        if backend == "mms":
+            self._tts_voice_input.setToolTip("MMS does not support voice selection")
+            self._tts_voice_hint.setText("MMS: voice selection is not available.")
         else:
-            self._tts_voice_input.setToolTip(
-                "No local F5 preset voices found; use speaker reference WAV for cloning."
-            )
+            self._tts_voice_input.setToolTip("This backend uses reference WAV or built-in defaults")
+            self._tts_voice_hint.setText("Bark: use a reference WAV; preset dropdown is not used.")
+
+    def _on_tts_backend_changed(self) -> None:
+        self._refresh_tts_voice_controls()
 
     def _set_tts_badge(self, badge: QLabel, ok: bool, ready_text: str, missing_text: str) -> None:
         if ok:

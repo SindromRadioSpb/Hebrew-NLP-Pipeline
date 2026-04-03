@@ -174,6 +174,27 @@ class TestF5TTSBackend:
         assert result.duration_seconds > 0
         assert mock_sample.call_count == 2
 
+    def test_f5tts_falls_back_to_default_reference_when_custom_voice_is_invalid(self, tmp_path: Path) -> None:
+        custom_ref = tmp_path / "custom.wav"
+        default_ref = tmp_path / "default.wav"
+        with (
+            patch("kadima.engine.tts_synthesizer._get_f5tts", return_value=("model", "vocoder")),
+            patch("kadima.engine.tts_synthesizer._apply_hebrew_g2p", side_effect=lambda text, use_g2p=True: text),
+            patch("kadima.engine.tts_synthesizer._resolve_f5_reference", return_value=(custom_ref, "custom text")),
+            patch("kadima.engine.tts_synthesizer._get_default_f5_reference", return_value=(default_ref, "default text")),
+            patch(
+                "kadima.engine.tts_synthesizer._f5tts_segmented_synthesize",
+                side_effect=[RuntimeError("non-finite waveform"), (1.5, 24000)],
+            ) as mock_segmented,
+        ):
+            result = _f5tts_synthesize("שלום עולם", "cpu", tmp_path, voice="fleurs-he-m1513")
+
+        assert result.backend == "f5tts"
+        assert result.sample_rate == 24000
+        assert mock_segmented.call_count == 2
+        assert mock_segmented.call_args_list[0].args[3] == custom_ref
+        assert mock_segmented.call_args_list[1].args[3] == default_ref
+
 
 class TestLightBlueBackend:
     def test_process_lightblue_unavailable_returns_failed(self, synth: TTSSynthesizer) -> None:

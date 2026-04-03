@@ -58,6 +58,7 @@ $env:PHONIKUD_TTS_CONFIG_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-hig
 - A local open-source preset pack can live in that directory. Current staged pack uses `google/fleurs` `he_il` references under `cc-by-4.0`; see `voices\README.txt` and `voices\manifest.csv` for attribution and exact source rows.
 - Current local preset names are: `fleurs-he-m1511`, `fleurs-he-m1512`, `fleurs-he-m1513`, `fleurs-he-m1515`, `fleurs-he-m1516`, `fleurs-he-m1517`, `fleurs-he-m1660`, `fleurs-he-m1661`, `fleurs-he-m1664`, `fleurs-he-m1666`.
 - The Hugging Face model repo currently publishes only `model.safetensors` and `vocab.txt`; it does not publish the 58 preset reference WAV/TXT files, so preset voice selection is supported by runtime but not bundled by default.
+- Current `google/fleurs` preset references are treated as experimental. If one produces a non-finite F5 waveform, runtime logs a warning and falls back to the bundled default voice so synthesis still completes.
 - Without `voices\*.wav` or an explicit `speaker_ref_path`, `f5tts` falls back to the packaged demo reference voice from the upstream `f5-tts` wheel.
 
 ## Bark

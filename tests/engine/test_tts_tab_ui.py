@@ -127,3 +127,36 @@ def test_tts_voice_combo_loads_local_f5_presets(qtbot) -> None:
     values = [view._tts_voice_input.itemText(i) for i in range(view._tts_voice_input.count())]
     assert values == ["", "fleurs-he-m1513", "fleurs-he-m1517"]
     assert "Local F5 preset voices loaded from" in view._tts_voice_input.toolTip()
+    assert "experimental" in view._tts_voice_hint.text()
+
+
+def test_tts_backend_change_updates_voice_choices_for_lightblue(qtbot) -> None:
+    with ExitStack() as stack:
+        for ctx in _tts_patches():
+            stack.enter_context(ctx)
+        stack.enter_context(
+            patch(
+                "kadima.ui.generative_view._list_f5tts_voice_presets",
+                return_value=["fleurs-he-m1513"],
+            )
+        )
+        view = _make_view()
+        qtbot.add_widget(view)
+
+    view._tts_backend.set_backend("lightblue")
+    values = [view._tts_voice_input.itemText(i) for i in range(view._tts_voice_input.count())]
+    assert values == ["", "Yonatan", "Noa"]
+    assert view._tts_voice_input.isEnabled()
+    assert "Yonatan and Noa" in view._tts_voice_hint.text()
+
+
+def test_tts_backend_change_disables_voice_for_mms(qtbot) -> None:
+    with ExitStack() as stack:
+        for ctx in _tts_patches():
+            stack.enter_context(ctx)
+        view = _make_view()
+        qtbot.add_widget(view)
+
+    view._tts_backend.set_backend("mms")
+    assert not view._tts_voice_input.isEnabled()
+    assert "not available" in view._tts_voice_hint.text()
