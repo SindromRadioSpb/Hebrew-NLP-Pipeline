@@ -11,7 +11,7 @@
   },
   "models": {
     "f5tts": {
-      "model_path": "F:/datasets_models/tts/f5tts-hebrew-v2/model.pt",
+      "model_path": "F:/datasets_models/tts/f5tts-hebrew-v2/model_1250000.safetensors",
       "vocoder_path": "F:/datasets_models/tts/f5tts-hebrew-v2/vocoder"
     },
     "lightblue": {

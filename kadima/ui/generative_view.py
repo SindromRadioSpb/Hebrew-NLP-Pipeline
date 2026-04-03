@@ -384,7 +384,7 @@ class GenerativeView(QWidget):
             "<b>lightblue</b>=fast CPU ONNX, "
             "<b>phonikud</b>=Hebrew Piper ONNX, "
             "<b>mms</b>=last-resort fallback, "
-            "<b>bark</b>=legacy explicit cloning only"
+            "<b>bark</b>=legacy explicit cloning only (optional, not bundled)"
         )
         help_text.setWordWrap(True)
         help_text.setStyleSheet("color: #8888aa; font-size: 11px; padding: 4px 8px; "

@@ -20,9 +20,11 @@ from kadima.engine.base import ProcessorStatus
 from kadima.engine.tts_synthesizer import (
     TTSResult,
     TTSSynthesizer,
+    _f5tts_synthesize,
     _first_existing_path,
     _get_mms,
     _mms_synthesize,
+    _split_tts_segments,
     _text_hash,
 )
 
@@ -36,6 +38,10 @@ HEBREW_TEXT = "שלום עולם"
 
 
 class TestF5TTSBackend:
+    def test_split_tts_segments_preserves_sentences(self) -> None:
+        segments = _split_tts_segments("שלום עולם. מה נשמע? הכול טוב!")
+        assert segments == ["שלום עולם.", "מה נשמע?", "הכול טוב!"]
+
     def test_process_f5tts_unavailable_returns_failed(self, synth: TTSSynthesizer) -> None:
         with patch("kadima.engine.tts_synthesizer._F5TTS_AVAILABLE", False):
             result = synth.process(HEBREW_TEXT, {"backend": "f5tts"})
@@ -91,6 +97,33 @@ class TestF5TTSBackend:
         mock_f5.assert_called_once()
         assert mock_f5.call_args.kwargs["speaker_ref_path"] == ref_path
         assert mock_f5.call_args.kwargs["use_g2p"] is False
+
+    def test_f5tts_falls_back_to_segmented_synthesis_on_tensor_size_error(self, tmp_path: Path) -> None:
+        with (
+            patch("kadima.engine.tts_synthesizer._get_f5tts", return_value=("model", "vocoder")),
+            patch(
+                "kadima.engine.tts_synthesizer._get_default_f5_reference",
+                return_value=(tmp_path / "ref.wav", "ref text"),
+            ),
+            patch("kadima.engine.tts_synthesizer._patch_torchaudio_load_for_f5"),
+            patch("kadima.engine.tts_synthesizer._ensure_utf8_stdio"),
+            patch("kadima.engine.tts_synthesizer._apply_hebrew_g2p", side_effect=lambda text, use_g2p=True: text),
+            patch(
+                "kadima.engine.tts_synthesizer._f5_infer_process",
+                side_effect=[
+                    RuntimeError("Sizes of tensors must match except in dimension 2."),
+                    (np.zeros(1200, dtype=np.float32), 24000, None),
+                    (np.zeros(800, dtype=np.float32), 24000, None),
+                ],
+            ) as mock_infer,
+        ):
+            result = _f5tts_synthesize("שלום עולם. מה נשמע?", "cpu", tmp_path)
+
+        assert result.audio_path is not None
+        assert result.audio_path.exists()
+        assert result.sample_rate == 24000
+        assert result.duration_seconds > 0
+        assert mock_infer.call_count == 3
 
 
 class TestLightBlueBackend:

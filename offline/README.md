@@ -25,7 +25,7 @@ python -m pip install --no-index --find-links=offline\wheels --no-deps `
 
 Expected local model paths:
 
-- `F:\datasets_models\tts\f5tts-hebrew-v2\model.pt`
+- `F:\datasets_models\tts\f5tts-hebrew-v2\model_1250000.safetensors`
 - `F:\datasets_models\tts\f5tts-hebrew-v2\vocoder`
 - `F:\datasets_models\tts\lightblue`
 - `F:\datasets_models\tts\phonikud-tts\he_IL-heb-high.onnx`
@@ -34,12 +34,19 @@ Expected local model paths:
 Optional environment overrides:
 
 ```powershell
-$env:F5TTS_HEB_MODEL_PATH='F:\datasets_models\tts\f5tts-hebrew-v2\model.pt'
+$env:F5TTS_HEB_MODEL_PATH='F:\datasets_models\tts\f5tts-hebrew-v2\model_1250000.safetensors'
 $env:F5TTS_VOCODER_PATH='F:\datasets_models\tts\f5tts-hebrew-v2\vocoder'
 $env:LIGHTBLUE_MODEL_PATH='F:\datasets_models\tts\lightblue'
 $env:PHONIKUD_TTS_MODEL_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-high.onnx'
 $env:PHONIKUD_TTS_CONFIG_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-high.onnx.json'
 ```
+
+## Bark
+
+`bark` is optional and is not bundled into the offline bootstrap for the prototype release.
+
+- Readiness should show `bark` as optional unless `bark`/`suno-bark` is installed separately.
+- Primary product path for Hebrew remains `f5tts -> lightblue -> phonikud -> mms`.
 
 ## Readiness Check
 

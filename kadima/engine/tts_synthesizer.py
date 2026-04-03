@@ -19,6 +19,7 @@ import importlib
 import json
 import logging
 import os
+import re
 import shutil
 import sys
 import time
@@ -529,6 +530,82 @@ def _ensure_utf8_stdio() -> None:
             reconfigure(encoding="utf-8", errors="replace")
 
 
+def _split_tts_segments(text: str) -> list[str]:
+    parts = re.findall(r"[^.!?]+[.!?]?", text, flags=re.UNICODE)
+    segments = [part.strip() for part in parts if part.strip()]
+    return segments or [text.strip()]
+
+
+def _extract_waveform(output: Any, default_sample_rate: int) -> tuple[Any, int]:
+    import numpy as np
+    from scipy.io import wavfile as scipy_wavfile
+
+    if isinstance(output, tuple):
+        sample_rate = default_sample_rate
+        waveform = None
+        for item in output:
+            if isinstance(item, int) and item > 0:
+                sample_rate = item
+            elif waveform is None and (hasattr(item, "shape") or isinstance(item, list)):
+                waveform = item
+        if waveform is None:
+            raise RuntimeError("missing waveform in backend tuple output")
+    else:
+        waveform = output
+        sample_rate = default_sample_rate
+
+    if isinstance(waveform, (str, Path)):
+        rate, data = scipy_wavfile.read(str(waveform))
+        waveform = data
+        sample_rate = rate
+
+    if hasattr(waveform, "detach"):
+        waveform = waveform.detach().cpu().numpy()
+    elif hasattr(waveform, "cpu") and hasattr(waveform, "numpy"):
+        waveform = waveform.cpu().numpy()
+
+    array = np.asarray(waveform).squeeze()
+    return array, sample_rate
+
+
+def _f5tts_segmented_synthesize(
+    segments: list[str],
+    model: Any,
+    vocoder: Any,
+    ref_file: Path,
+    ref_text: str,
+    out_path: Path,
+) -> tuple[float, int]:
+    import numpy as np
+
+    audio_parts: list[Any] = []
+    sample_rate = 24000
+    silence = None
+
+    for segment in segments:
+        output = _f5_infer_process(
+            str(ref_file),
+            ref_text,
+            segment,
+            model,
+            vocoder,
+            show_info=lambda *_args, **_kwargs: None,
+            progress=None,
+        )
+        waveform, sample_rate = _extract_waveform(output, default_sample_rate=sample_rate)
+        if silence is None:
+            silence = np.zeros(int(sample_rate * 0.12), dtype=waveform.dtype if waveform.size else np.float32)
+        if audio_parts:
+            audio_parts.append(silence)
+        audio_parts.append(waveform)
+
+    if not audio_parts:
+        raise RuntimeError("no audio produced during segmented F5-TTS synthesis")
+
+    combined = np.concatenate(audio_parts)
+    return _write_wav_from_array(combined, out_path, sample_rate)
+
+
 def _write_wav_from_array(audio: Any, out_path: Path, sample_rate: int) -> tuple[float, int]:
     import numpy as np
     from scipy.io import wavfile
@@ -643,16 +720,35 @@ def _f5tts_synthesize(
 
     _patch_torchaudio_load_for_f5()
     _ensure_utf8_stdio()
-    output = _f5_infer_process(
-        str(ref_file),
-        ref_text,
-        synth_text,
-        model,
-        vocoder,
-        show_info=lambda *_args, **_kwargs: None,
-        progress=None,
-    )
-    duration, sample_rate = _materialize_audio_output(output, out_path, default_sample_rate=24000)
+    try:
+        output = _f5_infer_process(
+            str(ref_file),
+            ref_text,
+            synth_text,
+            model,
+            vocoder,
+            show_info=lambda *_args, **_kwargs: None,
+            progress=None,
+        )
+        duration, sample_rate = _materialize_audio_output(output, out_path, default_sample_rate=24000)
+    except RuntimeError as exc:
+        if "Sizes of tensors must match" not in str(exc):
+            raise
+        segments = _split_tts_segments(synth_text)
+        if len(segments) <= 1:
+            raise
+        logger.warning(
+            "F5-TTS batch synthesis failed on %d segments; retrying segmented synthesis",
+            len(segments),
+        )
+        duration, sample_rate = _f5tts_segmented_synthesize(
+            segments,
+            model,
+            vocoder,
+            ref_file,
+            ref_text,
+            out_path,
+        )
     return TTSResult(out_path, "f5tts", len(text), duration, sample_rate)
 
 
