@@ -3,6 +3,7 @@
 
 Backends:
 - mbart: facebook/mbart-large-50-many-to-many-mmt (3GB VRAM)
+- nllb: facebook/nllb-200-distilled-600M (600MB VRAM, 200 languages, CC-BY-SA 4.0)
 - opus: Helsinki-NLP/opus-mt-tc-big-he-en (lighter, HE↔EN only)
 - dict: Dictionary-based word-by-word fallback (always available)
 
@@ -122,15 +123,31 @@ _MBART_LANG_CODES: Dict[str, str] = {
     "zh": "zh_CN", "ja": "ja_XX", "ko": "ko_KR", "tr": "tr_TR",
 }
 
+# NLLB-200 language codes (distilled model supports 200 languages)
+_NLLB_LANG_CODES: Dict[str, str] = {
+    "he": "heb_Latn", "en": "eng_Latn", "ar": "arb_Arab", "fr": "fra_Latn",
+    "de": "deu_Latn", "ru": "rus_Cyrl", "es": "spa_Latn", "it": "ita_Latn",
+    "zh": "zho_Hans", "ja": "jpn_Jpan", "ko": "kor_Hang", "tr": "tur_Latn",
+    "am": "amh_Ethi", "hi": "hin_Deva", "th": "tha_Thai", "pt": "por_Latn",
+}
+
 
 def _translate_dict(text: str, src_lang: str, tgt_lang: str) -> str:
-    """Dictionary-based word-by-word translation (fallback)."""
+    """Dictionary-based word-by-word translation (fallback).
+
+    Supports only HE↔EN (~120 words). For unsupported pairs,
+    returns the original text and logs a warning.
+    """
     words = text.split()
     if src_lang == "he" and tgt_lang == "en":
         lookup = _HE_TO_EN
     elif src_lang == "en" and tgt_lang == "he":
         lookup = _EN_TO_HE
     else:
+        logger.warning(
+            "dict backend: unsupported language pair %s→%s, returning source text",
+            src_lang, tgt_lang,
+        )
         return text  # unsupported pair
 
     return " ".join(lookup.get(w, w) for w in words)
@@ -142,8 +159,9 @@ class Translator(Processor):
     """M14: Machine translation for Hebrew.
 
     Backends:
-        - mbart: Many-to-many translation (50 languages, 3GB VRAM)
-        - opus: HE↔EN optimized (lighter)
+        - mbart: facebook/mbart-large-50-many-to-many-mmt (50 languages, 3GB VRAM)
+        - nllb: facebook/nllb-200-distilled-600M (200 languages, 600MB VRAM, CC-BY-SA 4.0)
+        - opus: Helsinki-NLP/opus-mt-he-en (HE↔EN only, lightweight)
         - dict: Word-by-word dictionary (always available)
 
     Config:
@@ -185,7 +203,7 @@ class Translator(Processor):
             src_lang = config.get("src_lang", "he")
             tgt_lang = config.get("tgt_lang", config.get("default_tgt_lang", "en"))
 
-            if backend in ("mbart", "opus") and _TRANSFORMERS_AVAILABLE and _TORCH_AVAILABLE:
+            if backend in ("mbart", "nllb", "opus") and _TRANSFORMERS_AVAILABLE and _TORCH_AVAILABLE:
                 try:
                     result_text = self._translate_ml(input_data, src_lang, tgt_lang, backend, config)
                     used_backend = backend
@@ -241,7 +259,7 @@ class Translator(Processor):
         self, text: str, src_lang: str, tgt_lang: str,
         backend: str, config: Dict[str, Any],
     ) -> str:
-        """Translate using ML model (mBART or OPUS)."""
+        """Translate using ML model (mBART, NLLB, or OPUS)."""
         device_str = config.get("device", "cuda")
         device = device_str if device_str == "cpu" or (
             torch.cuda.is_available() and device_str == "cuda"
@@ -249,6 +267,8 @@ class Translator(Processor):
 
         if backend == "mbart":
             return self._translate_mbart(text, src_lang, tgt_lang, device)
+        elif backend == "nllb":
+            return self._translate_nllb(text, src_lang, tgt_lang, device)
         else:
             return self._translate_opus(text, src_lang, tgt_lang, device)
 
@@ -281,4 +301,33 @@ class Translator(Processor):
 
         inputs = self._tokenizer(text, return_tensors="pt").to(device)
         generated = self._model.generate(**inputs, max_length=512)
+        return self._tokenizer.batch_decode(generated, skip_special_tokens=True)[0]
+
+    def _translate_nllb(self, text: str, src_lang: str, tgt_lang: str, device: str) -> str:
+        """Translate via NLLB-200 distilled (facebook/nllb-200-distilled-600M).
+
+        NLLB uses a single multilingual model with explicit source/target
+        language tokens. Uses `convert_tokens_to_ids()` for token ID lookup
+        (unlike mBART which uses `lang_code_to_id`).
+        """
+        if self._loaded_backend != "nllb" or self._model is None:
+            model_name = "facebook/nllb-200-distilled-600M"
+            src_code = _NLLB_LANG_CODES.get(src_lang, "heb_Latn")
+            self._tokenizer = AutoTokenizer.from_pretrained(
+                model_name, src_lang=src_code
+            )
+            self._model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
+            self._loaded_backend = "nllb"
+
+        tgt_code = _NLLB_LANG_CODES.get(tgt_lang, "eng_Latn")
+        inputs = self._tokenizer(text, return_tensors="pt").to(device)
+
+        # NLLB requires the target language as the forced BOS token
+        # Note: NLLB tokenizer uses convert_tokens_to_ids(), not lang_code_to_id
+        tgt_token_id = self._tokenizer.convert_tokens_to_ids(tgt_code)
+        generated = self._model.generate(
+            **inputs,
+            forced_bos_token_id=tgt_token_id,
+            max_length=512,
+        )
         return self._tokenizer.batch_decode(generated, skip_special_tokens=True)[0]

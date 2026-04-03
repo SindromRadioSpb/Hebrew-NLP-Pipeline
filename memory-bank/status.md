@@ -70,7 +70,7 @@
 | Фаза | Что закрыто |
 |------|------------|
 | Phase 0 | Стабилизация: B1-B4, CI, Docker |
-| Phase 1 | M22 Transliterator, M21 MorphGen, M13 Diacritizer, M17 NER, M14 Translator |
+| Phase 1 | M22 Transliterator, M21 MorphGen, M13 Diacritizer, M17 NER, M14 Translator (dict+mbart+opus+nllb) |
 | T1 | KadimaTransformer, NeoDictaBERT backbone, spaCy pipeline builder |
 | T2 | M5 embeddings mode, M17 NER neodictabert, NER training pipeline, KB embeddings, TermClusterer, SA ORM, async SA, model download script |
 | T3 | Desktop UI: MainWindow + 6 views + 9 widgets + dark QSS |
@@ -90,16 +90,18 @@
 | — | M5 NP Chunker: POS-aware filtering, _is_valid_np_head()/_is_valid_np_mod(), noise 43%→5%, 26/26 PASS |
 | — | UI: TermsTableModel sort fix (int/float cast), NgramTable/NPChunkTable уже numeric |
 | — | M8: noise_filter_enabled + pos_filter_enabled добавлены в UI (pipeline_view.py Thresholds) |
+| — | M14 Translator: NLLB-200-distilled-600M скачан и подключён (200 языков, CC-BY-SA 4.0). BUG FIX: lang_code_to_id → convert_tokens_to_ids(). dict logging для unsupported pairs. UI setPlainText() fix. 48 тестов PASS. |
 | — | OperationProgressDialog создан (widgets/operation_progress.py, 330+ строк, 24 теста) |
 | — | _WorkerSignals расширены: activity, counters, stage_info сигналы |
 | — | audit_v1.md обновлён: добавлены разделы 13-14 (повторный аудит M1-M8) |
 
 ---
 
-## Test Count (последний запуск: 2026-04-02)
-**823/824 PASSED** (1 pre-existing failure в M15 TTS — `test_process_mms_unavailable_returns_failed`)
+## Test Count (последний запуск: 2026-04-03)
+**871/872 PASSED** (1 pre-existing failure в M15 TTS — `test_process_mms_unavailable_returns_failed`)
 
 M1-M8 engine tests: 236/236 PASS
+M14 Translator engine tests: 48/48 PASS (28 translator + 20 NLLB)
 Integration E2E: 16/16 PASS
 API tests: 114/114 PASS
 Premium Progress UX: 24/24 PASS

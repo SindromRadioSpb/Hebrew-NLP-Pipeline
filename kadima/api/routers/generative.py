@@ -86,7 +86,7 @@ class TranslateRequest(BaseModel):
     text: str = Field(..., min_length=1, description="Source text")
     src_lang: str = Field(default="he", description="Source language code")
     tgt_lang: str = Field(default="en", description="Target language code")
-    backend: str = Field(default="mbart", pattern=r"^(mbart|opus|dict)$")
+    backend: str = Field(default="mbart", pattern=r"^(mbart|nllb|opus|dict)$")
 
 
 class TranslateResponse(BaseModel):

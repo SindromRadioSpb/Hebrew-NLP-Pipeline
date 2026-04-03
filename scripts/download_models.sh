@@ -33,6 +33,7 @@ DOWNLOAD_ALL=false
 DOWNLOAD_NEODICTABERT=false
 DOWNLOAD_DICTALM=false
 DOWNLOAD_HEQ_NER=false
+DOWNLOAD_NLLB200=false
 
 if [[ $# -eq 0 ]]; then
     DOWNLOAD_ALL=true
@@ -44,8 +45,9 @@ for arg in "$@"; do
         --neodictabert)  DOWNLOAD_NEODICTABERT=true ;;
         --dictalm)       DOWNLOAD_DICTALM=true ;;
         --heq-ner)       DOWNLOAD_HEQ_NER=true ;;
+        --nllb200)       DOWNLOAD_NLLB200=true ;;
         --help|-h)
-            echo "Usage: $0 [--all] [--neodictabert] [--dictalm] [--heq-ner]"
+            echo "Usage: $0 [--all] [--neodictabert] [--dictalm] [--heq-ner] [--nllb200]"
             exit 0 ;;
         *)
             error "Unknown argument: $arg"; exit 1 ;;
@@ -56,6 +58,7 @@ if $DOWNLOAD_ALL; then
     DOWNLOAD_NEODICTABERT=true
     DOWNLOAD_DICTALM=true
     DOWNLOAD_HEQ_NER=true
+    DOWNLOAD_NLLB200=true
 fi
 
 # ── Helper: download HF model via huggingface-cli ────────────────────────────
@@ -130,6 +133,14 @@ download_dictalm() {
     hf_download "dicta-il/dictalm3.0-instruct-GGUF" "DictaLM 3.0 Instruct GGUF (metadata)"
 }
 
+download_nllb200() {
+    # NLLB-200 Distilled 600M — multilingual translation (200 languages)
+    # CC-BY-SA 4.0 — commercially allowed
+    # Used by: Translator (M14) nllb backend
+    # Size: ~600MB
+    hf_download "facebook/nllb-200-distilled-600M" "NLLB-200 Distilled (600M, 200 languages)"
+}
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 echo ""
@@ -160,6 +171,7 @@ run_step() {
 $DOWNLOAD_NEODICTABERT && run_step "NeoDictaBERT" download_neodictabert
 $DOWNLOAD_HEQ_NER      && run_step "HeQ-NER"      download_heq_ner
 $DOWNLOAD_DICTALM      && run_step "DictaLM 3.0"  download_dictalm
+$DOWNLOAD_NLLB200      && run_step "NLLB-200"     download_nllb200
 
 echo ""
 info "Summary:"

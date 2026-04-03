@@ -559,10 +559,42 @@ class GenerativeView(QWidget):
         w, lay = self._make_tab_container()
 
         self._translate_backend = BackendSelector(
-            backends=["mbart", "opus", "dict"], default_backend="dict"
+            backends=["mbart", "nllb", "opus", "dict"], default_backend="dict"
         )
         self._translate_backend.setObjectName("generative_translate_backend")
         lay.addWidget(self._translate_backend)
+
+        # Help text explaining backends
+        help_lbl = QLabel(
+            "<b>mbart</b>: 50 languages, high quality (3GB VRAM) &middot; "
+            "<b>nllb</b>: 200 languages, lighter (600MB VRAM) &middot; "
+            "<b>opus</b>: HE↔EN only, fast &middot; "
+            "<b>dict</b>: basic dictionary (always available, ~100 words)"
+        )
+        help_lbl.setWordWrap(True)
+        help_lbl.setStyleSheet("color: #8888aa; font-size: 10px; padding: 2px 0;")
+        help_lbl.setObjectName("generative_translate_help")
+        lay.addWidget(help_lbl)
+
+        # ML availability badges
+        badge_row = QHBoxLayout()
+        self._translate_mbart_badge = QLabel()
+        self._translate_mbart_badge.setObjectName("generative_translate_mbart_badge")
+        self._translate_mbart_badge.setStyleSheet("font-size: 10px; padding: 2px 6px;")
+        badge_row.addWidget(self._translate_mbart_badge)
+
+        self._translate_nllb_badge = QLabel()
+        self._translate_nllb_badge.setObjectName("generative_translate_nllb_badge")
+        self._translate_nllb_badge.setStyleSheet("font-size: 10px; padding: 2px 6px;")
+        badge_row.addWidget(self._translate_nllb_badge)
+
+        self._translate_opus_badge = QLabel()
+        self._translate_opus_badge.setObjectName("generative_translate_opus_badge")
+        self._translate_opus_badge.setStyleSheet("font-size: 10px; padding: 2px 6px;")
+        badge_row.addWidget(self._translate_opus_badge)
+        badge_row.addStretch()
+        lay.addLayout(badge_row)
+        self._update_translate_ml_badges()
 
         direction_row = QHBoxLayout()
         dir_lbl = QLabel("Direction:")
@@ -570,15 +602,39 @@ class GenerativeView(QWidget):
         direction_row.addWidget(dir_lbl)
         self._translate_direction = QComboBox()
         self._translate_direction.setObjectName("generative_translate_direction")
-        self._translate_direction.addItems(["HE → EN", "HE → RU", "EN → HE"])
+        self._translate_direction.addItems([
+            "HE → EN", "HE → RU", "HE → AR", "HE → FR",
+            "HE → DE", "HE → ES", "EN → HE",
+        ])
         direction_row.addWidget(self._translate_direction)
         direction_row.addStretch()
         lay.addLayout(direction_row)
 
+        # Input with character counter
+        input_row = QHBoxLayout()
+        input_row.setSpacing(4)
         self._translate_input = RTLTextEdit(placeholder="הכנס טקסט לתרגום...")
         self._translate_input.setObjectName("generative_translate_input")
         self._translate_input.setMaximumHeight(120)
-        lay.addWidget(self._translate_input)
+        input_row.addWidget(self._translate_input, stretch=1)
+
+        counter_col = QVBoxLayout()
+        counter_col.setSpacing(2)
+        self._translate_char_count = QLabel("0 chars")
+        self._translate_char_count.setStyleSheet("color: #a0a0c0; font-size: 10px;")
+        self._translate_char_count.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        counter_col.addWidget(self._translate_char_count)
+
+        self._translate_word_count = QLabel("0 words")
+        self._translate_word_count.setStyleSheet("color: #a0a0c0; font-size: 10px;")
+        self._translate_word_count.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        counter_col.addWidget(self._translate_word_count)
+        counter_col.addStretch()
+        input_row.addLayout(counter_col)
+        lay.addLayout(input_row)
+
+        # Wire text change signal to update counters
+        self._translate_input.textChanged.connect(self._on_translate_input_changed)
 
         btn_row, run_btn, clear_btn, copy_btn, _ = self._make_button_row(
             run_label="Translate", copy_label="Copy Result"
@@ -614,9 +670,14 @@ class GenerativeView(QWidget):
 
         return w
 
-    def _tgt_lang_from_direction(self) -> str:
-        mapping = {"HE → EN": "en", "HE → RU": "ru", "EN → HE": "he"}
-        return mapping.get(self._translate_direction.currentText(), "en")
+    def _tgt_lang_from_direction(self) -> tuple[str, str]:
+        mapping = {
+            "HE → EN": ("he", "en"), "HE → RU": ("he", "ru"),
+            "HE → AR": ("he", "ar"), "HE → FR": ("he", "fr"),
+            "HE → DE": ("he", "de"), "HE → ES": ("he", "es"),
+            "EN → HE": ("en", "he"),
+        }
+        return mapping.get(self._translate_direction.currentText(), ("he", "en"))
 
     def _on_translate_run(self) -> None:
         text = self._translate_input.toPlainText().strip()
@@ -624,13 +685,16 @@ class GenerativeView(QWidget):
             return
         backend = self._translate_backend.backend
         device = self._translate_backend.device
-        tgt_lang = self._tgt_lang_from_direction()
+        src_lang, tgt_lang = self._tgt_lang_from_direction()
         worker = GenerativeWorker(
             tab_name="translate",
             module_cls=_TranslatorCls,
             module_config={},
             input_data=text,
-            runtime_config={"backend": backend, "device": device, "tgt_lang": tgt_lang},
+            runtime_config={
+                "backend": backend, "device": device,
+                "src_lang": src_lang, "tgt_lang": tgt_lang,
+            },
         )
         worker.signals.started.connect(
             lambda t: self._translate_status.setText("Running...")
@@ -647,8 +711,19 @@ class GenerativeView(QWidget):
         try:
             text = ""
             if result.data:
-                text = str(getattr(result.data, "translation", result.data))
-            self._translate_result.setPlainText(text)
+                # TranslationResult uses 'result' field
+                text = str(getattr(result.data, "result", ""))
+                # Update status with backend info
+                backend = getattr(result.data, "backend", "unknown")
+                self._translate_status.setText(
+                    f"Done ({backend}) · {getattr(result.data, 'src_lang', '?')}→"
+                    f"{getattr(result.data, 'tgt_lang', '?')} · "
+                    f"{getattr(result.data, 'word_count', 0)} words"
+                )
+                # BUG FIX: was missing setPlainText() — result never appeared in UI
+                self._translate_result.setPlainText(text)
+            else:
+                self._translate_result.setPlainText("No translation result.")
         except Exception as exc:
             logger.warning("translate result display error: %s", exc)
             self._translate_status.setText(f"Display error: {exc}")
@@ -656,7 +731,71 @@ class GenerativeView(QWidget):
     def _on_translate_clear(self) -> None:
         self._translate_input.clear()
         self._translate_result.clear()
+        self._translate_char_count.setText("0 chars")
+        self._translate_word_count.setText("0 words")
         self._translate_status.setText("Ready")
+
+    def _on_translate_input_changed(self) -> None:
+        """Update char/word counters when input text changes."""
+        text = self._translate_input.toPlainText()
+        char_count = len(text)
+        word_count = len(text.split()) if text.strip() else 0
+        self._translate_char_count.setText(f"{char_count} chars")
+        self._translate_word_count.setText(f"{word_count} words")
+
+    def _update_translate_ml_badges(self) -> None:
+        """Update ML availability badges for translate tab."""
+        # Check if transformers + torch are available
+        try:
+            from kadima.engine.translator import _TRANSFORMERS_AVAILABLE, _TORCH_AVAILABLE
+            ml_ok = _TRANSFORMERS_AVAILABLE and _TORCH_AVAILABLE
+        except Exception:
+            ml_ok = False
+
+        # All ML backends share the same transformers dependency
+        mbart_ok = ml_ok
+        nllb_ok = ml_ok
+        opus_ok = ml_ok
+
+        # Style badges
+        if mbart_ok:
+            self._translate_mbart_badge.setText("✅ mbart ready (3GB)")
+            self._translate_mbart_badge.setStyleSheet(
+                "color: #22c55e; font-size: 10px; padding: 2px 6px;"
+            )
+        else:
+            self._translate_mbart_badge.setText(
+                "⬜ mbart (pip install transformers + download model)"
+            )
+            self._translate_mbart_badge.setStyleSheet(
+                "color: #a0a0c0; font-size: 10px; padding: 2px 6px;"
+            )
+
+        if nllb_ok:
+            self._translate_nllb_badge.setText("✅ nllb ready (600MB)")
+            self._translate_nllb_badge.setStyleSheet(
+                "color: #22c55e; font-size: 10px; padding: 2px 6px;"
+            )
+        else:
+            self._translate_nllb_badge.setText(
+                "⬜ nllb (pip install transformers + download model)"
+            )
+            self._translate_nllb_badge.setStyleSheet(
+                "color: #a0a0c0; font-size: 10px; padding: 2px 6px;"
+            )
+
+        if opus_ok:
+            self._translate_opus_badge.setText("✅ opus ready (HE↔EN)")
+            self._translate_opus_badge.setStyleSheet(
+                "color: #22c55e; font-size: 10px; padding: 2px 6px;"
+            )
+        else:
+            self._translate_opus_badge.setText(
+                "⬜ opus (pip install transformers + download model)"
+            )
+            self._translate_opus_badge.setStyleSheet(
+                "color: #a0a0c0; font-size: 10px; padding: 2px 6px;"
+            )
 
     # ------------------------------------------------------------------
     # Tab 4 — Diacritize

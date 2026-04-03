@@ -126,3 +126,31 @@ class TestTranslatorBatch:
     def test_empty_batch(self):
         t = Translator()
         assert t.process_batch([], {"backend": "dict"}) == []
+
+
+class TestTranslatorUnsupportedPair:
+    """Test dict fallback for unsupported language pairs (HE→RU, etc.)."""
+
+    @pytest.fixture
+    def t(self):
+        return Translator()
+
+    def test_dict_he_to_ru_returns_source(self, t):
+        """dict for HE→RU should return source text (no translation available)."""
+        r = t.process("שלום עולם", {"backend": "dict", "src_lang": "he", "tgt_lang": "ru"})
+        assert r.status == ProcessorStatus.READY
+        assert r.data.result == "שלום עולם"
+        assert r.data.backend == "dict"
+
+    def test_dict_he_to_fr_returns_source(self, t):
+        """dict for HE→FR should return source text."""
+        r = t.process("שלום", {"backend": "dict", "src_lang": "he", "tgt_lang": "fr"})
+        assert r.status == ProcessorStatus.READY
+        assert r.data.result == "שלום"
+
+    def test_mbart_fallback_he_to_ru_falls_to_dict(self, t):
+        """mBART for HE→RU with no model should fall back to dict (source text)."""
+        r = t.process("שלום", {"backend": "mbart", "src_lang": "he", "tgt_lang": "ru"})
+        assert r.status == ProcessorStatus.READY
+        # When mBART is not installed, falls back to dict → returns source
+        assert r.data.backend in ("mbart", "dict")

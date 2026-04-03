@@ -203,6 +203,102 @@ class TestDiacritizeEndpoint:
         assert response.status_code == 422
 
 
+# ── Translate (M14) ─────────────────────────────────────────────────────────────
+
+
+class TestTranslateEndpoint:
+    """POST /generative/translate (M14)."""
+
+    def test_translate_dict_he_to_en(self, client):
+        response = client.post(
+            "/api/v1/generative/translate",
+            json={
+                "text": "שלום עולם",
+                "src_lang": "he",
+                "tgt_lang": "en",
+                "backend": "dict",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "hello" in data["result"].lower()
+        assert data["src_lang"] == "he"
+        assert data["tgt_lang"] == "en"
+        assert data["backend"] == "dict"
+        assert data["word_count"] == 2
+
+    def test_translate_dict_en_to_he(self, client):
+        response = client.post(
+            "/api/v1/generative/translate",
+            json={
+                "text": "hello world",
+                "src_lang": "en",
+                "tgt_lang": "he",
+                "backend": "dict",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "שלום" in data["result"]
+
+    def test_translate_mbart_fallback(self, client):
+        """mBART falls back to dict if model not installed."""
+        response = client.post(
+            "/api/v1/generative/translate",
+            json={
+                "text": "שלום",
+                "src_lang": "he",
+                "tgt_lang": "en",
+                "backend": "mbart",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["backend"] in ("mbart", "dict")
+
+    def test_translate_nllb_fallback(self, client):
+        """NLLB falls back to dict if model not installed."""
+        response = client.post(
+            "/api/v1/generative/translate",
+            json={
+                "text": "שלום",
+                "src_lang": "he",
+                "tgt_lang": "en",
+                "backend": "nllb",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["backend"] in ("nllb", "dict")
+
+    def test_translate_empty_text(self, client):
+        """Empty text should fail validation."""
+        response = client.post(
+            "/api/v1/generative/translate",
+            json={"text": "", "src_lang": "he", "tgt_lang": "en"},
+        )
+        assert response.status_code == 422
+
+    def test_translate_invalid_backend(self, client):
+        """Invalid backend should fail validation."""
+        response = client.post(
+            "/api/v1/generative/translate",
+            json={"text": "שלום", "backend": "invalid"},
+        )
+        assert response.status_code == 422
+
+    def test_translate_response_schema(self, client):
+        """All required fields present in response."""
+        response = client.post(
+            "/api/v1/generative/translate",
+            json={"text": "שלום", "backend": "dict"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        for key in ("result", "source", "src_lang", "tgt_lang", "backend", "word_count"):
+            assert key in data
+
+
 # ── Schema Validation for all endpoints ───────────────────────────────────────
 
 
