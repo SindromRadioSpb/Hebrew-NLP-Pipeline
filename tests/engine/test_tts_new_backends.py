@@ -24,6 +24,7 @@ from kadima.engine.tts_synthesizer import (
     _first_existing_path,
     _get_mms,
     _mms_synthesize,
+    _normalize_audio_loudness,
     _resolve_f5_reference,
     _split_f5tts_segments,
     _split_tts_segments,
@@ -49,6 +50,13 @@ class TestF5TTSBackend:
         segments = _split_f5tts_segments(text, max_bytes=80)
         assert len(segments) > 1
         assert all(len(segment.encode("utf-8")) <= 80 for segment in segments)
+
+    def test_normalize_audio_loudness_boosts_quiet_f5_output(self) -> None:
+        quiet = np.full(24000, 0.002, dtype=np.float32)
+        boosted = _normalize_audio_loudness(quiet)
+        assert boosted.dtype == np.float32
+        assert float(np.max(np.abs(boosted))) > float(np.max(np.abs(quiet)))
+        assert float(np.sqrt(np.mean(boosted.astype(np.float64) ** 2))) > 0.02
 
     def test_process_f5tts_unavailable_returns_failed(self, synth: TTSSynthesizer) -> None:
         with patch("kadima.engine.tts_synthesizer._F5TTS_AVAILABLE", False):

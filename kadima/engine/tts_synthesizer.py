@@ -399,6 +399,7 @@ _f5tts_model: Any = None
 _f5tts_vocoder: Any = None
 _lightblue_runtime: dict[str, Any] = {}
 _phonikud_tts_voice: Any = None
+_F5TTS_CACHE_VERSION = "f5he-v2-norm1"
 _F5TTS_VOICE_PRESETS_DIR = Path(
     os.environ.get("F5TTS_VOICE_PRESETS_DIR", str(_F5TTS_MODEL_PATH.parent / "voices"))
 )
@@ -815,7 +816,7 @@ def _f5tts_segmented_synthesize(
     if not audio_parts:
         raise RuntimeError("no audio produced during segmented F5-TTS synthesis")
 
-    combined = np.concatenate(audio_parts)
+    combined = _normalize_audio_loudness(np.concatenate(audio_parts))
     return _write_wav_from_array(combined, out_path, sample_rate)
 
 
@@ -829,6 +830,34 @@ def _write_wav_from_array(audio: Any, out_path: Path, sample_rate: int) -> tuple
     wavfile.write(str(out_path), sample_rate, waveform)
     duration = len(waveform) / float(sample_rate) if sample_rate > 0 else 0.0
     return duration, sample_rate
+
+
+def _normalize_audio_loudness(
+    audio: Any,
+    *,
+    target_rms: float = 0.08,
+    target_peak: float = 0.92,
+    max_gain: float = 24.0,
+) -> Any:
+    import numpy as np
+
+    waveform = np.asarray(audio, dtype=np.float32).copy()
+    if waveform.size == 0:
+        return waveform
+
+    peak = float(np.max(np.abs(waveform)))
+    rms = float(np.sqrt(np.mean(np.square(waveform, dtype=np.float64))))
+    if peak <= 1e-7 or rms <= 1e-7:
+        return waveform
+
+    gain_from_rms = target_rms / rms
+    gain_from_peak = target_peak / peak
+    gain = min(gain_from_rms, gain_from_peak, max_gain)
+    if gain <= 1.05:
+        return waveform
+
+    waveform *= gain
+    return np.clip(waveform, -target_peak, target_peak)
 
 
 def _materialize_audio_output(output: Any, out_path: Path, default_sample_rate: int) -> tuple[float, int]:
@@ -920,7 +949,7 @@ def _f5tts_synthesize(
     """Synthesize Hebrew speech via F5-TTS."""
     output_dir.mkdir(parents=True, exist_ok=True)
     speaker_key = str(speaker_ref_path.resolve()) if speaker_ref_path and speaker_ref_path.exists() else ""
-    cache_key = _cache_key(text, speaker_key, voice or "", "g2p" if use_g2p else "raw")
+    cache_key = _cache_key(text, speaker_key, voice or "", "g2p" if use_g2p else "raw", _F5TTS_CACHE_VERSION)
     out_path = output_dir / f"tts_f5tts_{cache_key}.wav"
     if out_path.exists():
         logger.info("F5-TTS cache hit: %s", out_path.name)
