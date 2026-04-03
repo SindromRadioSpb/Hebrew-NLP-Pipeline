@@ -33,6 +33,16 @@ _ENTITY_TEXT_COLOURS: dict[str, str] = {
     "LOC": "#f59e0b",
     "MISC": "#60a5fa",
 }
+_ENTITY_LABEL_DISPLAY: dict[str, str] = {
+    "PER": "PER · Person",
+    "ORG": "ORG · Organization",
+    "GPE": "GPE · Location",
+    "LOC": "LOC · Location",
+    "DATE": "DATE · Date",
+    "TTL": "TTL · Title",
+    "MISC": "MISC · Misc",
+    "NE": "NE · Named Entity",
+}
 
 
 class EntityTableModel(QAbstractTableModel):
@@ -72,6 +82,8 @@ class EntityTableModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.DisplayRole:
             fields = ["text", "label", "start", "end", "score"]
             val = self._get(row, fields[index.column()], "")
+            if index.column() == 1:
+                return _ENTITY_LABEL_DISPLAY.get(str(val), str(val))
             if index.column() == 4 and isinstance(val, float):
                 return f"{val:.3f}"
             return str(val)

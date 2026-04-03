@@ -1641,7 +1641,8 @@ class GenerativeView(QWidget):
             "<b>heq_ner</b>=recommended Hebrew model, "
             "<b>rules</b>=safe fallback, "
             "<b>neodictabert</b>=experimental embedding path. "
-            "Paste text, run extraction, then review entity type, span and score below."
+            "Paste text, run extraction, then review entity type, span and score below. "
+            "Labels: PER=Person, ORG=Organization, GPE=Location, DATE=Date, TTL=Title."
         )
         self._ner_help_hint.setObjectName("generative_ner_help")
         self._ner_help_hint.setWordWrap(True)

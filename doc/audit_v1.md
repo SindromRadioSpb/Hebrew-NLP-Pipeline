@@ -957,10 +957,12 @@ M16 доведён до product-grade baseline: engine, API, product-facing STT 
 | API response includes `note` for fallback/experimental runtime state | `api/routers/generative.py` | Honest API contract |
 | GenerativeView NER tab: help text, ready/changed status, summary status, empty-input feedback | `ui/generative_view.py` | Product-grade desktop UX |
 | EntityTable renders entity span/type/score table | `ui/widgets/entity_table.py` | Inspectable NER output |
+| Entity labels surfaced with user-friendly display names | `ui/widgets/entity_table.py`, `ui/generative_view.py` | Lower cognitive load in desktop UX |
 | NER-specific API regression coverage | `tests/api/test_generative_router.py` | Router regression protection |
 | NER-specific UI regression coverage | `tests/engine/test_ner_tab_ui.py` | UX regression protection |
 | M17 verification suite: 158 PASS | `pytest tests/engine/test_ner_extractor.py tests/engine/test_ner_tab_ui.py tests/api/test_generative_router.py tests/test_config.py tests/ui/test_generative.py -q` | Engine + API + UI + config verification |
 | Live M17 smoke artifact | `artefacts/ner_m17_smoke.json` | Real user-path evidence |
+| Live M17 gold-corpus smoke artifact | `artefacts/ner_m17_gold_smoke.json` | Evidence on `he_17_named_entities` corpus subset |
 
 #### B) Запланировано, не реализовано
 
@@ -1005,7 +1007,15 @@ M16 доведён до product-grade baseline: engine, API, product-facing STT 
    - Прогнан живой M17 smoke и сохранён артефакт в `artefacts/ner_m17_smoke.json`.
    - Этот раздел аудита обновлён по факту прогона.
 
-4. **Smart-model backlog**
+4. **PATCH-04 Label semantics polish — DONE**
+   - Label meanings подняты прямо в help text и в таблицу результатов.
+   - `PER/ORG/GPE/DATE/TTL` теперь читаются без необходимости знать внутренние коды модели.
+
+5. **PATCH-05 Gold-corpus evidence — DONE**
+   - Добавлен отдельный smoke report на `tests/data/he_17_named_entities/raw`.
+   - Артефакт сохранён в `artefacts/ner_m17_gold_smoke.json`.
+
+6. **Smart-model backlog**
    - `GLiNER` / `NuNER Zero` рассматривать только как optional experimental layer после базовой продуктовой стабилизации M17.
    - `dicta-il/dictabert-large-parse` держать как отдельную future integration ветку для joint parsing/NER path.
 

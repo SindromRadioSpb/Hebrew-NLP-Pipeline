@@ -1,0 +1,130 @@
+{
+  "backend_requested": "heq_ner",
+  "files": [
+    {
+      "file": "entities_geo.txt",
+      "status": "ProcessorStatus.READY",
+      "backend_used": "heq_ner",
+      "count": 4,
+      "note": "",
+      "entities": [
+        {
+          "text": "בתל אביב",
+          "label": "GPE",
+          "start": 11,
+          "end": 19,
+          "score": 0.9998644590377808
+        },
+        {
+          "text": "בדימונה",
+          "label": "GPE",
+          "start": 26,
+          "end": 33,
+          "score": 0.9998431205749512
+        },
+        {
+          "text": "באילת",
+          "label": "GPE",
+          "start": 51,
+          "end": 56,
+          "score": 0.9993411898612976
+        },
+        {
+          "text": "בירושלים",
+          "label": "GPE",
+          "start": 77,
+          "end": 85,
+          "score": 0.9997873902320862
+        }
+      ]
+    },
+    {
+      "file": "entities_org.txt",
+      "status": "ProcessorStatus.READY",
+      "backend_used": "heq_ner",
+      "count": 5,
+      "note": "",
+      "entities": [
+        {
+          "text": "הטכניון",
+          "label": "ORG",
+          "start": 0,
+          "end": 7,
+          "score": 0.9998983144760132
+        },
+        {
+          "text": "בחיפה",
+          "label": "GPE",
+          "start": 8,
+          "end": 13,
+          "score": 0.9997612833976746
+        },
+        {
+          "text": "משרד הביטחון",
+          "label": "ORG",
+          "start": 29,
+          "end": 41,
+          "score": 0.9999269843101501
+        },
+        {
+          "text": "רפאל",
+          "label": "ORG",
+          "start": 68,
+          "end": 72,
+          "score": 0.994256317615509
+        },
+        {
+          "text": "התעשייה האווירית",
+          "label": "ORG",
+          "start": 91,
+          "end": 107,
+          "score": 0.9999047517776489
+        }
+      ]
+    },
+    {
+      "file": "entities_person.txt",
+      "status": "ProcessorStatus.READY",
+      "backend_used": "heq_ner",
+      "count": 5,
+      "note": "",
+      "entities": [
+        {
+          "text": "פרופ ׳",
+          "label": "TTL",
+          "start": 0,
+          "end": 5,
+          "score": 0.9998823404312134
+        },
+        {
+          "text": "כהן",
+          "label": "PER",
+          "start": 6,
+          "end": 9,
+          "score": 0.9998692274093628
+        },
+        {
+          "text": "ד ״ ר",
+          "label": "TTL",
+          "start": 27,
+          "end": 30,
+          "score": 0.9998876452445984
+        },
+        {
+          "text": "לוי",
+          "label": "PER",
+          "start": 31,
+          "end": 34,
+          "score": 0.9996358156204224
+        },
+        {
+          "text": "כהן",
+          "label": "PER",
+          "start": 89,
+          "end": 92,
+          "score": 0.9993171691894531
+        }
+      ]
+    }
+  ]
+}

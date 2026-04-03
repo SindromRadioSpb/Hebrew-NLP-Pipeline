@@ -30,6 +30,7 @@ def test_ner_selector_uses_release_backend_contract(qtbot) -> None:
     assert backends == ["heq_ner", "rules", "neodictabert"]
     assert view._ner_backend.backend == "heq_ner"
     assert "recommended Hebrew model" in view._ner_help_hint.text()
+    assert "PER=Person" in view._ner_help_hint.text()
 
 
 def test_ner_dirty_status_prompts_before_first_run(qtbot) -> None:
@@ -84,6 +85,10 @@ def test_ner_result_displays_summary_and_note(qtbot) -> None:
     assert "GPE×1" in view._ner_status.text()
     assert "fallback" in view._ner_status.text().lower()
     assert view._ner_entity_table.model().rowCount() == 3
+    label_cell = view._ner_entity_table.model().data(
+        view._ner_entity_table.model().index(0, 1)
+    )
+    assert "Person" in label_cell
     assert view._ner_dirty_status.isHidden()
 
 
