@@ -1,6 +1,6 @@
 # Offline TTS Bootstrap
 
-This folder is the offline staging area for the M15 TTS backends.
+This folder is the offline staging area for the M15 TTS and M16 STT backends.
 
 Repository runtime convention:
 
@@ -16,6 +16,8 @@ Place Python wheels into [wheels](E:/projects/Project_Vibe/Kadima/offline/wheels
 - `piper-tts`
 - `phonikud`
 - `phonikud-onnx`
+- `openai-whisper`
+- `faster-whisper`
 
 Recommended install command:
 
@@ -24,6 +26,15 @@ cd E:\projects\Project_Vibe\Kadima
 .\.venv\Scripts\Activate.ps1
 python -m pip install --no-index --find-links=offline\wheels --no-deps `
   f5-tts lightblue-onnx piper-tts phonikud phonikud-onnx soundfile
+```
+
+Recommended STT install command:
+
+```powershell
+cd E:\projects\Project_Vibe\Kadima
+.\.venv\Scripts\Activate.ps1
+python -m pip install --no-index --find-links=offline\wheels `
+  openai-whisper faster-whisper
 ```
 
 ## Models
@@ -36,6 +47,8 @@ Expected local model paths:
 - `F:\datasets_models\tts\lightblue`
 - `F:\datasets_models\tts\phonikud-tts\he_IL-heb-high.onnx`
 - `F:\datasets_models\tts\phonikud-tts\he_IL-heb-high.onnx.json`
+- `F:\datasets_models\stt\whisper-large-v3-turbo\large-v3-turbo.pt`
+- `F:\datasets_models\stt\whisper-large-v3-turbo-he\models--ivrit-ai--whisper-large-v3-turbo-ct2\`
 
 Optional environment overrides:
 
@@ -46,6 +59,8 @@ $env:F5TTS_VOCODER_PATH='F:\datasets_models\tts\f5tts-hebrew-v2\vocoder'
 $env:LIGHTBLUE_MODEL_PATH='F:\datasets_models\tts\lightblue'
 $env:PHONIKUD_TTS_MODEL_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-high.onnx'
 $env:PHONIKUD_TTS_CONFIG_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-high.onnx.json'
+$env:WHISPER_MODEL_PATH='F:\datasets_models\stt\whisper-large-v3-turbo\large-v3-turbo.pt'
+$env:FASTER_WHISPER_MODEL_PATH='F:\datasets_models\stt\whisper-large-v3-turbo-he\models--ivrit-ai--whisper-large-v3-turbo-ct2\snapshots\72ad623a37947395efcc3933132353790e5a12f5'
 ```
 
 ## F5 Hebrew v2 Notes
@@ -68,6 +83,18 @@ $env:PHONIKUD_TTS_CONFIG_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-hig
 - `zonos` was dropped because the Windows runtime never had a production-ready implementation and the earlier WSL2/premium idea would have been a false backend promise in UI/API.
 - `bark` was dropped because it is not bundled offline, is slow/heavy for the prototype, and overlaps with the now-working `f5tts` cloning flow while worsening UX clarity.
 - Release-supported Hebrew path is `lightblue (Noa by default) -> f5tts -> phonikud -> mms`.
+
+## M16 STT Notes
+
+- Release-supported STT backends: `auto`, `whisper`, `faster-whisper`.
+- `auto` means `whisper -> faster-whisper -> FAILED`.
+- `GenerativeView` STT tab now surfaces:
+  - supported formats;
+  - ready/changed state after selecting or changing audio/backend/device;
+  - final summary with backend used, duration, confidence and segment count.
+- Live smoke artifact from the current workspace:
+  - transcript: [stt_m16_smoke.txt](E:/projects/Project_Vibe/Kadima/artefacts/stt_m16_smoke.txt)
+  - metadata: [stt_m16_smoke.json](E:/projects/Project_Vibe/Kadima/artefacts/stt_m16_smoke.json)
 
 ## Readiness Check
 

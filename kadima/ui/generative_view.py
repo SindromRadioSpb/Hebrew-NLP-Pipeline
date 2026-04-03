@@ -64,9 +64,13 @@ except ImportError:
     _list_f5tts_voice_presets = None  # type: ignore[assignment,misc]
 
 try:
-    from kadima.engine.stt_transcriber import STTTranscriber as _STTCls
+    from kadima.engine.stt_transcriber import (
+        STTTranscriber as _STTCls,
+        _AUDIO_EXTENSIONS as _STT_AUDIO_EXTENSIONS,
+    )
 except ImportError:
     _STTCls = None  # type: ignore[assignment,misc]
+    _STT_AUDIO_EXTENSIONS = frozenset({".wav", ".mp3"})
 
 try:
     from kadima.engine.translator import Translator as _TranslatorCls
@@ -926,16 +930,35 @@ class GenerativeView(QWidget):
         w, lay = self._make_tab_container()
 
         self._stt_backend = BackendSelector(
-            backends=["whisper", "faster_whisper"], default_backend="whisper"
+            backends=["auto", "whisper", "faster-whisper"], default_backend="auto"
         )
         self._stt_backend.setObjectName("generative_stt_backend")
         lay.addWidget(self._stt_backend)
+        self._stt_backend.changed.connect(lambda _backend, _device: self._on_stt_selection_changed())
+
+        extensions_label = ", ".join(ext.lstrip(".").upper() for ext in sorted(_STT_AUDIO_EXTENSIONS))
+        self._stt_help_hint = QLabel(
+            "🎙️ Backends: "
+            "<b>auto</b>=Whisper → faster-whisper fallback, "
+            "<b>whisper</b>=best compatibility, "
+            "<b>faster-whisper</b>=faster CTranslate2 path. "
+            f"Supported formats: {extensions_label}."
+        )
+        self._stt_help_hint.setWordWrap(True)
+        self._stt_help_hint.setStyleSheet(
+            "color: #8888aa; font-size: 11px; padding: 4px 8px; "
+            "background: #1a1a2e; border-radius: 4px;"
+        )
+        lay.addWidget(self._stt_help_hint)
 
         file_row = QHBoxLayout()
         self._stt_file_input = QLineEdit()
         self._stt_file_input.setObjectName("generative_stt_file_input")
-        self._stt_file_input.setPlaceholderText("Path to .wav or .mp3 file...")
+        self._stt_file_input.setPlaceholderText(
+            "Path to audio file (.wav, .mp3, .ogg, .flac, .m4a, .mp4, .webm)..."
+        )
         self._stt_file_input.setReadOnly(True)
+        self._stt_file_input.textChanged.connect(self._update_stt_dirty_status)
         file_row.addWidget(self._stt_file_input, stretch=1)
         self._stt_browse_btn = QPushButton("Browse...")
         self._stt_browse_btn.setObjectName("generative_stt_browse_btn")
@@ -954,6 +977,12 @@ class GenerativeView(QWidget):
             run_btn.setToolTip("STTTranscriber not available (install [gpu] extras)")
         lay.addLayout(btn_row)
 
+        self._stt_progress = QProgressBar()
+        self._stt_progress.setObjectName("generative_stt_progress")
+        self._stt_progress.setRange(0, 0)
+        self._stt_progress.setVisible(False)
+        lay.addWidget(self._stt_progress)
+
         result_lbl = QLabel("Transcript:")
         result_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
         lay.addWidget(result_lbl)
@@ -970,12 +999,26 @@ class GenerativeView(QWidget):
         )
         lay.addWidget(copy_btn)
 
+        status_row = QHBoxLayout()
+        status_row.setSpacing(8)
         self._stt_status = self._make_status_label()
         self._stt_status.setObjectName("generative_stt_status")
-        lay.addWidget(self._stt_status)
+        status_row.addWidget(self._stt_status, stretch=1)
+
+        self._stt_dirty_status = QLabel("")
+        self._stt_dirty_status.setObjectName("generative_stt_dirty_status")
+        self._stt_dirty_status.setStyleSheet("color: #d9a441; font-size: 11px;")
+        self._stt_dirty_status.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self._stt_dirty_status.setVisible(False)
+        status_row.addWidget(self._stt_dirty_status)
+        lay.addLayout(status_row)
 
         run_btn.clicked.connect(self._on_stt_run)
         clear_btn.clicked.connect(self._on_stt_clear)
+        self._stt_last_run_signature: tuple[str, str, str] | None = None
+        self._stt_pending_signature: tuple[str, str, str] | None = None
 
         return w
 
@@ -984,17 +1027,23 @@ class GenerativeView(QWidget):
             self,
             "Select audio file",
             "",
-            "Audio files (*.wav *.mp3);;All files (*)",
+            "Audio files (*.wav *.mp3 *.ogg *.flac *.m4a *.mp4 *.webm);;All files (*)",
         )
         if path:
             self._stt_file_input.setText(path)
 
     def _on_stt_run(self) -> None:
         path = self._stt_file_input.text().strip()
-        if not path or _STTCls is None:
+        if not path:
+            self._stt_status.setText("Select an audio file first")
+            self._update_stt_dirty_status()
+            return
+        if _STTCls is None:
+            self._stt_status.setText("STTTranscriber not available")
             return
         backend = self._stt_backend.backend
         device = self._stt_backend.device
+        self._stt_pending_signature = (path, backend, device)
         worker = GenerativeWorker(
             tab_name="stt",
             module_cls=_STTCls,
@@ -1003,30 +1052,87 @@ class GenerativeView(QWidget):
             runtime_config={"backend": backend, "device": device},
         )
         worker.signals.started.connect(
-            lambda t: self._stt_status.setText("Running...")
+            lambda t: self._on_stt_started()
         )
         worker.signals.finished.connect(self._on_stt_result)
         worker.signals.failed.connect(
-            lambda t, e: self._stt_status.setText(f"Error: {e}")
+            lambda t, e: self._on_stt_failed(e)
         )
         self._pool.start(worker)
 
+    def _on_stt_started(self) -> None:
+        self._stt_progress.setVisible(True)
+        self._stt_status.setText(
+            "Transcribing... Whisper on CUDA may take a while for long audio."
+        )
+
     def _on_stt_result(self, tab_name: str, result: Any) -> None:
-        self._stt_status.setText("Done")
+        self._stt_progress.setVisible(False)
         self.generative_finished_signal.emit(tab_name, result)
         try:
-            text = ""
-            if result.data:
-                text = str(getattr(result.data, "text", result.data))
-            self._stt_result.setPlainText(text)
+            if getattr(result, "status", None) != "ready" and getattr(result, "status", None) is not None:
+                raise RuntimeError("; ".join(getattr(result, "errors", []) or ["STT failed"]))
+            if not getattr(result, "data", None):
+                raise RuntimeError("No transcript returned")
+            data = result.data
+            transcript = str(getattr(data, "transcript", "") or "").strip()
+            self._stt_result.setPlainText(transcript)
+            if self._stt_pending_signature is not None:
+                self._stt_last_run_signature = self._stt_pending_signature
+            backend = str(getattr(data, "backend", "unknown"))
+            duration = float(getattr(data, "duration_seconds", 0.0) or 0.0)
+            confidence = float(getattr(data, "confidence", 0.0) or 0.0)
+            segments = getattr(data, "segments", []) or []
+            note = str(getattr(data, "note", "") or "").strip()
+            status_text = (
+                f"Done ({backend}) · {duration:.1f}s · conf {confidence:.2f} · "
+                f"{len(segments)} segments"
+            )
+            if note:
+                status_text = f"{status_text} · {note}"
+            self._stt_status.setText(status_text)
+            self._update_stt_dirty_status()
         except Exception as exc:
             logger.warning("stt result display error: %s", exc)
-            self._stt_status.setText(f"Display error: {exc}")
+            self._stt_status.setText(f"Error: {exc}")
+            self._update_stt_dirty_status()
+        finally:
+            self._stt_pending_signature = None
+
+    def _on_stt_failed(self, error: str) -> None:
+        self._stt_progress.setVisible(False)
+        self._stt_pending_signature = None
+        self._stt_status.setText(f"Error: {error}")
+        self._update_stt_dirty_status()
+
+    def _current_stt_signature(self) -> tuple[str, str, str] | None:
+        path = self._stt_file_input.text().strip()
+        if not path:
+            return None
+        return (path, self._stt_backend.backend, self._stt_backend.device)
+
+    def _on_stt_selection_changed(self) -> None:
+        self._update_stt_dirty_status()
+
+    def _update_stt_dirty_status(self) -> None:
+        current_signature = self._current_stt_signature()
+        message = ""
+        if current_signature is not None:
+            if self._stt_last_run_signature is None:
+                message = "Audio ready — click Transcribe to generate transcript."
+            elif current_signature != self._stt_last_run_signature:
+                message = "Selection changed — transcribe again to refresh transcript."
+        self._stt_dirty_status.setText(message)
+        self._stt_dirty_status.setVisible(bool(message))
 
     def _on_stt_clear(self) -> None:
         self._stt_file_input.clear()
         self._stt_result.clear()
+        self._stt_progress.setVisible(False)
+        self._stt_last_run_signature = None
+        self._stt_pending_signature = None
         self._stt_status.setText("Ready")
+        self._update_stt_dirty_status()
 
     # ------------------------------------------------------------------
     # Tab 3 — Translate

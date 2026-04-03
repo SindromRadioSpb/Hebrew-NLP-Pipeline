@@ -301,8 +301,13 @@ class TestTranslatorConfig:
 class TestSTTConfig:
     def test_defaults(self):
         c = STTConfig()
-        assert c.backend == "whisper"
+        assert c.backend == "auto"
         assert c.model_size == "large-v3"
+
+    def test_valid_backends(self):
+        for backend in ("auto", "whisper", "faster-whisper"):
+            c = STTConfig(backend=backend)
+            assert c.backend == backend
 
     def test_valid_model_sizes(self):
         for s in ("tiny", "base", "small", "medium", "large-v2", "large-v3"):
@@ -312,6 +317,10 @@ class TestSTTConfig:
     def test_invalid_model_size(self):
         with pytest.raises(ValidationError):
             STTConfig(model_size="huge")
+
+    def test_invalid_backend(self):
+        with pytest.raises(ValidationError):
+            STTConfig(backend="faster_whisper")
 
 
 class TestSummarizerConfig:

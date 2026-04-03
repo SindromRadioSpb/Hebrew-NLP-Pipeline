@@ -68,6 +68,7 @@ class STTResult:
         duration_seconds: Audio duration in seconds.
         audio_path: Source audio file path (may be None for batch items).
         segments: Optional list of per-segment dicts with start/end/text.
+        note: Optional user-facing runtime note (for example, fallback used).
     """
 
     transcript: str
@@ -77,6 +78,7 @@ class STTResult:
     duration_seconds: float = 0.0
     audio_path: Path | None = None
     segments: list[dict[str, Any]] = field(default_factory=list)
+    note: str = ""
 
 
 # ── Metrics ──────────────────────────────────────────────────────────────────
@@ -384,6 +386,7 @@ class STTTranscriber(Processor):
 
         errors: list[str] = []
         result: STTResult | None = None
+        successful_backend: str | None = None
 
         # Determine backend order
         if backend == "whisper":
@@ -403,6 +406,7 @@ class STTTranscriber(Processor):
                     result = _faster_whisper_transcribe(
                         audio_path, device, model_name, language
                     )
+                successful_backend = bk
                 break
             except ImportError as exc:
                 msg = f"{bk} backend unavailable: {exc}"
@@ -423,6 +427,12 @@ class STTTranscriber(Processor):
                 data=None,
                 errors=errors,
                 processing_time_ms=(time.monotonic() - t0) * 1000,
+            )
+
+        if errors and successful_backend is not None:
+            result.note = (
+                f"Fallback used: {successful_backend} succeeded after "
+                f"{len(errors)} earlier backend issue(s)."
             )
 
         return ProcessorResult(

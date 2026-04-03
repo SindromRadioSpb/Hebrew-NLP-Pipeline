@@ -187,6 +187,47 @@ class TestSTTEndpoint:
         )
         assert response.status_code == 422
 
+    def test_stt_success_returns_summary_and_note(self, client, tmp_path):
+        """Successful STT response should expose transcript metadata and note."""
+        from pathlib import Path
+        from unittest.mock import patch
+
+        from kadima.engine.base import ProcessorResult, ProcessorStatus
+        from kadima.engine.stt_transcriber import STTResult
+
+        audio_path = tmp_path / "sample.wav"
+        audio_path.write_bytes(b"RIFFfake")
+
+        fake_result = ProcessorResult(
+            module_name="stt_transcriber",
+            status=ProcessorStatus.READY,
+            data=STTResult(
+                transcript="שלום עולם",
+                backend="faster-whisper",
+                language="he",
+                confidence=0.91,
+                duration_seconds=2.5,
+                audio_path=Path(audio_path),
+                segments=[{"start": 0.0, "end": 2.5, "text": "שלום עולם"}],
+                note="Fallback used: faster-whisper succeeded after 1 earlier backend issue(s).",
+            ),
+        )
+
+        with patch("kadima.engine.stt_transcriber.STTTranscriber.process", return_value=fake_result):
+            response = client.post(
+                "/api/v1/generative/stt",
+                json={"audio_path": str(audio_path), "backend": "auto", "device": "cpu"},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["transcript"] == "שלום עולם"
+        assert data["backend"] == "faster-whisper"
+        assert data["language"] == "he"
+        assert data["confidence"] == pytest.approx(0.91)
+        assert data["duration_seconds"] == pytest.approx(2.5)
+        assert "Fallback used" in data["note"]
+
 
 # ── Diacritizer (M13) ────────────────────────────────────────────────────────
 

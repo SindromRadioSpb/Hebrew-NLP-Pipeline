@@ -172,11 +172,11 @@ class TTSConfig(BaseModel):
 
 
 class STTConfig(BaseModel):
-    """M16: Распознавание речи. backend: whisper | faster_whisper."""
+    """M16: Распознавание речи. backend: auto | whisper | faster-whisper."""
 
     model_config = ConfigDict(extra="forbid")
 
-    backend: str = Field(default="whisper", pattern=r"^(whisper|faster_whisper)$")
+    backend: str = Field(default="auto", pattern=r"^(auto|whisper|faster-whisper)$")
     device: DeviceEnum = DeviceEnum.CUDA
     model_size: str = Field(default="large-v3", pattern=r"^(tiny|base|small|medium|large-v[23])$")
 

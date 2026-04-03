@@ -188,6 +188,7 @@ class TestProcess:
         assert isinstance(r.data, STTResult)
         assert r.data.transcript == "שלום עולם"
         assert r.data.backend == "whisper"
+        assert r.data.note == ""
 
     def test_faster_whisper_success_with_mock(self, tmp_path: Path) -> None:
         wav = _make_wav(tmp_path / "s.wav")
@@ -211,6 +212,34 @@ class TestProcess:
         assert r.status == ProcessorStatus.READY
         assert r.data.transcript == "שלום"
         assert r.data.backend == "faster-whisper"
+        assert r.data.note == ""
+
+    def test_auto_fallback_success_sets_note(self, tmp_path: Path) -> None:
+        wav = _make_wav(tmp_path / "s.wav")
+
+        seg = MagicMock()
+        seg.start = 0.0
+        seg.end = 1.5
+        seg.text = " שלום "
+        seg.avg_logprob = -0.2
+
+        mock_model = MagicMock()
+        mock_info = MagicMock()
+        mock_info.language = "he"
+        mock_model.transcribe.return_value = ([seg], mock_info)
+
+        with (
+            patch("kadima.engine.stt_transcriber._WHISPER_AVAILABLE", False),
+            patch("kadima.engine.stt_transcriber._FASTER_WHISPER_AVAILABLE", True),
+            patch("kadima.engine.stt_transcriber._faster_model", mock_model),
+        ):
+            r = self.t.process(wav, {"backend": "auto"})
+
+        assert r.status == ProcessorStatus.READY
+        assert r.data is not None
+        assert r.data.backend == "faster-whisper"
+        assert "Fallback used" in r.data.note
+        assert any("whisper backend unavailable" in error for error in r.errors)
 
 
 # ── process_batch tests ───────────────────────────────────────────────────────

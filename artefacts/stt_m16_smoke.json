@@ -1,0 +1,19 @@
+{
+  "status": "ProcessorStatus.READY",
+  "errors": [],
+  "processing_time_ms": 6983.99999999674,
+  "transcript": "תודה רבה.",
+  "backend": "whisper",
+  "language": "he",
+  "confidence": 0.8886895565058784,
+  "duration_seconds": 29.98,
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 29.98,
+      "text": " תודה רבה."
+    }
+  ],
+  "note": "",
+  "audio_path": "E:\\projects\\Project_Vibe\\Kadima\\artefacts\\tts_f5tts_14845767a16e2c0e.wav"
+}

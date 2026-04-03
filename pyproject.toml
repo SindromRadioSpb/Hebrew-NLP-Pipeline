@@ -66,6 +66,7 @@ gpu = [
     "piper-tts>=1.2.0",
     # M16 STT
     "openai-whisper>=20231117",
+    "faster-whisper>=1.2.1",
 ]
 dev = [
     "pytest>=8.0,<9",

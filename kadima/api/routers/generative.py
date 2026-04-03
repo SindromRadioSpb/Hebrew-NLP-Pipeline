@@ -572,6 +572,7 @@ class STTResponse(BaseModel):
     confidence: float
     duration_seconds: float
     backend: str
+    note: str = ""
 
 
 @router.post("/stt", response_model=STTResponse)
@@ -604,4 +605,5 @@ async def stt(req: STTRequest) -> STTResponse:
         confidence=result.data.confidence,
         duration_seconds=result.data.duration_seconds,
         backend=result.data.backend,
+        note=result.data.note,
     )
