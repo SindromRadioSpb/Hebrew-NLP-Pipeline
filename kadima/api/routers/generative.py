@@ -65,7 +65,8 @@ class DiacritizeResponse(BaseModel):
 
 class NERRequest(BaseModel):
     text: str = Field(..., min_length=1, description="Hebrew text")
-    backend: str = Field(default="heq_ner", pattern=r"^(heq_ner|rules)$")
+    backend: str = Field(default="heq_ner", pattern=r"^(neodictabert|heq_ner|rules)$")
+    device: str = Field(default="cpu", pattern=r"^(cpu|cuda)$")
 
 
 class EntityResponse(BaseModel):
@@ -80,6 +81,7 @@ class NERResponse(BaseModel):
     entities: list[EntityResponse]
     count: int
     backend: str
+    note: str = ""
 
 
 class TranslateRequest(BaseModel):
@@ -221,7 +223,7 @@ async def ner(req: NERRequest) -> NERResponse:
     from kadima.engine.ner_extractor import NERExtractor
 
     proc = NERExtractor()
-    result = proc.process(req.text, {"backend": req.backend})
+    result = proc.process(req.text, {"backend": req.backend, "device": req.device})
     if result.status != ProcessorStatus.READY:
         raise HTTPException(status_code=500, detail=result.errors)
 
@@ -236,6 +238,7 @@ async def ner(req: NERRequest) -> NERResponse:
         entities=entities,
         count=result.data.count,
         backend=result.data.backend,
+        note=result.data.note,
     )
 
 

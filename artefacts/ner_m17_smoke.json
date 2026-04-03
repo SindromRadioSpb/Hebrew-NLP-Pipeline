@@ -1,0 +1,38 @@
+{
+  "input_text": "פרופ׳ כהן עובד בטכניון בחיפה.",
+  "status": "ProcessorStatus.READY",
+  "backend_requested": "heq_ner",
+  "backend_used": "heq_ner",
+  "count": 4,
+  "note": "",
+  "entities": [
+    {
+      "text": "פרופ ׳",
+      "label": "TTL",
+      "start": 0,
+      "end": 5,
+      "score": 0.9995076656341553
+    },
+    {
+      "text": "כהן",
+      "label": "PER",
+      "start": 6,
+      "end": 9,
+      "score": 0.9991592168807983
+    },
+    {
+      "text": "בטכניון",
+      "label": "ORG",
+      "start": 15,
+      "end": 22,
+      "score": 0.9996951818466187
+    },
+    {
+      "text": "בחיפה",
+      "label": "GPE",
+      "start": 23,
+      "end": 28,
+      "score": 0.9987590312957764
+    }
+  ]
+}

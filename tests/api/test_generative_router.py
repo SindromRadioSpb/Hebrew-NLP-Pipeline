@@ -235,6 +235,70 @@ class TestSTTEndpoint:
 # ── Diacritizer (M13) ────────────────────────────────────────────────────────
 
 
+class TestNEREndpoint:
+    """POST /generative/ner (M17)."""
+
+    def test_ner_rules_backend(self, client):
+        response = client.post(
+            "/api/v1/generative/ner",
+            json={"text": "אני גר בישראל", "backend": "rules", "device": "cpu"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["backend"] == "rules"
+        assert data["count"] >= 1
+        assert isinstance(data["entities"], list)
+
+    def test_ner_allows_neodictabert_backend(self, client):
+        response = client.post(
+            "/api/v1/generative/ner",
+            json={"text": "פרופ׳ כהן עובד בטכניון", "backend": "neodictabert", "device": "cpu"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["backend"] in ("neodictabert", "heq_ner", "rules")
+
+    def test_ner_success_returns_note(self, client):
+        from unittest.mock import patch
+
+        from kadima.engine.base import ProcessorResult, ProcessorStatus
+        from kadima.engine.ner_extractor import Entity, NERResult
+
+        fake_result = ProcessorResult(
+            module_name="ner",
+            status=ProcessorStatus.READY,
+            data=NERResult(
+                entities=[Entity("ישראל", "GPE", 8, 13, 0.91)],
+                count=1,
+                backend="heq_ner",
+                note="NeoDictaBERT is experimental; fallback to HeQ-NER was used.",
+            ),
+        )
+
+        with patch("kadima.engine.ner_extractor.NERExtractor.process", return_value=fake_result):
+            response = client.post(
+                "/api/v1/generative/ner",
+                json={"text": "אני גר בישראל", "backend": "neodictabert", "device": "cpu"},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 1
+        assert data["backend"] == "heq_ner"
+        assert data["entities"][0]["label"] == "GPE"
+        assert "fallback" in data["note"].lower()
+
+    def test_ner_empty_text_validation(self, client):
+        response = client.post(
+            "/api/v1/generative/ner",
+            json={"text": "", "backend": "rules", "device": "cpu"},
+        )
+        assert response.status_code == 422
+
+
+# ── Diacritizer (M13) ────────────────────────────────────────────────────────
+
+
 class TestDiacritizeEndpoint:
     """POST /generative/diacritize (M13)."""
 
@@ -427,3 +491,11 @@ class TestGenerativeSchema:
         req = STTRequest(audio_path="/path/to/audio.wav")
         assert req.audio_path == "/path/to/audio.wav"
         assert req.language == "he"  # default
+
+    def test_ner_request_schema(self):
+        """NERRequest should validate backend + device."""
+        from kadima.api.routers.generative import NERRequest
+
+        req = NERRequest(text="פרופ׳ כהן", backend="heq_ner", device="cpu")
+        assert req.backend == "heq_ner"
+        assert req.device == "cpu"

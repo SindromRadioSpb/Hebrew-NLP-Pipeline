@@ -298,6 +298,24 @@ class TestTranslatorConfig:
             TranslatorConfig(backend="deepl")
 
 
+class TestNERConfig:
+    def test_defaults(self):
+        c = NERConfig()
+        assert c.backend == "heq_ner"
+        assert c.device == "cuda"
+
+    def test_valid_backends(self):
+        for backend in ("heq_ner", "rules", "neodictabert"):
+            c = NERConfig(backend=backend)
+            assert c.backend == backend
+
+    def test_invalid_backend(self):
+        with pytest.raises(ValidationError):
+            NERConfig(backend="invalid")
+        with pytest.raises(ValidationError):
+            NERConfig(backend="alephbert")
+
+
 class TestSTTConfig:
     def test_defaults(self):
         c = STTConfig()

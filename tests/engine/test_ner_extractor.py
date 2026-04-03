@@ -143,6 +143,7 @@ class TestNERExtractorProcess:
         r = n.process("אני גר בישראל", {"backend": "heq_ner"})
         assert r.status == ProcessorStatus.READY
         assert r.data.backend in ("heq_ner", "rules")
+        assert isinstance(r.data.note, str)
 
     def test_entities_have_required_fields(self, n):
         r = n.process("חיילי צהל בירושלים", {"backend": "rules"})
@@ -156,6 +157,15 @@ class TestNERExtractorProcess:
     def test_processing_time(self, n):
         r = n.process("שלום", {"backend": "rules"})
         assert r.processing_time_ms >= 0
+
+    def test_heq_ner_runtime_note_when_rules_used(self, n):
+        from unittest.mock import patch
+
+        with patch.object(NERExtractor, "_process_heq_ner", side_effect=RuntimeError("boom")):
+            r = n.process("אני גר בישראל", {"backend": "heq_ner"})
+        assert r.status == ProcessorStatus.READY
+        assert r.data.backend == "rules"
+        assert "rules backend used" in r.data.note
 
 
 class TestNERBatch:
@@ -234,6 +244,7 @@ class TestNERNeoDictaBERTBackend:
             result = n.process("ישראל היא מדינה", {"backend": "neodictabert", "device": "cpu"})
         assert result.status == ProcessorStatus.READY
         assert result.data.backend in ("heq_ner", "rules")
+        assert "experimental" in result.data.note.lower()
 
     def test_neodictabert_config_valid(self):
         """NERConfig accepts 'neodictabert' as backend."""

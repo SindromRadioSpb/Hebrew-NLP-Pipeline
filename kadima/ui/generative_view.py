@@ -16,6 +16,8 @@ import traceback
 from pathlib import Path
 from typing import Any, Optional
 
+from kadima.engine.base import ProcessorStatus
+
 try:
     from PyQt6.QtCore import QObject, QRunnable, Qt, QThreadPool, pyqtSignal, pyqtSlot
     from PyQt6.QtWidgets import (
@@ -1626,14 +1628,33 @@ class GenerativeView(QWidget):
         w, lay = self._make_tab_container()
 
         self._ner_backend = BackendSelector(
-            backends=["rules", "heq_ner", "neodictabert"], default_backend="rules"
+            backends=["heq_ner", "rules", "neodictabert"], default_backend="heq_ner"
         )
         self._ner_backend.setObjectName("generative_ner_backend")
         lay.addWidget(self._ner_backend)
+        self._ner_backend.changed.connect(
+            lambda _backend, _device: self._on_ner_selection_changed()
+        )
+
+        self._ner_help_hint = QLabel(
+            "🏷️ Backends: "
+            "<b>heq_ner</b>=recommended Hebrew model, "
+            "<b>rules</b>=safe fallback, "
+            "<b>neodictabert</b>=experimental embedding path. "
+            "Paste text, run extraction, then review entity type, span and score below."
+        )
+        self._ner_help_hint.setObjectName("generative_ner_help")
+        self._ner_help_hint.setWordWrap(True)
+        self._ner_help_hint.setStyleSheet(
+            "color: #8888aa; font-size: 11px; padding: 4px 8px; "
+            "background: #1a1a2e; border-radius: 4px;"
+        )
+        lay.addWidget(self._ner_help_hint)
 
         self._ner_input = RTLTextEdit(placeholder="הכנס טקסט לזיהוי ישויות...")
         self._ner_input.setObjectName("generative_ner_input")
         self._ner_input.setMaximumHeight(100)
+        self._ner_input.textChanged.connect(self._update_ner_dirty_status)
         lay.addWidget(self._ner_input)
 
         btn_row, run_btn, clear_btn, _, _ = self._make_button_row(
@@ -1658,17 +1679,31 @@ class GenerativeView(QWidget):
         self._ner_status.setObjectName("generative_ner_status")
         lay.addWidget(self._ner_status)
 
+        self._ner_dirty_status = QLabel("")
+        self._ner_dirty_status.setObjectName("generative_ner_dirty_status")
+        self._ner_dirty_status.setStyleSheet("color: #d9a441; font-size: 11px;")
+        self._ner_dirty_status.setVisible(False)
+        lay.addWidget(self._ner_dirty_status)
+
         run_btn.clicked.connect(self._on_ner_run)
         clear_btn.clicked.connect(self._on_ner_clear)
+        self._ner_last_run_signature: tuple[str, str, str] | None = None
+        self._ner_pending_signature: tuple[str, str, str] | None = None
 
         return w
 
     def _on_ner_run(self) -> None:
         text = self._ner_input.toPlainText().strip()
-        if not text or _NERCls is None:
+        if not text:
+            self._ner_status.setText("Enter Hebrew text first")
+            self._update_ner_dirty_status()
+            return
+        if _NERCls is None:
+            self._ner_status.setText("NERExtractor not available")
             return
         backend = self._ner_backend.backend
         device = self._ner_backend.device
+        self._ner_pending_signature = (text, backend, device)
         worker = GenerativeWorker(
             tab_name="ner",
             module_cls=_NERCls,
@@ -1686,23 +1721,67 @@ class GenerativeView(QWidget):
         self._pool.start(worker)
 
     def _on_ner_result(self, tab_name: str, result: Any) -> None:
-        self._ner_status.setText("Done")
         self.generative_finished_signal.emit(tab_name, result)
         try:
+            if getattr(result, "status", None) != ProcessorStatus.READY:
+                raise RuntimeError("; ".join(getattr(result, "errors", []) or ["NER failed"]))
             entities: list[Any] = []
             if result.data:
                 entities = list(
                     getattr(result.data, "entities", result.data)
                 )
+                if self._ner_pending_signature is not None:
+                    self._ner_last_run_signature = self._ner_pending_signature
             self._ner_entity_table.load(entities)
+            backend = str(getattr(result.data, "backend", "unknown")) if result.data else "unknown"
+            note = str(getattr(result.data, "note", "") or "").strip() if result.data else ""
+            label_counts: dict[str, int] = {}
+            for entity in entities:
+                label = str(getattr(entity, "label", entity.get("label", "")) if isinstance(entity, dict) else getattr(entity, "label", ""))
+                if label:
+                    label_counts[label] = label_counts.get(label, 0) + 1
+            summary = ", ".join(
+                f"{label}×{count}" for label, count in sorted(label_counts.items())
+            ) or "no entities"
+            status_text = f"Done ({backend}) · {len(entities)} entities · {summary}"
+            if note:
+                status_text = f"{status_text} · {note}"
+            self._ner_status.setText(status_text)
+            self._update_ner_dirty_status()
         except Exception as exc:
             logger.warning("ner result display error: %s", exc)
             self._ner_status.setText(f"Display error: {exc}")
+            self._update_ner_dirty_status()
+        finally:
+            self._ner_pending_signature = None
 
     def _on_ner_clear(self) -> None:
         self._ner_input.clear()
         self._ner_entity_table.clear()
+        self._ner_last_run_signature = None
+        self._ner_pending_signature = None
         self._ner_status.setText("Ready")
+        self._update_ner_dirty_status()
+
+    def _current_ner_signature(self) -> tuple[str, str, str] | None:
+        text = self._ner_input.toPlainText().strip()
+        if not text:
+            return None
+        return (text, self._ner_backend.backend, self._ner_backend.device)
+
+    def _on_ner_selection_changed(self) -> None:
+        self._update_ner_dirty_status()
+
+    def _update_ner_dirty_status(self) -> None:
+        current_signature = self._current_ner_signature()
+        message = ""
+        if current_signature is not None:
+            if self._ner_last_run_signature is None:
+                message = "Text ready — click Extract Entities to review named entities."
+            elif current_signature != self._ner_last_run_signature:
+                message = "Text or backend changed — run extraction again to refresh entities."
+        self._ner_dirty_status.setText(message)
+        self._ner_dirty_status.setVisible(bool(message))
 
     # ------------------------------------------------------------------
     # Public API

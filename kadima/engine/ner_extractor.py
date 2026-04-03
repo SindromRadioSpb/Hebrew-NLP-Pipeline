@@ -51,6 +51,7 @@ class NERResult:
     entities: List[Entity]
     count: int = 0
     backend: str = "rules"
+    note: str = ""
 
 
 # ── Metrics ─────────────────────────────────────────────────────────────────
@@ -241,6 +242,7 @@ class NERExtractor(Processor):
         start = time.time()
         try:
             backend = config.get("backend", "heq_ner")
+            notes: list[str] = []
 
             # ── neodictabert backend (R-2.2) ─────────────────────────────
             if backend == "neodictabert":
@@ -249,15 +251,20 @@ class NERExtractor(Processor):
                     used_backend = "neodictabert"
                 except Exception as e:
                     logger.warning("NeoDictaBERT NER failed, falling back to heq_ner: %s", e)
+                    notes.append(
+                        "NeoDictaBERT is experimental; fallback to HeQ-NER was used."
+                    )
                     if _TRANSFORMERS_AVAILABLE:
                         try:
                             entities = self._process_heq_ner(input_data, config)
                             used_backend = "heq_ner"
                         except Exception as e2:
                             logger.warning("HeQ-NER fallback failed, using rules: %s", e2)
+                            notes.append("HeQ-NER fallback failed; rules backend used.")
                             entities = _ner_rules(input_data)
                             used_backend = "rules"
                     else:
+                        notes.append("Transformers unavailable; rules backend used.")
                         entities = _ner_rules(input_data)
                         used_backend = "rules"
 
@@ -268,6 +275,7 @@ class NERExtractor(Processor):
                     used_backend = "heq_ner"
                 except Exception as e:
                     logger.warning("HeQ-NER model failed, falling back to rules: %s", e)
+                    notes.append("HeQ-NER failed; rules backend used.")
                     entities = _ner_rules(input_data)
                     used_backend = "rules"
             else:
@@ -276,11 +284,19 @@ class NERExtractor(Processor):
                         "transformers not available, falling back to rules. "
                         "Install with: pip install transformers"
                     )
+                    notes.append("Transformers unavailable; rules backend used.")
+                elif backend == "neodictabert":
+                    notes.append(
+                        "NeoDictaBERT is experimental and unavailable; rules backend used."
+                    )
                 entities = _ner_rules(input_data)
                 used_backend = "rules"
 
             data = NERResult(
-                entities=entities, count=len(entities), backend=used_backend,
+                entities=entities,
+                count=len(entities),
+                backend=used_backend,
+                note=" | ".join(notes),
             )
             return ProcessorResult(
                 module_name=self.name, status=ProcessorStatus.READY,
