@@ -24,6 +24,7 @@ def test_default_yaml_uses_auto_tts_backend() -> None:
 def test_bootstrap_status_marks_package_missing_when_module_missing(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(tb, "OFFLINE_WHEELS_DIR", tmp_path / "wheels")
     monkeypatch.setattr(tb, "F5TTS_MODEL_PATH", tmp_path / "f5" / "model.pt")
+    monkeypatch.setattr(tb, "F5TTS_VOCAB_PATH", tmp_path / "f5" / "vocab.txt")
     monkeypatch.setattr(tb, "F5TTS_VOCODER_PATH", tmp_path / "f5" / "vocoder")
     monkeypatch.setattr(tb, "_module_available", lambda *names: False)
 

@@ -35,6 +35,7 @@ from scipy.io import wavfile
 from kadima.engine.base import Processor, ProcessorResult, ProcessorStatus
 from kadima.engine.tts_bootstrap import (
     F5TTS_MODEL_PATH as _F5TTS_MODEL_PATH,
+    F5TTS_VOCAB_PATH as _F5TTS_VOCAB_PATH,
     F5TTS_VOCODER_PATH as _F5TTS_VOCODER_PATH,
     LIGHTBLUE_MODEL_PATH as _LIGHTBLUE_MODEL_PATH,
     MMS_MODEL_PATH as _MMS_BOOTSTRAP_PATH,
@@ -348,18 +349,24 @@ try:
     if "wandb" not in sys.modules:
         sys.modules["wandb"] = types.ModuleType("wandb")
     from f5_tts.infer.utils_infer import (  # type: ignore[attr-defined]
-        infer_process as _f5_infer_process,
         load_model as _f5_load_model,
+        preprocess_ref_audio_text as _f5_preprocess_ref_audio_text,
         load_vocoder as _f5_load_vocoder,
+        target_rms as _f5_target_rms,
+        target_sample_rate as _f5_target_sample_rate,
+        hop_length as _f5_hop_length,
     )
     from f5_tts.model.backbones.dit import DiT  # type: ignore[attr-defined]
 
     _F5TTS_AVAILABLE = True
     logger.info("F5-TTS available for synthesis")
 except ImportError:
-    _f5_infer_process = None  # type: ignore[assignment]
     _f5_load_model = None  # type: ignore[assignment]
+    _f5_preprocess_ref_audio_text = None  # type: ignore[assignment]
     _f5_load_vocoder = None  # type: ignore[assignment]
+    _f5_target_rms = 0.1  # type: ignore[assignment]
+    _f5_target_sample_rate = 24000  # type: ignore[assignment]
+    _f5_hop_length = 256  # type: ignore[assignment]
     DiT = None  # type: ignore[assignment]
 
 _LIGHTBLUE_AVAILABLE = False
@@ -392,6 +399,9 @@ _f5tts_model: Any = None
 _f5tts_vocoder: Any = None
 _lightblue_runtime: dict[str, Any] = {}
 _phonikud_tts_voice: Any = None
+_F5TTS_VOICE_PRESETS_DIR = Path(
+    os.environ.get("F5TTS_VOICE_PRESETS_DIR", str(_F5TTS_MODEL_PATH.parent / "voices"))
+)
 
 _F5TTS_MODEL_ARCH = {
     "dim": 1024,
@@ -501,6 +511,47 @@ def _get_default_f5_reference() -> tuple[Path, str]:
     return Path(str(ref_audio)), "Some call me nature, others call me mother nature."
 
 
+def _detect_f5_use_ema(model_path: Path) -> bool:
+    if model_path.suffix.lower() != ".safetensors":
+        return False
+    try:
+        from safetensors import safe_open
+
+        with safe_open(str(model_path), framework="pt", device="cpu") as checkpoint:
+            keys = checkpoint.keys()
+            return any(key.startswith("ema_model.") for key in keys)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to inspect F5-TTS checkpoint layout at %s: %s", model_path, exc)
+        return True
+
+
+def _resolve_f5_reference(
+    speaker_ref_path: Path | None = None,
+    voice: str | None = None,
+) -> tuple[Path, str]:
+    ref_file: Path
+    ref_text = ""
+
+    voice_name = (voice or "").strip()
+    if voice_name and _F5TTS_VOICE_PRESETS_DIR.exists():
+        voice_wav = _F5TTS_VOICE_PRESETS_DIR / f"{voice_name}.wav"
+        voice_txt = _F5TTS_VOICE_PRESETS_DIR / f"{voice_name}.txt"
+        if voice_wav.exists():
+            ref_file = voice_wav
+            if voice_txt.exists():
+                ref_text = voice_txt.read_text(encoding="utf-8").strip()
+            return ref_file, ref_text
+        logger.warning("F5-TTS voice preset '%s' was requested but %s is missing", voice_name, voice_wav)
+
+    if speaker_ref_path and speaker_ref_path.exists():
+        env_ref_text = os.environ.get("F5TTS_REF_TEXT", "").strip()
+        if env_ref_text:
+            return speaker_ref_path, env_ref_text
+        return speaker_ref_path, ""
+
+    return _get_default_f5_reference()
+
+
 def _patch_torchaudio_load_for_f5() -> None:
     import soundfile as sf
     import torch
@@ -522,6 +573,63 @@ def _patch_torchaudio_load_for_f5() -> None:
     torchaudio._kadima_f5_safe_load = True
 
 
+def _safe_f5_vocos_mel_spectrogram(
+    waveform: Any,
+    n_fft: int = 1024,
+    n_mel_channels: int = 100,
+    target_sample_rate: int = 24000,
+    hop_length: int = 256,
+    win_length: int = 1024,
+) -> Any:
+    import torch
+    from librosa.filters import mel as librosa_mel_fn
+
+    if len(waveform.shape) == 3:
+        waveform = waveform.squeeze(1)
+    waveform = waveform.to(torch.float32)
+    device = waveform.device
+    key = f"{n_fft}_{n_mel_channels}_{target_sample_rate}_{hop_length}_{win_length}_{device}"
+
+    cache = getattr(_safe_f5_vocos_mel_spectrogram, "_cache", {})
+    if key not in cache:
+        mel_basis = torch.from_numpy(
+            librosa_mel_fn(
+                sr=target_sample_rate,
+                n_fft=n_fft,
+                n_mels=n_mel_channels,
+                fmin=0,
+                fmax=None,
+            )
+        ).float().to(device)
+        window = torch.hann_window(win_length, device=device)
+        cache[key] = (mel_basis, window)
+        _safe_f5_vocos_mel_spectrogram._cache = cache  # type: ignore[attr-defined]
+
+    mel_basis, window = cache[key]
+    spec = torch.stft(
+        waveform,
+        n_fft,
+        hop_length=hop_length,
+        win_length=win_length,
+        window=window,
+        center=True,
+        pad_mode="reflect",
+        normalized=False,
+        onesided=True,
+        return_complex=True,
+    )
+    spec = spec.abs()
+    mel = torch.matmul(mel_basis, spec)
+    return mel.clamp(min=1e-5).log()
+
+
+def _patch_f5_mel_spec(model: Any) -> None:
+    mel_spec = getattr(model, "mel_spec", None)
+    if mel_spec is None:
+        return
+    mel_spec.extractor = _safe_f5_vocos_mel_spectrogram
+
+
 def _ensure_utf8_stdio() -> None:
     for stream_name in ("stdout", "stderr"):
         stream = getattr(sys, stream_name, None)
@@ -534,6 +642,47 @@ def _split_tts_segments(text: str) -> list[str]:
     parts = re.findall(r"[^.!?]+[.!?]?", text, flags=re.UNICODE)
     segments = [part.strip() for part in parts if part.strip()]
     return segments or [text.strip()]
+
+
+def _split_f5tts_segments(text: str, max_bytes: int = 220) -> list[str]:
+    segments: list[str] = []
+    for segment in _split_tts_segments(text):
+        if len(segment.encode("utf-8")) <= max_bytes:
+            segments.append(segment)
+            continue
+
+        comma_parts = [part.strip() for part in re.split(r"(?<=[,;:])\s+", segment) if part.strip()]
+        if len(comma_parts) > 1:
+            for part in comma_parts:
+                if len(part.encode("utf-8")) <= max_bytes:
+                    segments.append(part)
+                    continue
+                words = part.split()
+                current: list[str] = []
+                for word in words:
+                    trial = " ".join([*current, word]).strip()
+                    if current and len(trial.encode("utf-8")) > max_bytes:
+                        segments.append(" ".join(current))
+                        current = [word]
+                    else:
+                        current.append(word)
+                if current:
+                    segments.append(" ".join(current))
+            continue
+
+        words = segment.split()
+        current = []
+        for word in words:
+            trial = " ".join([*current, word]).strip()
+            if current and len(trial.encode("utf-8")) > max_bytes:
+                segments.append(" ".join(current))
+                current = [word]
+            else:
+                current.append(word)
+        if current:
+            segments.append(" ".join(current))
+
+    return [segment for segment in segments if segment]
 
 
 def _extract_waveform(output: Any, default_sample_rate: int) -> tuple[Any, int]:
@@ -568,6 +717,70 @@ def _extract_waveform(output: Any, default_sample_rate: int) -> tuple[Any, int]:
     return array, sample_rate
 
 
+def _prepare_f5_reference_audio(
+    ref_file: Path,
+    ref_text: str,
+    device: str,
+) -> tuple[Any, str, float]:
+    import torch
+    import torchaudio
+
+    _patch_torchaudio_load_for_f5()
+    processed_ref_file, processed_ref_text = _f5_preprocess_ref_audio_text(
+        str(ref_file),
+        ref_text,
+        show_info=lambda *_args, **_kwargs: None,
+    )
+    audio, sample_rate = torchaudio.load(processed_ref_file)
+    if audio.shape[0] > 1:
+        audio = torch.mean(audio, dim=0, keepdim=True)
+
+    rms = torch.sqrt(torch.mean(torch.square(audio)))
+    if rms < _f5_target_rms:
+        audio = audio * _f5_target_rms / rms
+    if sample_rate != _f5_target_sample_rate:
+        resampler = torchaudio.transforms.Resample(sample_rate, _f5_target_sample_rate)
+        audio = resampler(audio)
+    return audio.to(device), processed_ref_text, float(rms)
+
+
+def _f5tts_sample_segment(
+    segment: str,
+    model: Any,
+    vocoder: Any,
+    ref_audio: Any,
+    ref_text: str,
+    ref_rms: float,
+) -> Any:
+    import torch
+
+    local_speed = 1.0
+    if len(segment.encode("utf-8")) < 10:
+        local_speed = 0.3
+
+    ref_audio_len = ref_audio.shape[-1] // _f5_hop_length
+    ref_text_len = max(len(ref_text.encode("utf-8")), 1)
+    gen_text_len = max(len(segment.encode("utf-8")), 1)
+    duration = ref_audio_len + int(ref_audio_len / ref_text_len * gen_text_len / local_speed)
+
+    with torch.inference_mode():
+        generated, _ = model.sample(
+            cond=ref_audio,
+            text=[ref_text + segment],
+            duration=duration,
+            steps=32,
+            cfg_strength=2.0,
+            sway_sampling_coef=-1.0,
+        )
+        generated = generated.to(torch.float32)
+        generated = generated[:, ref_audio_len:, :]
+        generated = generated.permute(0, 2, 1)
+        generated_wave = vocoder.decode(generated)
+        if ref_rms < _f5_target_rms:
+            generated_wave = generated_wave * ref_rms / _f5_target_rms
+        return generated_wave.squeeze().cpu().numpy()
+
+
 def _f5tts_segmented_synthesize(
     segments: list[str],
     model: Any,
@@ -575,24 +788,24 @@ def _f5tts_segmented_synthesize(
     ref_file: Path,
     ref_text: str,
     out_path: Path,
+    device: str,
 ) -> tuple[float, int]:
     import numpy as np
 
     audio_parts: list[Any] = []
-    sample_rate = 24000
+    sample_rate = int(_f5_target_sample_rate)
     silence = None
+    ref_audio, normalized_ref_text, ref_rms = _prepare_f5_reference_audio(ref_file, ref_text, device=device)
 
     for segment in segments:
-        output = _f5_infer_process(
-            str(ref_file),
-            ref_text,
+        waveform = _f5tts_sample_segment(
             segment,
             model,
             vocoder,
-            show_info=lambda *_args, **_kwargs: None,
-            progress=None,
+            ref_audio,
+            normalized_ref_text,
+            ref_rms,
         )
-        waveform, sample_rate = _extract_waveform(output, default_sample_rate=sample_rate)
         if silence is None:
             silence = np.zeros(int(sample_rate * 0.12), dtype=waveform.dtype if waveform.size else np.float32)
         if audio_parts:
@@ -665,6 +878,8 @@ def _get_f5tts(device: str) -> tuple[Any, Any]:
             raise ImportError("f5-tts not installed")
         if not _F5TTS_MODEL_PATH.exists():
             raise FileNotFoundError(f"F5-TTS model not found: {_F5TTS_MODEL_PATH}")
+        if not _F5TTS_VOCAB_PATH.exists():
+            raise FileNotFoundError(f"F5-TTS vocab not found: {_F5TTS_VOCAB_PATH}")
         if not _F5TTS_VOCODER_PATH.exists():
             raise FileNotFoundError(f"F5-TTS vocoder not found: {_F5TTS_VOCODER_PATH}")
         import torch
@@ -675,15 +890,22 @@ def _get_f5tts(device: str) -> tuple[Any, Any]:
             _F5TTS_MODEL_ARCH,
             str(_F5TTS_MODEL_PATH),
             mel_spec_type="vocos",
+            vocab_file=str(_F5TTS_VOCAB_PATH),
+            use_ema=_detect_f5_use_ema(_F5TTS_MODEL_PATH),
             device=dev,
         )
+        _patch_f5_mel_spec(_f5tts_model)
         _f5tts_vocoder = _f5_load_vocoder(
             vocoder_name="vocos",
             is_local=True,
             local_path=str(_F5TTS_VOCODER_PATH),
             device=dev,
         )
-        logger.info("F5-TTS model loaded on device=%s", dev)
+        logger.info(
+            "F5-TTS model loaded on device=%s with vocab=%s",
+            dev,
+            _F5TTS_VOCAB_PATH,
+        )
     return _f5tts_model, _f5tts_vocoder
 
 
@@ -692,12 +914,13 @@ def _f5tts_synthesize(
     device: str,
     output_dir: Path,
     speaker_ref_path: Path | None = None,
+    voice: str | None = None,
     use_g2p: bool = True,
 ) -> TTSResult:
     """Synthesize Hebrew speech via F5-TTS."""
     output_dir.mkdir(parents=True, exist_ok=True)
     speaker_key = str(speaker_ref_path.resolve()) if speaker_ref_path and speaker_ref_path.exists() else ""
-    cache_key = _cache_key(text, speaker_key, "g2p" if use_g2p else "raw")
+    cache_key = _cache_key(text, speaker_key, voice or "", "g2p" if use_g2p else "raw")
     out_path = output_dir / f"tts_f5tts_{cache_key}.wav"
     if out_path.exists():
         logger.info("F5-TTS cache hit: %s", out_path.name)
@@ -706,49 +929,20 @@ def _f5tts_synthesize(
 
     model, vocoder = _get_f5tts(device)
     synth_text = _apply_hebrew_g2p(text, use_g2p=use_g2p)
-
-    ref_file, ref_text = _get_default_f5_reference()
-    env_ref_text = os.environ.get("F5TTS_REF_TEXT", "").strip()
-    if speaker_ref_path and speaker_ref_path.exists():
-        if env_ref_text:
-            ref_file = speaker_ref_path
-            ref_text = env_ref_text
-        else:
-            logger.warning(
-                "F5-TTS speaker_ref_path ignored because F5TTS_REF_TEXT is not set; using bundled reference audio"
-            )
+    ref_file, ref_text = _resolve_f5_reference(speaker_ref_path=speaker_ref_path, voice=voice)
 
     _patch_torchaudio_load_for_f5()
     _ensure_utf8_stdio()
-    try:
-        output = _f5_infer_process(
-            str(ref_file),
-            ref_text,
-            synth_text,
-            model,
-            vocoder,
-            show_info=lambda *_args, **_kwargs: None,
-            progress=None,
-        )
-        duration, sample_rate = _materialize_audio_output(output, out_path, default_sample_rate=24000)
-    except RuntimeError as exc:
-        if "Sizes of tensors must match" not in str(exc):
-            raise
-        segments = _split_tts_segments(synth_text)
-        if len(segments) <= 1:
-            raise
-        logger.warning(
-            "F5-TTS batch synthesis failed on %d segments; retrying segmented synthesis",
-            len(segments),
-        )
-        duration, sample_rate = _f5tts_segmented_synthesize(
-            segments,
-            model,
-            vocoder,
-            ref_file,
-            ref_text,
-            out_path,
-        )
+    segments = _split_f5tts_segments(synth_text)
+    duration, sample_rate = _f5tts_segmented_synthesize(
+        segments,
+        model,
+        vocoder,
+        ref_file,
+        ref_text,
+        out_path,
+        device=device,
+    )
     return TTSResult(out_path, "f5tts", len(text), duration, sample_rate)
 
 
@@ -1151,6 +1345,7 @@ class TTSSynthesizer(Processor):
                         device,
                         output_dir,
                         speaker_ref_path=speaker_ref_path,
+                        voice=voice,
                         use_g2p=use_g2p,
                     )
                 elif bk == "lightblue":

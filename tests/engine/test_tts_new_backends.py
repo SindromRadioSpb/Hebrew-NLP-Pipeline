@@ -24,6 +24,8 @@ from kadima.engine.tts_synthesizer import (
     _first_existing_path,
     _get_mms,
     _mms_synthesize,
+    _resolve_f5_reference,
+    _split_f5tts_segments,
     _split_tts_segments,
     _text_hash,
 )
@@ -41,6 +43,12 @@ class TestF5TTSBackend:
     def test_split_tts_segments_preserves_sentences(self) -> None:
         segments = _split_tts_segments("שלום עולם. מה נשמע? הכול טוב!")
         assert segments == ["שלום עולם.", "מה נשמע?", "הכול טוב!"]
+
+    def test_split_f5tts_segments_breaks_long_sentence(self) -> None:
+        text = " ".join(["שלום"] * 120)
+        segments = _split_f5tts_segments(text, max_bytes=80)
+        assert len(segments) > 1
+        assert all(len(segment.encode("utf-8")) <= 80 for segment in segments)
 
     def test_process_f5tts_unavailable_returns_failed(self, synth: TTSSynthesizer) -> None:
         with patch("kadima.engine.tts_synthesizer._F5TTS_AVAILABLE", False):
@@ -98,24 +106,46 @@ class TestF5TTSBackend:
         assert mock_f5.call_args.kwargs["speaker_ref_path"] == ref_path
         assert mock_f5.call_args.kwargs["use_g2p"] is False
 
-    def test_f5tts_falls_back_to_segmented_synthesis_on_tensor_size_error(self, tmp_path: Path) -> None:
+    def test_resolve_f5_reference_uses_speaker_ref_without_env_text(self, tmp_path: Path) -> None:
+        speaker_ref = tmp_path / "speaker.wav"
+        speaker_ref.write_bytes(b"RIFF")
+        ref_file, ref_text = _resolve_f5_reference(speaker_ref_path=speaker_ref)
+        assert ref_file == speaker_ref
+        assert ref_text == ""
+
+    def test_resolve_f5_reference_prefers_voice_preset(self, tmp_path: Path) -> None:
+        voices = tmp_path / "voices"
+        voices.mkdir()
+        (voices / "preset1.wav").write_bytes(b"RIFF")
+        (voices / "preset1.txt").write_text("שלום", encoding="utf-8")
+
+        with patch("kadima.engine.tts_synthesizer._F5TTS_VOICE_PRESETS_DIR", voices):
+            ref_file, ref_text = _resolve_f5_reference(voice="preset1")
+
+        assert ref_file == voices / "preset1.wav"
+        assert ref_text == "שלום"
+
+    def test_f5tts_uses_direct_segmented_sample_path(self, tmp_path: Path) -> None:
         with (
             patch("kadima.engine.tts_synthesizer._get_f5tts", return_value=("model", "vocoder")),
             patch(
-                "kadima.engine.tts_synthesizer._get_default_f5_reference",
+                "kadima.engine.tts_synthesizer._resolve_f5_reference",
                 return_value=(tmp_path / "ref.wav", "ref text"),
             ),
             patch("kadima.engine.tts_synthesizer._patch_torchaudio_load_for_f5"),
             patch("kadima.engine.tts_synthesizer._ensure_utf8_stdio"),
             patch("kadima.engine.tts_synthesizer._apply_hebrew_g2p", side_effect=lambda text, use_g2p=True: text),
             patch(
-                "kadima.engine.tts_synthesizer._f5_infer_process",
+                "kadima.engine.tts_synthesizer._prepare_f5_reference_audio",
+                return_value=("audio", "ref text. ", 0.2),
+            ),
+            patch(
+                "kadima.engine.tts_synthesizer._f5tts_sample_segment",
                 side_effect=[
-                    RuntimeError("Sizes of tensors must match except in dimension 2."),
-                    (np.zeros(1200, dtype=np.float32), 24000, None),
-                    (np.zeros(800, dtype=np.float32), 24000, None),
+                    np.zeros(1200, dtype=np.float32),
+                    np.zeros(800, dtype=np.float32),
                 ],
-            ) as mock_infer,
+            ) as mock_sample,
         ):
             result = _f5tts_synthesize("שלום עולם. מה נשמע?", "cpu", tmp_path)
 
@@ -123,7 +153,7 @@ class TestF5TTSBackend:
         assert result.audio_path.exists()
         assert result.sample_rate == 24000
         assert result.duration_seconds > 0
-        assert mock_infer.call_count == 3
+        assert mock_sample.call_count == 2
 
 
 class TestLightBlueBackend:

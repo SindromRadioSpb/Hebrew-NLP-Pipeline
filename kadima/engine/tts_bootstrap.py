@@ -33,6 +33,9 @@ F5TTS_MODEL_PATH = Path(
         ),
     )
 )
+F5TTS_VOCAB_PATH = Path(
+    os.environ.get("F5TTS_VOCAB_PATH", str(_F5TTS_ROOT / "vocab.txt"))
+)
 F5TTS_VOCODER_PATH = Path(
     os.environ.get("F5TTS_VOCODER_PATH", str(_F5TTS_ROOT / "vocoder"))
 )
@@ -91,7 +94,7 @@ def get_tts_bootstrap_statuses() -> dict[str, BackendBootstrapStatus]:
     statuses: dict[str, BackendBootstrapStatus] = {}
 
     f5_pkg = _module_available("f5_tts")
-    f5_model = F5TTS_MODEL_PATH.exists() and F5TTS_VOCODER_PATH.exists()
+    f5_model = F5TTS_MODEL_PATH.exists() and F5TTS_VOCODER_PATH.exists() and F5TTS_VOCAB_PATH.exists()
     statuses["f5tts"] = BackendBootstrapStatus(
         backend="f5tts",
         package_ready=f5_pkg,
@@ -101,7 +104,7 @@ def get_tts_bootstrap_statuses() -> dict[str, BackendBootstrapStatus]:
             if f5_pkg and f5_model
             else "package missing"
             if not f5_pkg
-            else "model/vocoder missing"
+            else "model/vocoder/vocab missing"
         ),
     )
 

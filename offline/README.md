@@ -2,6 +2,11 @@
 
 This folder is the offline staging area for the M15 TTS backends.
 
+Repository runtime convention:
+
+- use `E:\projects\Project_Vibe\Kadima\.venv` as the only supported virtual environment;
+- do not stage or reuse legacy sibling environments such as `.venv-311`.
+
 ## Wheelhouse
 
 Place Python wheels into [wheels](E:/projects/Project_Vibe/Kadima/offline/wheels):
@@ -25,7 +30,8 @@ python -m pip install --no-index --find-links=offline\wheels --no-deps `
 
 Expected local model paths:
 
-- `F:\datasets_models\tts\f5tts-hebrew-v2\model_1250000.safetensors`
+- `F:\datasets_models\tts\f5tts-hebrew-v2\model.safetensors`
+- `F:\datasets_models\tts\f5tts-hebrew-v2\vocab.txt`
 - `F:\datasets_models\tts\f5tts-hebrew-v2\vocoder`
 - `F:\datasets_models\tts\lightblue`
 - `F:\datasets_models\tts\phonikud-tts\he_IL-heb-high.onnx`
@@ -34,12 +40,22 @@ Expected local model paths:
 Optional environment overrides:
 
 ```powershell
-$env:F5TTS_HEB_MODEL_PATH='F:\datasets_models\tts\f5tts-hebrew-v2\model_1250000.safetensors'
+$env:F5TTS_HEB_MODEL_PATH='F:\datasets_models\tts\f5tts-hebrew-v2\model.safetensors'
+$env:F5TTS_VOCAB_PATH='F:\datasets_models\tts\f5tts-hebrew-v2\vocab.txt'
 $env:F5TTS_VOCODER_PATH='F:\datasets_models\tts\f5tts-hebrew-v2\vocoder'
 $env:LIGHTBLUE_MODEL_PATH='F:\datasets_models\tts\lightblue'
 $env:PHONIKUD_TTS_MODEL_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-high.onnx'
 $env:PHONIKUD_TTS_CONFIG_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-high.onnx.json'
 ```
+
+## F5 Hebrew v2 Notes
+
+- Runtime now targets the official `Yzamari/f5tts-hebrew-v2` checkpoint layout: `model.safetensors` + `vocab.txt`.
+- `vocab.txt` is mandatory for readiness and inference.
+- Hebrew fine-tunes must use direct `model.sample()` with the custom vocab path; the generic F5 CLI/batch path is not used here.
+- `speaker_ref_path` no longer requires `F5TTS_REF_TEXT`. If no transcript is supplied, upstream ASR is used for the reference WAV.
+- Optional voice presets can be staged under `F:\datasets_models\tts\f5tts-hebrew-v2\voices\` as `<voice>.wav` plus optional `<voice>.txt`.
+- The Hugging Face model repo currently publishes only `model.safetensors` and `vocab.txt`; it does not publish the 58 preset reference WAV/TXT files, so preset voice selection is supported by runtime but not bundled by default.
 
 ## Bark
 
