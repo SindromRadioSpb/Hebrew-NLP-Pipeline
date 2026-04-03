@@ -244,7 +244,7 @@ CREATE TABLE results_qa (id, document_id, context, question, answer, score, crea
 **Критерий выхода из Фазы 2:**
 - [ ] 5 модулей реализованы, тесты проходят
 - [ ] ModelManager управляет VRAM, нет OOM при последовательном вызове всех модулей
-- [ ] TTS→STT round-trip WER < 0.15
+- [x] TTS→STT round-trip WER < 0.15
 - [ ] Миграция 005 применяется, результаты сохраняются в БД
 
 **M16 follow-up hardening track (2026-04-03):**
@@ -273,6 +273,30 @@ CREATE TABLE results_qa (id, document_id, context, question, answer, score, crea
 - Для улучшения качества long/noisy audio рассмотреть `silero-vad`.
 - Для word-level alignment и subtitle-oriented flow рассмотреть `whisperx`.
 - Любую новую модель сравнивать по Hebrew quality, latency, offline bootstrap и UX predictability.
+
+**Approved follow-up implementation plan (2026-04-04) — status: implemented**
+- PATCH-04 STT audition UX — DONE:
+  - `AudioPlayer` встроен в STT tab;
+  - пользователь получил workflow "прослушать аудио -> прочитать transcript" без выхода из вкладки.
+- PATCH-01 TTS→STT quality gate — DONE:
+  - добавлен отдельный integration suite;
+  - автоматический `WER < 0.15` подтверждён;
+  - `smoke` и `strict gate` разведены через markers и runtime skips.
+- PATCH-02 Optional `silero-vad` — DONE:
+  - preprocessing для длинного/шумного аудио добавлен;
+  - runtime честно сообщает, был ли VAD применён, пропущен или не нашёл речь;
+  - transcript path не деградирует в hard failure.
+- PATCH-03 Optional `whisperx` contract — DONE ON CONTRACT LEVEL:
+  - добавлены `word_segments` и alignment-oriented metadata;
+  - transcript path работает и без alignment;
+  - `whisperx` не включён в стандартный `.venv`, потому что текущий upstream стек требует несовместимый `torch~=2.8`.
+- Product guidance:
+  - новый STT backend пока не добавлять;
+  - основной ROI уже дали audition UX, quality gate, VAD contract и alignment contract.
+
+**Closed evidence (2026-04-04):**
+- `149 PASS`: `tests/engine/test_stt_transcriber.py`, `tests/engine/test_stt_tab_ui.py`, `tests/engine/test_tts_stt_roundtrip.py`, `tests/api/test_generative_router.py`, `tests/test_config.py`
+- live VAD smoke on `artefacts/tts_f5tts_14845767a16e2c0e.wav`: transcript returned successfully with note `VAD found no speech segments; original audio used.`
 
 ---
 

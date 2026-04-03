@@ -861,27 +861,32 @@ ul
 | STTRequest / STTResponse schema | `api/routers/generative.py:562-575` | API contract |
 | STT runtime note on successful fallback | `stt_transcriber.py` | Honest fallback reporting |
 | GenerativeView STT tab: supported formats, ready/changed status, final summary | `ui/generative_view.py:928-1120` | Product-grade desktop UX |
+| STT tab audition workflow with embedded audio player | `ui/generative_view.py`, `tests/engine/test_stt_tab_ui.py` | Audio-to-text comparison without external player |
+| Optional VAD preprocessing with safe fallback | `stt_transcriber.py`, `tests/engine/test_stt_transcriber.py` | Long/noisy audio hardening without hard failure |
+| Optional alignment metadata contract (`segments`, `word_segments`, `note`) | `stt_transcriber.py`, `api/routers/generative.py` | Subtitle-oriented downstream and honest runtime notes |
 | API success-path test with mocked `STTTranscriber.process()` | `tests/api/test_generative_router.py` | Router regression coverage |
 | Separate STT UI regression suite | `tests/engine/test_stt_tab_ui.py` | UX regression protection |
-| Targeted M16 suite: 67 PASS | `pytest tests/engine/test_stt_transcriber.py tests/api/test_generative_router.py tests/engine/test_stt_tab_ui.py -q` | Engine + API + UI verification |
+| Targeted M16 suite: 72 PASS | `pytest tests/engine/test_stt_transcriber.py tests/api/test_generative_router.py tests/engine/test_stt_tab_ui.py -q` | Engine + API + UI verification |
+| TTS→STT round-trip integration gate with `WER < 0.15` | `tests/engine/test_tts_stt_roundtrip.py` | End-to-end audio quality verification |
+| M16 follow-up verification suite: 149 PASS | `pytest tests/engine/test_stt_transcriber.py tests/engine/test_stt_tab_ui.py tests/engine/test_tts_stt_roundtrip.py tests/api/test_generative_router.py tests/test_config.py -q` | Runtime + UI + API + config verification |
 | Local model layout | `F:\datasets_models\stt\whisper-large-v3-turbo\`, CT2 snapshot path from `FASTER_WHISPER_MODEL_PATH`/default discovery | Offline deployment |
-| STT runtime packages staged + installed | `offline/wheels\openai_whisper-20250625-py3-none-any.whl`, `offline/wheels\faster_whisper-1.2.1-py3-none-any.whl`, current `.venv` | Offline bootstrap readiness |
+| STT runtime packages staged + installed | `offline/wheels\openai_whisper-20250625-py3-none-any.whl`, `offline/wheels\faster_whisper-1.2.1-py3-none-any.whl`, `offline/wheels\silero_vad-6.2.1-py3-none-any.whl`, current `.venv` | Offline bootstrap readiness |
+| `whisperx` wheel staged for optional experiments | `offline/wheels\whisperx-3.8.5-py3-none-any.whl` | Alignment experiments without changing the main release contract |
 | Живой STT smoke + артефакты | `artefacts/stt_m16_smoke.txt`, `artefacts/stt_m16_smoke.json` | Реальная работоспособность M16 |
+| Живой optional VAD smoke без hard failure | `STTTranscriber(..., use_vad=True)` на `artefacts/tts_f5tts_14845767a16e2c0e.wav` | Runtime gracefully returns transcript and note when VAD finds no speech |
 
 #### B) Запланировано, не реализовано
 
 | Функциональность | Доказательство | Ожидаемые процессы | Блокеры |
 |-----------------|---------------|-------------------|---------|
-| TTS→STT round-trip integration test с WER gate < 0.15 | `Tasks/Kadima_v2.md` Phase 2 exit criteria | Сквозная проверка аудио-контура | Пока нет отдельного integration suite |
 | Persistence STT results в БД (`results_stt` / аналогичный слой) | `Tasks/Kadima_v2.md` Phase 2 DB criteria | Traceability и audit trail | Сейчас результат живёт только в engine/API/UI |
+| Production-bundled alignment runtime (`whisperx`) в основной `.venv` | Optional alignment track | Word-level timestamps без дополнительной настройки | Текущий `whisperx` стек тянет несовместимый `torch~=2.8`, что конфликтует с принятым `torch 2.10.0+cu128` |
 
 #### C) Технически возможно, не планировалось
 
 | Функциональность | Основание | Потенциальная ценность | Риски/цена |
 |-----------------|-----------|------------------------|------------|
 | Streaming transcription | Естественное развитие M16 | Near-real-time UX | Высокая сложность, новая архитектура |
-| Word-level alignment (`whisperx`) | Улучшение subtitles / QA | Более точные таймкоды | Дополнительные модели и сложность |
-| VAD preprocessing (`silero-vad`) | Улучшение long/noisy audio | Лучшая устойчивость и меньше мусора | Дополнительный preprocessing path |
 | Diarization | Расшифровка многоспикерных записей | Более богатый STT workflow | Высокая стоимость внедрения |
 
 #### Patch Context (2026-04-03)
@@ -896,15 +901,42 @@ ul
 
 #### Recommendations After Audit
 
-1. Следующий качественный прирост M16 даст не новый backend, а `TTS→STT` round-trip suite с автоматическим WER gate.
-2. Для качества long/noisy audio приоритетнее попробовать `silero-vad`, чем менять сам STT backend.
-3. Если нужны word-level timestamps и субтитры, следующий логичный шаг — `whisperx`.
+1. Новый STT backend сейчас не нужен: наибольший ROI уже дали audition UX, round-trip WER gate и optional preprocessing/alignment contract.
+2. `silero-vad` имеет смысл оставлять как optional enhancement path, но quality decision нужно принимать только по живым noisy/long audio regression cases, а не по синтетическим short clips.
+3. `whisperx` стоит держать как исследовательский opt-in слой до появления версии без конфликта с `torch 2.10.0+cu128`; включать его в стандартный `.venv` пока нельзя.
 4. Любую новую "умную" модель сравнивать только по четырём критериям: Hebrew quality, latency, стабильность UX, простота offline bootstrap.
 5. `faster-whisper` должен оставаться в packaging/wheelhouse как first-class dependency, иначе M16 снова деградирует до “код есть, runtime нет”.
 
+#### Follow-up Implementation (2026-04-04)
+
+1. **PATCH-04 STT audition UX — DONE**
+   - `AudioPlayer` встроен прямо в STT tab для исходного аудио.
+   - После выбора файла пользователь может прослушать аудио и сверить его с transcript в одном месте.
+   - UX-боль ручного открытия аудио во внешнем плеере закрыта.
+
+2. **PATCH-01 TTS→STT quality gate — DONE**
+   - Добавлен отдельный integration suite `text -> TTS -> WAV -> STT -> transcript`.
+   - Метрика: автоматический `WER < 0.15`.
+   - `smoke` и `strict gate` разделены через `integration/slow` markers и runtime skips при отсутствии локальных моделей.
+
+3. **PATCH-02 Optional VAD preprocessing — DONE**
+   - `silero-vad` добавлен как optional preprocessing path для длинного/шумного аудио.
+   - Runtime честно сообщает, был ли VAD применён, не нашёл речь или был пропущен.
+   - При недоступном пакете/ошибке preprocessing transcript path не деградирует в hard failure.
+
+4. **PATCH-03 Optional alignment — DONE ON CONTRACT LEVEL**
+   - Добавлен optional alignment contract для word-level timestamps и subtitle-oriented workflows.
+   - Transcript path остаётся рабочим и без alignment.
+   - При недоступном alignment runtime возвращает transcript и честную `note/metadata`.
+   - В основной `.venv` `whisperx` пока не bundled из-за конфликта по `torch`-стеку.
+
+5. **Release guidance**
+   - Новый STT backend в текущем цикле не нужен.
+   - Наибольший ROI дали: аудирование в UI, end-to-end quality gate, VAD contract и alignment contract.
+
 #### Резюме модуля
 
-M16 доведён до продуктового baseline: engine, API, product-facing STT tab, regression coverage и живой smoke подтверждены. Остаточный backlog — integration-quality метрики (`TTS→STT WER`) и persistence/audit trail.
+M16 доведён до product-grade baseline: engine, API, product-facing STT tab, embedded audition workflow, regression coverage, live smoke и `TTS→STT` quality gate подтверждены. Остаточный backlog — persistence/audit trail и опциональный production-safe alignment bundle без конфликта с текущим CUDA stack.
 
 ---
 
