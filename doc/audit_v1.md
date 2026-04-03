@@ -739,7 +739,7 @@ ul
 
 ### 5.12 M15 — TTS Synthesizer (TTSSynthesizer)
 
-**Статус: ✅ Production-ready (Hebrew backend chain: F5-TTS → LightBlue → Phonikud → MMS, Bark optional)** | **Тесты: 70 релевантных TTS тестов в кодовой базе; в этой сессии прогнано 35/35 targeted PASS (27 backend + 8 UI)** | **Файл: `kadima/engine/tts_synthesizer.py` (1275 строк)**
+**Статус: ✅ Production-ready (release chain: LightBlue/Noa → F5-TTS → Phonikud → MMS; `bark`/`zonos` removed from release contract)** | **Тесты: 103/103 PASS по финальному release-contract regression suite; targeted TTS/UI suite 40/40 PASS** | **Файл: `kadima/engine/tts_synthesizer.py`**
 
 #### A) Реализованный функционал
 
@@ -750,7 +750,7 @@ ul
 | 3 | **LightBlue TTS backend** (CPU ONNX fallback) | `tts_synthesizer.py` | Fast CPU fallback |
 | 4 | **Phonikud / Piper-compatible Hebrew ONNX backend** | `tts_synthesizer.py` | Hebrew ONNX fallback |
 | 5 | Facebook MMS-TTS HEB backend (<1GB) | `tts_synthesizer.py` | Final fallback, CPU/GPU |
-| 6 | **Suno Bark backend (voice cloning, explicit only)** | `tts_synthesizer.py` | Optional cloning |
+| 6 | **Release contract excludes `bark` and `zonos`** | `tts_synthesizer.py`, `generative.py`, `generative_view.py`, `config.py` | Honest desktop/API surface |
 | 7 | **Fallback chain: lightblue (Noa default) → f5tts → phonikud → mms → FAILED** | `tts_synthesizer.py` | Graceful degradation |
 | 8 | **Legacy XTTS path kept only for explicit unsupported skip** | `tts_synthesizer.py` | Honest failure for Hebrew |
 | 9 | **Hebrew G2P / niqqud preprocessing** (`use_g2p`) | `_apply_hebrew_g2p()` | Quality boost for Hebrew TTS |
@@ -767,16 +767,17 @@ ul
 | 20 | **API endpoint POST `/generative/tts`** | `api/routers/generative.py` | REST synthesis |
 | 21 | **API endpoint GET `/generative/tts/download/{filename}`** | `api/routers/generative.py` | FileResponse download |
 | 22 | **TTSRequest: `speaker_ref_path`, `voice`, `use_g2p`** | `api/routers/generative.py` | Voice + G2P API |
-| 23 | **TTSResponse: `sample_rate`, `backend_used`** | `api/routers/generative.py` | Honest runtime metadata |
-| 24 | **57 engine тестов** | `tests/engine/test_tts_synthesizer.py`, `tests/engine/test_tts_new_backends.py` | CI coverage |
-| 25 | **5 TTS API тестов** | `tests/api/test_generative_router.py` | Router coverage |
-| 26 | **8 TTS UI smoke тестов** | `tests/engine/test_tts_tab_ui.py` | TTS tab coverage |
+| 23 | **TTSResponse: `sample_rate`, `backend_used`, `note`** | `api/routers/generative.py` | Honest runtime metadata |
+| 24 | **Engine regression tests** (`tts_synthesizer` + `tts_new_backends` + `tts_bootstrap`) | `tests/engine/*.py` | CI coverage |
+| 25 | **TTS API tests** | `tests/api/test_generative_router.py` | Router coverage |
+| 26 | **TTS UI smoke / UX tests** | `tests/engine/test_tts_tab_ui.py` | TTS tab coverage |
 | 27 | **UI: BackendSelector [auto, f5tts, lightblue, phonikud, mms]** | `generative_view.py` | Desktop UI |
 | 28 | **UI: Voice mode selector** (`Default voice`, `Local preset voice`, `Clone from reference WAV`) | `generative_view.py` | Premium guided flow |
 | 29 | **UI: Human-readable preset list from `voices/manifest.csv`** | `generative_view.py` | Без ручного copy/paste имён файлов |
 | 30 | **UI: backend-aware voice controls** (LightBlue Yonatan/Noa, Phonikud packaged voice, MMS fixed voice) | `_refresh_tts_voice_controls()` | Honest UX by backend |
 | 31 | **UI: Help text + honest status + ML badges** | `generative_view.py` | Product UX |
 | 32 | **UI: Char/word counters + Save WAV... + progress bar** | `generative_view.py` | User-facing TTS workflow |
+| 33 | **UI: dirty-state indicator** (`Text ready...` / `Text changed...`) | `generative_view.py` | Пользователь видит, когда audio устарело или ещё не синтезировано |
 
 #### A.1) Runtime / deployment layout (актуализировано по сессии)
 
@@ -808,12 +809,11 @@ ul
 
 | Функциональность | Доказательство | Ожидаемые процессы | Блокеры | Решение |
 |-----------------|---------------|-------------------|---------|---------|
-| ~~Voice cloning UI~~ | **✅ РЕАЛИЗОВАНО** | Bark/F5-TTS cloning | — | **Закрыто** |
+| ~~Voice cloning UI~~ | **✅ РЕАЛИЗОВАНО** | F5-TTS cloning | — | **Закрыто** |
 | ~~API endpoint `/generative/tts`~~ | **✅ РЕАЛИЗОВАНО** | REST access | — | **Закрыто** |
 | ~~SHA-256 content cache~~ | **✅ РЕАЛИЗОВАНО** | Дедупликация WAV | — | **Закрыто** |
 | ~~F5-TTS Hebrew v2 интеграция~~ | **✅ РЕАЛИЗОВАНО** | Primary TTS для Hebrew | — | **Закрыто** |
 | Friendly F5 preset pack, совместимый без fallback | `google/fleurs` presets сейчас experimental | Реально разные F5 Hebrew voices без silent/NaN fallback | Нет официального Hebrew preset pack от автора модели | ⏳ **Следующий продуктовый шаг** |
-| Явное UI-сообщение о runtime fallback с preset -> default voice | Текущий runtime логирует warning, UI показывает только итоговый статус | Прозрачный UX | Нужна отдельная surfaced status/event path | ⏳ **Следующий UI шаг** |
 | DB сохранение results_tts | CLAUDE.md migration 005 | Audit trail | Migration не создана | ⏳ **Отложить до Фазы S** |
 
 #### B.1) Актуальный PATCH plan после сессии
@@ -827,7 +827,7 @@ ul
 
 #### Резюме модуля
 
-**Зрелость: Production-ready.** Реальная Hebrew цепочка работает как `F5-TTS -> LightBlue -> Phonikud -> MMS`, при этом `f5tts` получил direct Hebrew runtime path, segmented synthesis, loudness normalization и защиту от битых custom references. UI и API приведены в соответствие с фактическим runtime: есть `voice`, `speaker_ref_path`, `use_g2p`, `sample_rate`, `backend_used`, guided `Voice mode`, human-readable preset list, progress и export WAV. В этой сессии подтверждено **35/35 targeted test PASS** (27 backend + 8 UI); в кодовой базе для M15 присутствуют **70 релевантных TTS тестов**.
+**Зрелость: Production-ready.** Реальная Hebrew release-цепочка работает как `LightBlue (Noa default) -> F5-TTS -> Phonikud -> MMS`. `f5tts` получил direct Hebrew runtime path, segmented synthesis, loudness normalization и защиту от битых custom references. UI и API приведены в соответствие с фактическим runtime: есть `voice`, `speaker_ref_path`, `use_g2p`, `sample_rate`, `backend_used`, `note`, guided `Voice mode`, human-readable preset list, progress, export WAV и dirty-state indicator. Верификация по финальному release-contract suite: **103/103 PASS**; targeted TTS/UI suite: **40/40 PASS**.
 
 **Реальные Hebrew TTS модели** (локально, бесплатно):
 | Модель | Лицензия | VRAM | Zero-shot | Рекомендация |
@@ -836,8 +836,8 @@ ul
 | **LightBlue TTS** | MIT ✅ | CPU | ❌ | **Fallback-1** |
 | **Phonikud-TTS / Piper ONNX** | License depends on model package ⚠️ | CPU | ❌ | **Fallback-2** |
 | **MMS-TTS-heb** | CC-BY-NC | <1 ГБ | ❌ | Final fallback |
-**Рекомендуемая цепочка (актуально):** F5-TTS → LightBlue → Phonikud → MMS  
-**Рекомендуемый пользовательский flow в UI:** F5-TTS + `Default voice (Recommended)`; preset/clone режимы использовать осознанно.
+**Рекомендуемая цепочка (актуально):** LightBlue (`auto`, voice `Noa`) → F5-TTS → Phonikud → MMS  
+**Рекомендуемый пользовательский flow в UI:** `auto` для самого стабильного стартового UX; `f5tts` использовать осознанно для preset/clone режимов и более высокого качества.
 
 ----
 
