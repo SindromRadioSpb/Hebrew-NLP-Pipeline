@@ -22,6 +22,7 @@ import os
 import shutil
 import sys
 import time
+import types
 import wave
 from dataclasses import dataclass
 from importlib.resources import files
@@ -343,6 +344,8 @@ def _mms_synthesize(text: str, device: str, output_dir: Path) -> TTSResult:
 
 _F5TTS_AVAILABLE = False
 try:
+    if "wandb" not in sys.modules:
+        sys.modules["wandb"] = types.ModuleType("wandb")
     from f5_tts.infer.utils_infer import (  # type: ignore[attr-defined]
         infer_process as _f5_infer_process,
         load_model as _f5_load_model,
