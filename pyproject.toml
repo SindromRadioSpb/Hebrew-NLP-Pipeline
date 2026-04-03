@@ -58,9 +58,10 @@ gpu = [
     # M15 TTS — F5-TTS Hebrew primary backend
     "f5-tts>=1.0.0",
     # M15 TTS — LightBlue CPU ONNX fallback
-    "lightblue-tts>=0.1.0",
+    "lightblue-onnx>=0.1.0",
     # M15 TTS — Hebrew G2P
     "phonikud>=1.0.0",
+    "phonikud-onnx>=1.0.0",
     # M15 TTS — Piper TTS (MIT license, Hebrew support)
     "piper-tts>=1.2.0",
     # M15 TTS — Suno Bark (voice cloning, MIT license)

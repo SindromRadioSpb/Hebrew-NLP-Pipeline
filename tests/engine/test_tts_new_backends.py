@@ -17,7 +17,14 @@ import pytest
 from scipy.io import wavfile
 
 from kadima.engine.base import ProcessorStatus
-from kadima.engine.tts_synthesizer import TTSResult, TTSSynthesizer, _get_mms, _mms_synthesize, _text_hash
+from kadima.engine.tts_synthesizer import (
+    TTSResult,
+    TTSSynthesizer,
+    _first_existing_path,
+    _get_mms,
+    _mms_synthesize,
+    _text_hash,
+)
 
 
 @pytest.fixture()
@@ -236,6 +243,11 @@ class TestFallbackChain:
 
 
 class TestSHA256Cache:
+    def test_first_existing_path_ignores_empty_candidates(self, tmp_path: Path) -> None:
+        target = tmp_path / "model.onnx"
+        target.write_bytes(b"x")
+        assert _first_existing_path("", target) == str(target)
+
     def test_text_hash_deterministic(self) -> None:
         h1 = _text_hash("שלום")
         h2 = _text_hash("שלום")

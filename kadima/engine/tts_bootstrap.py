@@ -10,11 +10,31 @@ OFFLINE_WHEELS_DIR = Path(
     os.environ.get("OFFLINE_WHEELS_DIR", "E:/projects/Project_Vibe/Kadima/offline/wheels")
 )
 
+
+def _first_existing_path(*candidates: str | Path) -> Path | None:
+    for candidate in candidates:
+        path = Path(candidate)
+        if path.exists():
+            return path
+    return None
+
+
+_F5TTS_ROOT = Path(os.environ.get("F5TTS_ROOT", "F:/datasets_models/tts/f5tts-hebrew-v2"))
 F5TTS_MODEL_PATH = Path(
-    os.environ.get("F5TTS_HEB_MODEL_PATH", "F:/datasets_models/tts/f5tts-hebrew-v2/model.pt")
+    os.environ.get(
+        "F5TTS_HEB_MODEL_PATH",
+        str(
+            _first_existing_path(
+                _F5TTS_ROOT / "model.safetensors",
+                _F5TTS_ROOT / "model_1250000.safetensors",
+                _F5TTS_ROOT / "model.pt",
+            )
+            or (_F5TTS_ROOT / "model.safetensors")
+        ),
+    )
 )
 F5TTS_VOCODER_PATH = Path(
-    os.environ.get("F5TTS_VOCODER_PATH", "F:/datasets_models/tts/f5tts-hebrew-v2/vocoder")
+    os.environ.get("F5TTS_VOCODER_PATH", str(_F5TTS_ROOT / "vocoder"))
 )
 LIGHTBLUE_MODEL_PATH = Path(
     os.environ.get("LIGHTBLUE_MODEL_PATH", "F:/datasets_models/tts/lightblue")
@@ -43,6 +63,16 @@ def _wheel_available(stem: str) -> bool:
         return False
     patterns = (f"{stem}-*.whl", f"{stem.replace('-', '_')}-*.whl")
     return any(any(OFFLINE_WHEELS_DIR.glob(pattern)) for pattern in patterns)
+
+
+def _lightblue_assets_ready(root: Path) -> bool:
+    required = [
+        root / "text_encoder.onnx",
+        root / "vocoder.onnx",
+    ]
+    has_backbone = (root / "backbone.onnx").exists() or (root / "backbone_keys.onnx").exists()
+    has_voice = any((root / "voices").glob("*.json")) if (root / "voices").exists() else False
+    return all(path.exists() for path in required) and has_backbone and has_voice
 
 
 @dataclass(frozen=True)
@@ -75,8 +105,8 @@ def get_tts_bootstrap_statuses() -> dict[str, BackendBootstrapStatus]:
         ),
     )
 
-    lb_pkg = _module_available("lightblue_tts", "lightblue", "LightBlueTTS")
-    lb_model = LIGHTBLUE_MODEL_PATH.exists()
+    lb_pkg = _module_available("lightblue_tts", "lightblue", "LightBlueTTS", "lightblue_onnx")
+    lb_model = _lightblue_assets_ready(LIGHTBLUE_MODEL_PATH)
     statuses["lightblue"] = BackendBootstrapStatus(
         backend="lightblue",
         package_ready=lb_pkg,
@@ -135,7 +165,8 @@ def get_offline_bootstrap_report() -> dict[str, object]:
     statuses = get_tts_bootstrap_statuses()
     wheelhouse = {
         "f5-tts": _wheel_available("f5-tts"),
-        "lightblue-tts": _wheel_available("lightblue-tts"),
+        "lightblue-tts": _wheel_available("lightblue-tts") or _wheel_available("lightblue-onnx"),
+        "lightblue-onnx": _wheel_available("lightblue-onnx"),
         "piper-tts": _wheel_available("piper-tts"),
         "phonikud": _wheel_available("phonikud"),
     }

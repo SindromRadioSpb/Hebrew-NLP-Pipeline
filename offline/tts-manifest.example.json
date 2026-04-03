@@ -1,0 +1,28 @@
+{
+  "wheelhouse": {
+    "root": "E:/projects/Project_Vibe/Kadima/offline/wheels",
+    "required": [
+      "f5-tts",
+      "lightblue-onnx",
+      "piper-tts",
+      "phonikud",
+      "phonikud-onnx"
+    ]
+  },
+  "models": {
+    "f5tts": {
+      "model_path": "F:/datasets_models/tts/f5tts-hebrew-v2/model.pt",
+      "vocoder_path": "F:/datasets_models/tts/f5tts-hebrew-v2/vocoder"
+    },
+    "lightblue": {
+      "assets_path": "F:/datasets_models/tts/lightblue"
+    },
+    "phonikud": {
+      "model_path": "F:/datasets_models/tts/phonikud-tts/he_IL-heb-high.onnx",
+      "config_path": "F:/datasets_models/tts/phonikud-tts/he_IL-heb-high.onnx.json"
+    },
+    "mms": {
+      "snapshot_path": "F:/datasets_models/tts/mms-tts-heb/models--facebook--mms-tts-heb/snapshots/28f1fce7cf56b2a3a56e19a4a1405ed70b454853"
+    }
+  }
+}

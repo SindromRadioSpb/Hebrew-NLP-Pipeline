@@ -40,7 +40,7 @@ def test_bootstrap_status_marks_model_missing_for_lightblue(tmp_path: Path, monk
     monkeypatch.setattr(
         tb,
         "_module_available",
-        lambda *names: any(name in {"lightblue_tts", "lightblue", "LightBlueTTS"} for name in names),
+        lambda *names: any(name in {"lightblue_tts", "lightblue", "LightBlueTTS", "lightblue_onnx"} for name in names),
     )
 
     status = tb.get_tts_bootstrap_statuses()["lightblue"]
@@ -54,11 +54,23 @@ def test_offline_bootstrap_report_detects_staged_wheels(tmp_path: Path, monkeypa
     wheels = tmp_path / "wheels"
     wheels.mkdir()
     (wheels / "f5_tts-1.0.0-py3-none-any.whl").write_bytes(b"wheel")
-    (wheels / "lightblue_tts-0.1.0-py3-none-any.whl").write_bytes(b"wheel")
+    (wheels / "lightblue_onnx-0.1.0-py3-none-any.whl").write_bytes(b"wheel")
     monkeypatch.setattr(tb, "OFFLINE_WHEELS_DIR", wheels)
 
     report = tb.get_offline_bootstrap_report()
 
     assert report["wheelhouse"]["f5-tts"] is True
     assert report["wheelhouse"]["lightblue-tts"] is True
+    assert report["wheelhouse"]["lightblue-onnx"] is True
     assert report["wheelhouse"]["piper-tts"] is False
+
+
+def test_lightblue_assets_ready_requires_core_files_and_voice(tmp_path: Path) -> None:
+    root = tmp_path / "lightblue"
+    (root / "voices").mkdir(parents=True)
+    for rel in ("text_encoder.onnx", "vocoder.onnx", "backbone.onnx", "voices/male1.json"):
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"x")
+
+    assert tb._lightblue_assets_ready(root) is True

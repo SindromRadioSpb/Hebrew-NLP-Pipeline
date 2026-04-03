@@ -16,12 +16,15 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import json
 import logging
 import os
 import shutil
+import sys
 import time
 import wave
 from dataclasses import dataclass
+from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
@@ -91,6 +94,8 @@ def _text_hash(text: str) -> str:
 def _first_existing_path(*candidates: str | Path) -> str | None:
     """Return the first existing filesystem path from the candidate list."""
     for candidate in candidates:
+        if candidate in (None, ""):
+            continue
         path = Path(candidate)
         if path.exists():
             return str(path)
@@ -338,26 +343,24 @@ def _mms_synthesize(text: str, device: str, output_dir: Path) -> TTSResult:
 
 _F5TTS_AVAILABLE = False
 try:
-    from f5_tts.model import DiT  # type: ignore[attr-defined]
     from f5_tts.infer.utils_infer import (  # type: ignore[attr-defined]
         infer_process as _f5_infer_process,
         load_model as _f5_load_model,
         load_vocoder as _f5_load_vocoder,
-        preprocess_ref_audio_text as _f5_preprocess_ref_audio_text,
     )
+    from f5_tts.model.backbones.dit import DiT  # type: ignore[attr-defined]
 
     _F5TTS_AVAILABLE = True
     logger.info("F5-TTS available for synthesis")
 except ImportError:
-    DiT = None  # type: ignore[assignment]
     _f5_infer_process = None  # type: ignore[assignment]
     _f5_load_model = None  # type: ignore[assignment]
     _f5_load_vocoder = None  # type: ignore[assignment]
-    _f5_preprocess_ref_audio_text = None  # type: ignore[assignment]
+    DiT = None  # type: ignore[assignment]
 
 _LIGHTBLUE_AVAILABLE = False
 _lightblue_module: Any = None
-for _lightblue_name in ("lightblue_tts", "lightblue", "LightBlueTTS"):
+for _lightblue_name in ("lightblue_tts", "lightblue", "LightBlueTTS", "lightblue_onnx"):
     try:
         _lightblue_module = importlib.import_module(_lightblue_name)
         _LIGHTBLUE_AVAILABLE = True
@@ -383,8 +386,23 @@ _PIPER_AVAILABLE = _PHONIKUD_TTS_AVAILABLE
 
 _f5tts_model: Any = None
 _f5tts_vocoder: Any = None
-_lightblue_runtime: Any = None
+_lightblue_runtime: dict[str, Any] = {}
 _phonikud_tts_voice: Any = None
+
+_F5TTS_MODEL_ARCH = {
+    "dim": 1024,
+    "depth": 22,
+    "heads": 16,
+    "ff_mult": 2,
+    "text_dim": 512,
+    "text_mask_padding": True,
+    "qk_norm": None,
+    "conv_layers": 4,
+    "pe_attn_head": None,
+    "attn_backend": "torch",
+    "attn_mask_enabled": False,
+    "checkpoint_activations": False,
+}
 
 def _cache_key(text: str, *parts: str | None) -> str:
     """Stable SHA-256 key for text plus backend-specific parameters."""
@@ -420,15 +438,92 @@ def _apply_hebrew_g2p(text: str, use_g2p: bool = True) -> str:
     try:
         from phonikud_onnx import Phonikud as _PhOnnx  # type: ignore[import-not-found]
 
-        model_path = os.environ.get("PHONIKUD_ONNX_MODEL_PATH")
-        if model_path and Path(model_path).exists():
-            return _PhOnnx(model_path).add_diacritics(text)
+        model_path = _first_existing_path(
+            os.environ.get("PHONIKUD_ONNX_MODEL_PATH", ""),
+            _LIGHTBLUE_MODEL_PATH / "phonikud-1.0.int8.onnx",
+            _PHONIKUD_TTS_MODEL_PATH.parent / "phonikud-1.0.int8.onnx",
+        )
+        if model_path:
+            return _PhOnnx(str(model_path)).add_diacritics(text)
     except ImportError:
         pass
     except Exception as exc:  # noqa: BLE001
         logger.warning("phonikud-onnx G2P failed: %s", exc)
 
     return text
+
+
+def _phonemize_hebrew(text: str) -> str:
+    try:
+        import phonikud  # type: ignore[import-not-found]
+    except ImportError as exc:
+        raise ImportError("phonikud package is required for LightBlue phonemization") from exc
+
+    phonemize = getattr(phonikud, "phonemize", None)
+    if not callable(phonemize):
+        raise RuntimeError("phonikud.phonemize is unavailable")
+    return phonemize(text)
+
+
+def _resolve_lightblue_style_path(voice: str | None) -> Path | None:
+    voices_dir = _LIGHTBLUE_MODEL_PATH / "voices"
+    if not voices_dir.exists():
+        return None
+
+    aliases = {
+        "yonatan": "male1",
+        "michael": "male1",
+        "male": "male1",
+        "male1": "male1",
+        "female": "female1",
+        "female1": "female1",
+        "noa": "female1",
+    }
+    requested = aliases.get((voice or "").strip().lower(), (voice or "").strip().lower())
+    candidates: list[Path] = []
+    if requested:
+        candidates.append(voices_dir / f"{requested}.json")
+    candidates.extend(
+        [voices_dir / "male1.json", voices_dir / "female1.json"]
+    )
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return next(voices_dir.glob("*.json"), None)
+
+
+def _get_default_f5_reference() -> tuple[Path, str]:
+    ref_audio = files("f5_tts").joinpath("infer/examples/basic/basic_ref_en.wav")
+    return Path(str(ref_audio)), "Some call me nature, others call me mother nature."
+
+
+def _patch_torchaudio_load_for_f5() -> None:
+    import soundfile as sf
+    import torch
+    import torchaudio
+
+    if getattr(torchaudio, "_kadima_f5_safe_load", False):
+        return
+
+    def _safe_load(path: str | Path, *args: Any, **kwargs: Any) -> tuple[Any, int]:
+        data, sample_rate = sf.read(str(path), dtype="float32")
+        tensor = torch.from_numpy(data)
+        if tensor.ndim == 1:
+            tensor = tensor.unsqueeze(0)
+        else:
+            tensor = tensor.transpose(0, 1)
+        return tensor, sample_rate
+
+    torchaudio.load = _safe_load
+    torchaudio._kadima_f5_safe_load = True
+
+
+def _ensure_utf8_stdio() -> None:
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors="replace")
 
 
 def _write_wav_from_array(audio: Any, out_path: Path, sample_rate: int) -> tuple[float, int]:
@@ -458,6 +553,10 @@ def _materialize_audio_output(output: Any, out_path: Path, default_sample_rate: 
         return _probe_wav(out_path)
 
     if isinstance(output, tuple):
+        if len(output) >= 2 and isinstance(output[1], int):
+            for item in output:
+                if hasattr(item, "shape") or isinstance(item, list):
+                    return _write_wav_from_array(item, out_path, output[1])
         for item in output:
             if isinstance(item, (str, Path)):
                 return _materialize_audio_output(item, out_path, default_sample_rate)
@@ -479,7 +578,7 @@ def _materialize_audio_output(output: Any, out_path: Path, default_sample_rate: 
 
 
 def _get_f5tts(device: str) -> tuple[Any, Any]:
-    """Lazy-load F5-TTS model + vocoder."""
+    """Lazy-load F5-TTS model and vocoder using the official inference helpers."""
     global _f5tts_model, _f5tts_vocoder
     if _f5tts_model is None or _f5tts_vocoder is None:
         if not _F5TTS_AVAILABLE:
@@ -491,31 +590,19 @@ def _get_f5tts(device: str) -> tuple[Any, Any]:
         import torch
 
         dev = "cuda" if (device == "cuda" and torch.cuda.is_available()) else "cpu"
-        kwargs = {"device": dev}
-        try:
-            _f5tts_model = _f5_load_model(DiT, str(_F5TTS_MODEL_PATH), **kwargs)
-        except TypeError:
-            _f5tts_model = _f5_load_model(DiT, str(_F5TTS_MODEL_PATH))
-        vocoder_errors: list[str] = []
-        for loader in (
-            lambda: _f5_load_vocoder(str(_F5TTS_VOCODER_PATH), device=dev),
-            lambda: _f5_load_vocoder(str(_F5TTS_VOCODER_PATH), dev),
-            lambda: _f5_load_vocoder(vocoder_path=str(_F5TTS_VOCODER_PATH), device=dev),
-            lambda: _f5_load_vocoder(model_path=str(_F5TTS_VOCODER_PATH), device=dev),
-            lambda: _f5_load_vocoder(device=dev),
-            lambda: _f5_load_vocoder(),
-        ):
-            try:
-                _f5tts_vocoder = loader()
-                break
-            except TypeError as exc:
-                vocoder_errors.append(str(exc))
-                continue
-        if _f5tts_vocoder is None:
-            raise RuntimeError(
-                "F5-TTS vocoder loader signature mismatch: "
-                + " | ".join(vocoder_errors)
-            )
+        _f5tts_model = _f5_load_model(
+            DiT,
+            _F5TTS_MODEL_ARCH,
+            str(_F5TTS_MODEL_PATH),
+            mel_spec_type="vocos",
+            device=dev,
+        )
+        _f5tts_vocoder = _f5_load_vocoder(
+            vocoder_name="vocos",
+            is_local=True,
+            local_path=str(_F5TTS_VOCODER_PATH),
+            device=dev,
+        )
         logger.info("F5-TTS model loaded on device=%s", dev)
     return _f5tts_model, _f5tts_vocoder
 
@@ -540,44 +627,37 @@ def _f5tts_synthesize(
     model, vocoder = _get_f5tts(device)
     synth_text = _apply_hebrew_g2p(text, use_g2p=use_g2p)
 
-    ref_audio = None
-    ref_text = None
-    if speaker_ref_path and speaker_ref_path.exists() and _f5_preprocess_ref_audio_text is not None:
-        try:
-            preprocessed = _f5_preprocess_ref_audio_text(str(speaker_ref_path), "")
-            if isinstance(preprocessed, tuple) and len(preprocessed) >= 2:
-                ref_audio, ref_text = preprocessed[0], preprocessed[1]
-            else:
-                ref_audio = preprocessed
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("F5-TTS speaker preprocessing failed: %s", exc)
+    ref_file, ref_text = _get_default_f5_reference()
+    env_ref_text = os.environ.get("F5TTS_REF_TEXT", "").strip()
+    if speaker_ref_path and speaker_ref_path.exists():
+        if env_ref_text:
+            ref_file = speaker_ref_path
+            ref_text = env_ref_text
+        else:
+            logger.warning(
+                "F5-TTS speaker_ref_path ignored because F5TTS_REF_TEXT is not set; using bundled reference audio"
+            )
 
-    output = None
-    infer_errors: list[str] = []
-    call_variants = [
-        lambda: _f5_infer_process(ref_audio, ref_text, synth_text, model, vocoder=vocoder),
-        lambda: _f5_infer_process(ref_audio, ref_text, synth_text, model, vocoder),
-        lambda: _f5_infer_process(synth_text, model, vocoder=vocoder, ref_audio=ref_audio, ref_text=ref_text),
-        lambda: _f5_infer_process(synth_text, model, vocoder),
-    ]
-    for variant in call_variants:
-        try:
-            output = variant()
-            break
-        except TypeError as exc:
-            infer_errors.append(str(exc))
-            continue
-    if output is None:
-        raise RuntimeError(f"F5-TTS infer_process signature mismatch: {' | '.join(infer_errors)}")
-
+    _patch_torchaudio_load_for_f5()
+    _ensure_utf8_stdio()
+    output = _f5_infer_process(
+        str(ref_file),
+        ref_text,
+        synth_text,
+        model,
+        vocoder,
+        show_info=lambda *_args, **_kwargs: None,
+        progress=None,
+    )
     duration, sample_rate = _materialize_audio_output(output, out_path, default_sample_rate=24000)
     return TTSResult(out_path, "f5tts", len(text), duration, sample_rate)
 
 
-def _get_lightblue_runtime() -> Any:
+def _get_lightblue_runtime(voice: str | None = None) -> Any:
     """Resolve a usable LightBlue runtime object or module."""
     global _lightblue_runtime
-    if _lightblue_runtime is None:
+    voice_key = (voice or "").strip().lower() or "default"
+    if voice_key not in _lightblue_runtime:
         if not _LIGHTBLUE_AVAILABLE or _lightblue_module is None:
             raise ImportError("LightBlue TTS is not installed")
         if not _LIGHTBLUE_MODEL_PATH.exists():
@@ -585,28 +665,30 @@ def _get_lightblue_runtime() -> Any:
         module = _lightblue_module
         runtime_cls = getattr(module, "LightBlueTTS", None) or getattr(module, "Engine", None)
         if callable(runtime_cls):
+            style_path = _resolve_lightblue_style_path(voice)
             ctor_errors: list[str] = []
             for ctor in (
+                lambda: runtime_cls(onnx_dir=str(_LIGHTBLUE_MODEL_PATH), style_json=str(style_path) if style_path else None),
+                lambda: runtime_cls(str(_LIGHTBLUE_MODEL_PATH), style_json=str(style_path) if style_path else None),
                 lambda: runtime_cls(model_path=str(_LIGHTBLUE_MODEL_PATH)),
                 lambda: runtime_cls(model_dir=str(_LIGHTBLUE_MODEL_PATH)),
                 lambda: runtime_cls(root_dir=str(_LIGHTBLUE_MODEL_PATH)),
-                lambda: runtime_cls(str(_LIGHTBLUE_MODEL_PATH)),
                 lambda: runtime_cls(),
             ):
                 try:
-                    _lightblue_runtime = ctor()
+                    _lightblue_runtime[voice_key] = ctor()
                     break
                 except TypeError as exc:
                     ctor_errors.append(str(exc))
                     continue
-            if _lightblue_runtime is None:
+            if voice_key not in _lightblue_runtime:
                 raise RuntimeError(
                     "LightBlue runtime constructor signature mismatch: "
                     + " | ".join(ctor_errors)
                 )
         else:
-            _lightblue_runtime = module
-    return _lightblue_runtime
+            _lightblue_runtime[voice_key] = module
+    return _lightblue_runtime[voice_key]
 
 
 def _lightblue_synthesize(
@@ -626,26 +708,31 @@ def _lightblue_synthesize(
         duration, sample_rate = _probe_wav(out_path)
         return TTSResult(out_path, "lightblue", len(text), duration, sample_rate)
 
-    runtime = _get_lightblue_runtime()
+    runtime = _get_lightblue_runtime(voice_name)
+    phonemes = _phonemize_hebrew(synth_text)
     output = None
+    create = getattr(runtime, "create", None)
+    if callable(create):
+        output = create(phonemes)
     method_names = ("synthesize_to_file", "tts_to_file", "save", "synthesize")
-    for method_name in method_names:
-        method = getattr(runtime, method_name, None)
-        if not callable(method):
-            continue
-        try:
-            output = method(synth_text, str(out_path), voice=voice_name)
-            break
-        except TypeError:
+    if output is None:
+        for method_name in method_names:
+            method = getattr(runtime, method_name, None)
+            if not callable(method):
+                continue
             try:
-                output = method(synth_text, voice=voice_name, output_path=str(out_path))
+                output = method(phonemes, str(out_path), voice=voice_name)
                 break
             except TypeError:
                 try:
-                    output = method(synth_text, voice_name, str(out_path))
+                    output = method(phonemes, voice=voice_name, output_path=str(out_path))
                     break
                 except TypeError:
-                    continue
+                    try:
+                        output = method(phonemes, voice_name, str(out_path))
+                        break
+                    except TypeError:
+                        continue
     if output is None and out_path.exists():
         output = out_path
     if output is None:
@@ -665,16 +752,31 @@ def _get_phonikud_tts_voice() -> Any:
             raise FileNotFoundError(f"Phonikud TTS model not found: {_PHONIKUD_TTS_MODEL_PATH}")
         from piper import PiperVoice
 
-        if _PHONIKUD_TTS_CONFIG_PATH.exists():
+        config_path = _PHONIKUD_TTS_CONFIG_PATH
+        if config_path.exists():
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            if config.get("phoneme_type") == "raw":
+                normalized_config_path = config_path.with_name(
+                    f"{config_path.stem}.normalized{config_path.suffix}"
+                )
+                if not normalized_config_path.exists():
+                    config["phoneme_type"] = "text"
+                    normalized_config_path.write_text(
+                        json.dumps(config, ensure_ascii=False, indent=2),
+                        encoding="utf-8",
+                    )
+                config_path = normalized_config_path
+
+        if config_path.exists():
             try:
                 _phonikud_tts_voice = PiperVoice.load(
                     str(_PHONIKUD_TTS_MODEL_PATH),
-                    config_path=str(_PHONIKUD_TTS_CONFIG_PATH),
+                    config_path=str(config_path),
                 )
             except TypeError:
                 _phonikud_tts_voice = PiperVoice.load(
                     str(_PHONIKUD_TTS_MODEL_PATH),
-                    str(_PHONIKUD_TTS_CONFIG_PATH),
+                    str(config_path),
                 )
         else:
             _phonikud_tts_voice = PiperVoice.load(str(_PHONIKUD_TTS_MODEL_PATH))
@@ -691,8 +793,9 @@ def _phonikud_tts_synthesize(
     """Synthesize Hebrew speech via Piper-compatible ONNX voice."""
     output_dir.mkdir(parents=True, exist_ok=True)
     synth_text = _apply_hebrew_g2p(text, use_g2p=use_g2p)
+    phoneme_text = _phonemize_hebrew(synth_text)
     voice_name = voice or "michael"
-    cache_key = _cache_key(synth_text, voice_name)
+    cache_key = _cache_key(phoneme_text, voice_name)
     out_path = output_dir / f"tts_phonikud_{cache_key}.wav"
     if out_path.exists():
         logger.info("Phonikud TTS cache hit: %s", out_path.name)
@@ -701,16 +804,23 @@ def _phonikud_tts_synthesize(
 
     runtime = _get_phonikud_tts_voice()
     output = None
+    synthesize_wav = getattr(runtime, "synthesize_wav", None)
+    if callable(synthesize_wav):
+        with wave.open(str(out_path), "wb") as wav_file:
+            synthesize_wav(phoneme_text, wav_file)
+        output = out_path
     for method_name in ("synthesize", "synthesize_to_file", "tts_to_file"):
+        if output is not None:
+            break
         method = getattr(runtime, method_name, None)
         if not callable(method):
             continue
         try:
-            output = method(synth_text, str(out_path))
+            output = method(phoneme_text, str(out_path))
             break
         except TypeError:
             try:
-                output = method(synth_text, out_path)
+                output = method(phoneme_text, out_path)
                 break
             except TypeError:
                 continue
