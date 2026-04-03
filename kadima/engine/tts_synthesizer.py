@@ -28,6 +28,14 @@ from typing import Any
 from scipy.io import wavfile
 
 from kadima.engine.base import Processor, ProcessorResult, ProcessorStatus
+from kadima.engine.tts_bootstrap import (
+    F5TTS_MODEL_PATH as _F5TTS_MODEL_PATH,
+    F5TTS_VOCODER_PATH as _F5TTS_VOCODER_PATH,
+    LIGHTBLUE_MODEL_PATH as _LIGHTBLUE_MODEL_PATH,
+    MMS_MODEL_PATH as _MMS_BOOTSTRAP_PATH,
+    PHONIKUD_TTS_CONFIG_PATH as _PHONIKUD_TTS_CONFIG_PATH,
+    PHONIKUD_TTS_MODEL_PATH as _PHONIKUD_TTS_MODEL_PATH,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -223,6 +231,7 @@ _mms_model: Any = None
 _mms_tokenizer: Any = None
 # Prefer local pre-downloaded snapshot; falls back to HF download
 _MMS_LOCAL_PATH = os.environ.get("MMS_TTS_MODEL_PATH") or _first_existing_path(
+    _MMS_BOOTSTRAP_PATH,
     "F:/datasets_models/tts/mms-tts-heb/models--facebook--mms-tts-heb/snapshots/28f1fce7cf56b2a3a56e19a4a1405ed70b454853",
     Path(os.path.expanduser("~")).parent.parent
     / "datasets_models"
@@ -377,17 +386,6 @@ _f5tts_vocoder: Any = None
 _lightblue_runtime: Any = None
 _phonikud_tts_voice: Any = None
 
-_F5TTS_MODEL_PATH = Path(
-    os.environ.get("F5TTS_HEB_MODEL_PATH", "F:/datasets_models/tts/f5tts-hebrew-v2/model.pt")
-)
-_PHONIKUD_TTS_MODEL_PATH = Path(
-    os.environ.get("PHONIKUD_TTS_MODEL_PATH", "F:/datasets_models/tts/phonikud-tts/he_IL-heb-high.onnx")
-)
-_PHONIKUD_TTS_CONFIG_PATH = Path(
-    os.environ.get("PHONIKUD_TTS_CONFIG_PATH", f"{_PHONIKUD_TTS_MODEL_PATH}.json")
-)
-
-
 def _cache_key(text: str, *parts: str | None) -> str:
     """Stable SHA-256 key for text plus backend-specific parameters."""
     payload = "\x1f".join([text, *[part or "" for part in parts]])
@@ -488,6 +486,8 @@ def _get_f5tts(device: str) -> tuple[Any, Any]:
             raise ImportError("f5-tts not installed")
         if not _F5TTS_MODEL_PATH.exists():
             raise FileNotFoundError(f"F5-TTS model not found: {_F5TTS_MODEL_PATH}")
+        if not _F5TTS_VOCODER_PATH.exists():
+            raise FileNotFoundError(f"F5-TTS vocoder not found: {_F5TTS_VOCODER_PATH}")
         import torch
 
         dev = "cuda" if (device == "cuda" and torch.cuda.is_available()) else "cpu"
@@ -496,10 +496,26 @@ def _get_f5tts(device: str) -> tuple[Any, Any]:
             _f5tts_model = _f5_load_model(DiT, str(_F5TTS_MODEL_PATH), **kwargs)
         except TypeError:
             _f5tts_model = _f5_load_model(DiT, str(_F5TTS_MODEL_PATH))
-        try:
-            _f5tts_vocoder = _f5_load_vocoder(device=dev)
-        except TypeError:
-            _f5tts_vocoder = _f5_load_vocoder()
+        vocoder_errors: list[str] = []
+        for loader in (
+            lambda: _f5_load_vocoder(str(_F5TTS_VOCODER_PATH), device=dev),
+            lambda: _f5_load_vocoder(str(_F5TTS_VOCODER_PATH), dev),
+            lambda: _f5_load_vocoder(vocoder_path=str(_F5TTS_VOCODER_PATH), device=dev),
+            lambda: _f5_load_vocoder(model_path=str(_F5TTS_VOCODER_PATH), device=dev),
+            lambda: _f5_load_vocoder(device=dev),
+            lambda: _f5_load_vocoder(),
+        ):
+            try:
+                _f5tts_vocoder = loader()
+                break
+            except TypeError as exc:
+                vocoder_errors.append(str(exc))
+                continue
+        if _f5tts_vocoder is None:
+            raise RuntimeError(
+                "F5-TTS vocoder loader signature mismatch: "
+                + " | ".join(vocoder_errors)
+            )
         logger.info("F5-TTS model loaded on device=%s", dev)
     return _f5tts_model, _f5tts_vocoder
 
@@ -564,9 +580,32 @@ def _get_lightblue_runtime() -> Any:
     if _lightblue_runtime is None:
         if not _LIGHTBLUE_AVAILABLE or _lightblue_module is None:
             raise ImportError("LightBlue TTS is not installed")
+        if not _LIGHTBLUE_MODEL_PATH.exists():
+            raise FileNotFoundError(f"LightBlue model assets not found: {_LIGHTBLUE_MODEL_PATH}")
         module = _lightblue_module
         runtime_cls = getattr(module, "LightBlueTTS", None) or getattr(module, "Engine", None)
-        _lightblue_runtime = runtime_cls() if callable(runtime_cls) else module
+        if callable(runtime_cls):
+            ctor_errors: list[str] = []
+            for ctor in (
+                lambda: runtime_cls(model_path=str(_LIGHTBLUE_MODEL_PATH)),
+                lambda: runtime_cls(model_dir=str(_LIGHTBLUE_MODEL_PATH)),
+                lambda: runtime_cls(root_dir=str(_LIGHTBLUE_MODEL_PATH)),
+                lambda: runtime_cls(str(_LIGHTBLUE_MODEL_PATH)),
+                lambda: runtime_cls(),
+            ):
+                try:
+                    _lightblue_runtime = ctor()
+                    break
+                except TypeError as exc:
+                    ctor_errors.append(str(exc))
+                    continue
+            if _lightblue_runtime is None:
+                raise RuntimeError(
+                    "LightBlue runtime constructor signature mismatch: "
+                    + " | ".join(ctor_errors)
+                )
+        else:
+            _lightblue_runtime = module
     return _lightblue_runtime
 
 

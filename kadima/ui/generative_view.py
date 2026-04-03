@@ -632,34 +632,11 @@ class GenerativeView(QWidget):
     def _update_tts_ml_badges(self) -> None:
         """Update ML availability badges for TTS tab."""
         try:
-            from kadima.engine.tts_synthesizer import _F5TTS_AVAILABLE
-            f5tts_ok = _F5TTS_AVAILABLE
-        except Exception:
-            f5tts_ok = False
+            from kadima.engine.tts_bootstrap import get_tts_bootstrap_statuses
 
-        try:
-            from kadima.engine.tts_synthesizer import _LIGHTBLUE_AVAILABLE
-            lightblue_ok = _LIGHTBLUE_AVAILABLE
+            statuses = get_tts_bootstrap_statuses()
         except Exception:
-            lightblue_ok = False
-
-        try:
-            from kadima.engine.tts_synthesizer import _PHONIKUD_TTS_AVAILABLE
-            phonikud_ok = _PHONIKUD_TTS_AVAILABLE
-        except Exception:
-            phonikud_ok = False
-
-        try:
-            from kadima.engine.tts_synthesizer import _MMS_AVAILABLE
-            mms_ok = _MMS_AVAILABLE
-        except Exception:
-            mms_ok = False
-
-        try:
-            from kadima.engine.tts_synthesizer import _BARK_AVAILABLE
-            bark_ok = _BARK_AVAILABLE
-        except Exception:
-            bark_ok = False
+            statuses = {}
 
         try:
             from kadima.engine.tts_synthesizer import _ZONOS_AVAILABLE
@@ -667,16 +644,32 @@ class GenerativeView(QWidget):
         except Exception:
             zonos_ok = False
 
-        self._set_tts_badge(self._tts_f5tts_badge, f5tts_ok, "f5tts ready", "f5tts missing")
+        def _badge_text(name: str, fallback_missing: str) -> tuple[bool, str, str]:
+            status = statuses.get(name)
+            if status is None:
+                return False, f"{name} ready", fallback_missing
+            if status.ready:
+                return True, f"{name} ready", fallback_missing
+            if not status.package_ready:
+                return False, f"{name} ready", f"{name} pkg missing"
+            return False, f"{name} ready", f"{name} model missing"
+
+        f5_ok, f5_ready, f5_missing = _badge_text("f5tts", "f5tts missing")
+        lb_ok, lb_ready, lb_missing = _badge_text("lightblue", "lightblue missing")
+        ph_ok, ph_ready, ph_missing = _badge_text("phonikud", "phonikud missing")
+        mms_ok, mms_ready, mms_missing = _badge_text("mms", "mms fallback")
+        bark_ok, bark_ready, bark_missing = _badge_text("bark", "bark optional")
+
+        self._set_tts_badge(self._tts_f5tts_badge, f5_ok, f5_ready, f5_missing)
         self._set_tts_badge(
-            self._tts_lightblue_badge, lightblue_ok, "lightblue ready", "lightblue missing"
+            self._tts_lightblue_badge, lb_ok, lb_ready, lb_missing
         )
         self._set_tts_badge(
-            self._tts_phonikud_badge, phonikud_ok, "phonikud ready", "phonikud missing"
+            self._tts_phonikud_badge, ph_ok, ph_ready, ph_missing
         )
-        self._set_tts_badge(self._tts_mms_badge, mms_ok, "mms ready", "mms fallback")
+        self._set_tts_badge(self._tts_mms_badge, mms_ok, mms_ready, mms_missing)
         self._set_tts_badge(self._tts_zonos_badge, zonos_ok, "zonos ready", "zonos wsl only")
-        self._set_tts_badge(self._tts_bark_badge, bark_ok, "bark ready", "bark optional")
+        self._set_tts_badge(self._tts_bark_badge, bark_ok, bark_ready, bark_missing)
 
     # ------------------------------------------------------------------
     # Tab 2 — STT

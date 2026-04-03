@@ -21,12 +21,20 @@ def _make_view():
 
 
 def _tts_patches(*, f5: bool = True, lightblue: bool = True, phonikud: bool = True, mms: bool = True, bark: bool = True):
+    fake_statuses = {
+        "f5tts": SimpleNamespace(package_ready=f5, model_ready=f5, ready=f5),
+        "lightblue": SimpleNamespace(package_ready=lightblue, model_ready=lightblue, ready=lightblue),
+        "phonikud": SimpleNamespace(package_ready=phonikud, model_ready=phonikud, ready=phonikud),
+        "mms": SimpleNamespace(package_ready=mms, model_ready=mms, ready=mms),
+        "bark": SimpleNamespace(package_ready=bark, model_ready=bark, ready=bark),
+    }
     return [
         patch("kadima.engine.tts_synthesizer._F5TTS_AVAILABLE", f5),
         patch("kadima.engine.tts_synthesizer._LIGHTBLUE_AVAILABLE", lightblue),
         patch("kadima.engine.tts_synthesizer._PHONIKUD_TTS_AVAILABLE", phonikud),
         patch("kadima.engine.tts_synthesizer._MMS_AVAILABLE", mms),
         patch("kadima.engine.tts_synthesizer._BARK_AVAILABLE", bark),
+        patch("kadima.engine.tts_bootstrap.get_tts_bootstrap_statuses", return_value=fake_statuses),
     ]
 
 

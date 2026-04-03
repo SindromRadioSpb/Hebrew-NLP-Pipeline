@@ -67,7 +67,7 @@ translator:
   default_tgt_lang: en
 
 tts:
-  backend: xtts        # xtts (voice cloning) | mms (fast) | piper (lightweight)
+  backend: auto        # auto (f5tts -> lightblue -> phonikud -> mms) | f5tts | lightblue | phonikud | mms | bark
   device: cuda
   output_dir: ~/.kadima/audio
 
