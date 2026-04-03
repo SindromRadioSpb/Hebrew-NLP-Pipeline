@@ -9,6 +9,7 @@ All engine imports are lazy and wrapped in try/except ImportError.
 """
 from __future__ import annotations
 
+import csv
 import logging
 import shutil
 import time
@@ -39,8 +40,9 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-_TTS_LIGHTBLUE_VOICE_OPTIONS = ["", "Yonatan", "Noa"]
-_TTS_PHONIKUD_VOICE_OPTIONS = ["", "michael"]
+_TTS_VOICE_MODE_DEFAULT = "default"
+_TTS_VOICE_MODE_PRESET = "preset"
+_TTS_VOICE_MODE_CLONE = "clone"
 
 # ---------------------------------------------------------------------------
 # Engine module lazy imports — one block per module
@@ -183,6 +185,7 @@ class GenerativeView(QWidget):
         super().__init__(parent)
         self.setObjectName("generative_view")
         self._pool = QThreadPool.globalInstance()
+        self._tts_refreshing_voice_controls = False
         self._build_ui()
 
     # ------------------------------------------------------------------
@@ -455,8 +458,19 @@ class GenerativeView(QWidget):
         self._tts_input.textChanged.connect(self._on_tts_input_changed)
 
         # Voice cloning controls
+        mode_row = QHBoxLayout()
+        mode_lbl = QLabel("Voice mode:")
+        mode_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        mode_row.addWidget(mode_lbl)
+
+        self._tts_voice_mode = QComboBox()
+        self._tts_voice_mode.setObjectName("generative_tts_voice_mode")
+        self._tts_voice_mode.currentIndexChanged.connect(self._on_tts_voice_mode_changed)
+        mode_row.addWidget(self._tts_voice_mode, stretch=1)
+        lay.addLayout(mode_row)
+
         vc_row = QHBoxLayout()
-        self._tts_voice_clone_check = QLabel("🎤 Voice cloning:")
+        self._tts_voice_clone_check = QLabel("Reference WAV:")
         self._tts_voice_clone_check.setStyleSheet("color: #a0a0c0; font-size: 11px;")
         vc_row.addWidget(self._tts_voice_clone_check)
 
@@ -474,11 +488,12 @@ class GenerativeView(QWidget):
         lay.addLayout(vc_row)
 
         voice_row = QHBoxLayout()
-        voice_lbl = QLabel("Voice / Preset:")
+        voice_lbl = QLabel("Voice:")
         voice_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
         voice_row.addWidget(voice_lbl)
         self._tts_voice_input = QComboBox()
         self._tts_voice_input.setObjectName("generative_tts_voice")
+        self._tts_voice_input.currentIndexChanged.connect(self._on_tts_voice_selection_changed)
         voice_row.addWidget(self._tts_voice_input, stretch=1)
         lay.addLayout(voice_row)
 
@@ -532,8 +547,8 @@ class GenerativeView(QWidget):
             return
         backend = self._tts_backend.backend
         device = self._tts_backend.device
-        speaker_ref = self._tts_speaker_ref_input.text().strip() or None
-        voice = self._tts_voice_input.currentText().strip() or None
+        speaker_ref = self._tts_selected_speaker_ref()
+        voice = self._tts_selected_voice()
         worker = GenerativeWorker(
             tab_name="tts",
             module_cls=_TTSCls,
@@ -609,7 +624,7 @@ class GenerativeView(QWidget):
         self._tts_input.clear()
         self._tts_audio_player.clear()
         self._tts_speaker_ref_input.clear()
-        self._tts_voice_input.setCurrentText("")
+        self._tts_voice_mode.setCurrentIndex(0)
         self._tts_char_count.setText("0 chars")
         self._tts_word_count.setText("0 words")
         self._tts_progress.setVisible(False)
@@ -617,6 +632,7 @@ class GenerativeView(QWidget):
         if hasattr(self, "_tts_export_btn"):
             self._tts_export_btn.setEnabled(False)
         self._tts_status.setText("Ready")
+        self._refresh_tts_voice_controls()
 
     def _on_tts_input_changed(self) -> None:
         """Update char/word counters when TTS input text changes."""
@@ -641,67 +657,176 @@ class GenerativeView(QWidget):
         shutil.copyfile(self._tts_last_audio_path, path)
         self._tts_status.setText(f"Saved WAV to {path}")
 
-    def _populate_tts_voice_choices(self, options: list[str], *, editable: bool) -> None:
-        current = self._tts_voice_input.currentText().strip()
+    def _populate_tts_voice_modes(self, options: list[tuple[str, str]]) -> None:
+        current = self._tts_voice_mode.currentData()
+        self._tts_voice_mode.blockSignals(True)
+        self._tts_voice_mode.clear()
+        for value, label in options:
+            self._tts_voice_mode.addItem(label, value)
+        self._tts_voice_mode.blockSignals(False)
+        if current is not None:
+            for index in range(self._tts_voice_mode.count()):
+                if self._tts_voice_mode.itemData(index) == current:
+                    self._tts_voice_mode.setCurrentIndex(index)
+                    break
+
+    def _populate_tts_voice_choices(self, options: list[tuple[str, str]]) -> None:
+        current = self._tts_voice_input.currentData()
         self._tts_voice_input.blockSignals(True)
         self._tts_voice_input.clear()
-        self._tts_voice_input.addItems(options)
-        self._tts_voice_input.setEditable(editable)
-        self._tts_voice_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        line_edit = self._tts_voice_input.lineEdit()
-        if line_edit is not None:
-            if editable:
-                line_edit.setPlaceholderText("Optional local preset name")
-            else:
-                line_edit.setPlaceholderText("")
+        for value, label in options:
+            self._tts_voice_input.addItem(label, value)
+        self._tts_voice_input.setEditable(False)
         self._tts_voice_input.blockSignals(False)
-        self._tts_voice_input.setCurrentText(current)
+        if current is not None:
+            for index in range(self._tts_voice_input.count()):
+                if self._tts_voice_input.itemData(index) == current:
+                    self._tts_voice_input.setCurrentIndex(index)
+                    break
+
+    def _f5_voice_presets(self) -> list[tuple[str, str]]:
+        presets_dir = _get_f5tts_voice_presets_dir() if _get_f5tts_voice_presets_dir else None
+        manifest_path = presets_dir / "manifest.csv" if presets_dir else None
+        labels: dict[str, str] = {}
+        if manifest_path and manifest_path.exists():
+            try:
+                with manifest_path.open("r", encoding="utf-8", newline="") as handle:
+                    for row in csv.DictReader(handle):
+                        name = (row.get("preset_name") or "").strip()
+                        if not name:
+                            continue
+                        speaker_id = (row.get("speaker_id") or "").strip()
+                        duration = (row.get("duration_s") or "").strip()
+                        gender = (row.get("gender") or "").strip().capitalize()
+                        summary = f"{speaker_id} · {duration}s" if speaker_id and duration else name
+                        if gender:
+                            summary = f"{summary} · {gender}"
+                        labels[name] = f"{name} ({summary})"
+            except Exception as exc:
+                logger.warning("Failed to read F5 preset manifest: %s", exc)
+
+        presets = _list_f5tts_voice_presets() if _list_f5tts_voice_presets is not None else []
+        return [(name, labels.get(name, name)) for name in presets]
+
+    def _tts_selected_voice_mode(self) -> str:
+        return str(self._tts_voice_mode.currentData() or _TTS_VOICE_MODE_DEFAULT)
+
+    def _tts_selected_voice(self) -> str | None:
+        if self._tts_selected_voice_mode() != _TTS_VOICE_MODE_PRESET:
+            return None
+        return str(self._tts_voice_input.currentData() or "").strip() or None
+
+    def _tts_selected_speaker_ref(self) -> str | None:
+        if self._tts_selected_voice_mode() != _TTS_VOICE_MODE_CLONE:
+            return None
+        return self._tts_speaker_ref_input.text().strip() or None
 
     def _refresh_tts_voice_controls(self) -> None:
+        if self._tts_refreshing_voice_controls:
+            return
+        self._tts_refreshing_voice_controls = True
+        try:
+            self._refresh_tts_voice_controls_impl()
+        finally:
+            self._tts_refreshing_voice_controls = False
+
+    def _refresh_tts_voice_controls_impl(self) -> None:
         backend = self._tts_backend.backend
         if backend in {"auto", "f5tts"}:
-            presets = _list_f5tts_voice_presets() if _list_f5tts_voice_presets is not None else []
-            self._populate_tts_voice_choices(["", *presets], editable=True)
-            self._tts_voice_input.setEnabled(True)
+            preset_choices = self._f5_voice_presets()
+            mode_options = [
+                (_TTS_VOICE_MODE_DEFAULT, "Default voice (Recommended)"),
+                (_TTS_VOICE_MODE_CLONE, "Clone from reference WAV"),
+            ]
+            if preset_choices:
+                mode_options.insert(1, (_TTS_VOICE_MODE_PRESET, "Local preset voice"))
+            self._populate_tts_voice_modes(mode_options)
+            self._populate_tts_voice_choices(preset_choices)
             presets_dir = _get_f5tts_voice_presets_dir() if _get_f5tts_voice_presets_dir else None
-            if presets:
+            mode = self._tts_selected_voice_mode()
+            has_presets = bool(preset_choices)
+            self._tts_voice_input.setEnabled(mode == _TTS_VOICE_MODE_PRESET and has_presets)
+            self._tts_speaker_ref_input.setEnabled(mode == _TTS_VOICE_MODE_CLONE)
+            self._tts_speaker_browse_btn.setEnabled(mode == _TTS_VOICE_MODE_CLONE)
+            if mode == _TTS_VOICE_MODE_DEFAULT:
+                self._tts_voice_input.setCurrentIndex(-1)
+                self._tts_voice_input.setToolTip("Bundled stable F5 default voice")
+                self._tts_voice_hint.setText(
+                    "F5-TTS will use the bundled stable reference voice. This is the safest option for full-text synthesis."
+                )
+            elif mode == _TTS_VOICE_MODE_PRESET and has_presets:
+                if self._tts_voice_input.currentIndex() < 0 and self._tts_voice_input.count() > 0:
+                    self._tts_voice_input.setCurrentIndex(0)
                 self._tts_voice_input.setToolTip(f"Local F5 preset voices loaded from {presets_dir}")
                 self._tts_voice_hint.setText(
-                    "F5-TTS: leave this empty for the stable default voice, choose a local preset, or provide a reference WAV for cloning. "
-                    "Local Hebrew presets are experimental; if one fails, runtime falls back to the bundled default voice."
+                    "Select a local preset voice from the list. These Hebrew presets are experimental; if one fails, runtime falls back to the bundled default voice."
                 )
             else:
+                self._tts_voice_input.setCurrentIndex(-1)
                 self._tts_voice_input.setToolTip("No local F5 presets found.")
                 self._tts_voice_hint.setText(
-                    "F5-TTS: use the stable default voice or provide a reference WAV for cloning. No local preset voices are currently installed."
+                    "Choose a short clean WAV sample to clone a voice for F5-TTS."
                 )
             return
 
         if backend == "lightblue":
-            self._populate_tts_voice_choices(_TTS_LIGHTBLUE_VOICE_OPTIONS, editable=False)
+            self._populate_tts_voice_modes([(_TTS_VOICE_MODE_PRESET, "Built-in voice")])
+            self._populate_tts_voice_choices([
+                ("Yonatan", "Yonatan (Built-in male voice)"),
+                ("Noa", "Noa (Built-in female voice)"),
+            ])
+            if self._tts_voice_input.currentIndex() < 0 and self._tts_voice_input.count() > 0:
+                self._tts_voice_input.setCurrentIndex(0)
             self._tts_voice_input.setEnabled(True)
+            self._tts_speaker_ref_input.setEnabled(False)
+            self._tts_speaker_browse_btn.setEnabled(False)
             self._tts_voice_input.setToolTip("LightBlue preset voices")
-            self._tts_voice_hint.setText("LightBlue: preset voices are Yonatan and Noa.")
+            self._tts_voice_hint.setText("LightBlue: choose one of the built-in voices, Yonatan or Noa.")
             return
 
         if backend == "phonikud":
-            self._populate_tts_voice_choices(_TTS_PHONIKUD_VOICE_OPTIONS, editable=False)
+            self._populate_tts_voice_modes([(_TTS_VOICE_MODE_PRESET, "Built-in voice")])
+            self._populate_tts_voice_choices([("michael", "Michael (Packaged Hebrew voice)")])
+            self._tts_voice_input.setCurrentIndex(0)
             self._tts_voice_input.setEnabled(True)
+            self._tts_speaker_ref_input.setEnabled(False)
+            self._tts_speaker_browse_btn.setEnabled(False)
             self._tts_voice_input.setToolTip("Phonikud voice selection")
-            self._tts_voice_hint.setText("Phonikud: single packaged Hebrew voice (michael).")
+            self._tts_voice_hint.setText("Phonikud: one packaged Hebrew voice is available.")
             return
 
-        self._populate_tts_voice_choices([""], editable=False)
+        if backend == "mms":
+            self._populate_tts_voice_modes([(_TTS_VOICE_MODE_DEFAULT, "Packaged voice")])
+        else:
+            self._populate_tts_voice_modes([(_TTS_VOICE_MODE_CLONE, "Clone from reference WAV")])
+        self._populate_tts_voice_choices([])
         self._tts_voice_input.setEnabled(False)
+        self._tts_speaker_ref_input.setEnabled(backend == "bark")
+        self._tts_speaker_browse_btn.setEnabled(backend == "bark")
         if backend == "mms":
             self._tts_voice_input.setToolTip("MMS does not support voice selection")
-            self._tts_voice_hint.setText("MMS: voice selection is not available.")
+            self._tts_voice_hint.setText("MMS: voice is fixed, nothing to choose here.")
         else:
             self._tts_voice_input.setToolTip("This backend uses reference WAV or built-in defaults")
-            self._tts_voice_hint.setText("Bark: use a reference WAV; preset dropdown is not used.")
+            self._tts_voice_hint.setText("Bark: choose a reference WAV to clone a voice.")
 
     def _on_tts_backend_changed(self) -> None:
+        if self._tts_refreshing_voice_controls:
+            return
         self._refresh_tts_voice_controls()
+
+    def _on_tts_voice_mode_changed(self, _index: int) -> None:
+        if self._tts_refreshing_voice_controls:
+            return
+        self._refresh_tts_voice_controls()
+
+    def _on_tts_voice_selection_changed(self, _index: int) -> None:
+        if self._tts_refreshing_voice_controls:
+            return
+        if self._tts_backend.backend in {"auto", "f5tts"} and self._tts_selected_voice_mode() == _TTS_VOICE_MODE_PRESET:
+            selected_label = self._tts_voice_input.currentText().strip()
+            if selected_label:
+                self._tts_status.setText(f"Selected F5 preset: {selected_label}")
 
     def _set_tts_badge(self, badge: QLabel, ok: bool, ready_text: str, missing_text: str) -> None:
         if ok:

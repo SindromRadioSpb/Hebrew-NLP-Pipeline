@@ -77,7 +77,8 @@ def test_tts_clear_resets_voice_progress_and_export(qtbot) -> None:
     view._tts_export_btn.setEnabled(True)
     view._on_tts_clear()
     assert view._tts_input.toPlainText() == ""
-    assert view._tts_voice_input.currentText() == ""
+    assert view._tts_voice_mode.currentData() == "default"
+    assert view._tts_voice_input.currentIndex() == -1
     assert view._tts_status.text() == "Ready"
     assert not view._tts_progress.isVisible()
     assert not view._tts_export_btn.isEnabled()
@@ -124,8 +125,16 @@ def test_tts_voice_combo_loads_local_f5_presets(qtbot) -> None:
         view = _make_view()
         qtbot.add_widget(view)
 
+    mode_values = [view._tts_voice_mode.itemData(i) for i in range(view._tts_voice_mode.count())]
+    assert mode_values == ["default", "preset", "clone"]
     values = [view._tts_voice_input.itemText(i) for i in range(view._tts_voice_input.count())]
-    assert values == ["", "fleurs-he-m1513", "fleurs-he-m1517"]
+    assert values == [
+        "fleurs-he-m1513 (1513 · 4.74s · Male)",
+        "fleurs-he-m1517 (1517 · 7.08s · Male)",
+    ]
+    assert "safest option" in view._tts_voice_hint.text()
+
+    view._tts_voice_mode.setCurrentIndex(1)
     assert "Local F5 preset voices loaded from" in view._tts_voice_input.toolTip()
     assert "experimental" in view._tts_voice_hint.text()
 
@@ -144,10 +153,11 @@ def test_tts_backend_change_updates_voice_choices_for_lightblue(qtbot) -> None:
         qtbot.add_widget(view)
 
     view._tts_backend.set_backend("lightblue")
+    assert view._tts_voice_mode.currentData() == "preset"
     values = [view._tts_voice_input.itemText(i) for i in range(view._tts_voice_input.count())]
-    assert values == ["", "Yonatan", "Noa"]
+    assert values == ["Yonatan (Built-in male voice)", "Noa (Built-in female voice)"]
     assert view._tts_voice_input.isEnabled()
-    assert "Yonatan and Noa" in view._tts_voice_hint.text()
+    assert "Yonatan or Noa" in view._tts_voice_hint.text()
 
 
 def test_tts_backend_change_disables_voice_for_mms(qtbot) -> None:
@@ -158,5 +168,25 @@ def test_tts_backend_change_disables_voice_for_mms(qtbot) -> None:
         qtbot.add_widget(view)
 
     view._tts_backend.set_backend("mms")
+    assert view._tts_voice_mode.currentData() == "default"
     assert not view._tts_voice_input.isEnabled()
-    assert "not available" in view._tts_voice_hint.text()
+    assert "fixed" in view._tts_voice_hint.text()
+
+
+def test_tts_f5_clone_mode_enables_reference_browse(qtbot) -> None:
+    with ExitStack() as stack:
+        for ctx in _tts_patches():
+            stack.enter_context(ctx)
+        stack.enter_context(
+            patch(
+                "kadima.ui.generative_view._list_f5tts_voice_presets",
+                return_value=["fleurs-he-m1513"],
+            )
+        )
+        view = _make_view()
+        qtbot.add_widget(view)
+
+    view._tts_voice_mode.setCurrentIndex(2)
+    assert view._tts_voice_mode.currentData() == "clone"
+    assert view._tts_speaker_browse_btn.isEnabled()
+    assert not view._tts_voice_input.isEnabled()
