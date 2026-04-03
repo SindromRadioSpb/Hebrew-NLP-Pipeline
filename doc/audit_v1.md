@@ -857,19 +857,54 @@ ul
 | Confidence/logprob из сегментов | `stt_transcriber.py:186-193` | Quality scoring |
 | WER метрика | `stt_transcriber.py:85-119` | Validation |
 | Local model path discovery | `stt_transcriber.py:126-135`, `215-231` | Offline deployment |
-| 34 теста | `tests/engine/test_stt_transcriber.py` | CI coverage |
-| GenerativeView STT tab с FileDialog | CLAUDE.md | Desktop UI |
+| API endpoint `/generative/stt` | `api/routers/generative.py:562-603` | REST access |
+| STTRequest / STTResponse schema | `api/routers/generative.py:562-575` | API contract |
+| STT runtime note on successful fallback | `stt_transcriber.py` | Honest fallback reporting |
+| GenerativeView STT tab: supported formats, ready/changed status, final summary | `ui/generative_view.py:928-1120` | Product-grade desktop UX |
+| API success-path test with mocked `STTTranscriber.process()` | `tests/api/test_generative_router.py` | Router regression coverage |
+| Separate STT UI regression suite | `tests/engine/test_stt_tab_ui.py` | UX regression protection |
+| Targeted M16 suite: 67 PASS | `pytest tests/engine/test_stt_transcriber.py tests/api/test_generative_router.py tests/engine/test_stt_tab_ui.py -q` | Engine + API + UI verification |
+| Local model layout | `F:\datasets_models\stt\whisper-large-v3-turbo\`, CT2 snapshot path from `FASTER_WHISPER_MODEL_PATH`/default discovery | Offline deployment |
+| STT runtime packages staged + installed | `offline/wheels\openai_whisper-20250625-py3-none-any.whl`, `offline/wheels\faster_whisper-1.2.1-py3-none-any.whl`, current `.venv` | Offline bootstrap readiness |
+| Живой STT smoke + артефакты | `artefacts/stt_m16_smoke.txt`, `artefacts/stt_m16_smoke.json` | Реальная работоспособность M16 |
 
 #### B) Запланировано, не реализовано
 
 | Функциональность | Доказательство | Ожидаемые процессы | Блокеры |
 |-----------------|---------------|-------------------|---------|
-| API endpoint `/generative/stt` | CLAUDE.md "Planned" | REST access | **Не реализовано в router!** |
-| Streaming transcription | — | Real-time STT | High complexity |
+| TTS→STT round-trip integration test с WER gate < 0.15 | `Tasks/Kadima_v2.md` Phase 2 exit criteria | Сквозная проверка аудио-контура | Пока нет отдельного integration suite |
+| Persistence STT results в БД (`results_stt` / аналогичный слой) | `Tasks/Kadima_v2.md` Phase 2 DB criteria | Traceability и audit trail | Сейчас результат живёт только в engine/API/UI |
+
+#### C) Технически возможно, не планировалось
+
+| Функциональность | Основание | Потенциальная ценность | Риски/цена |
+|-----------------|-----------|------------------------|------------|
+| Streaming transcription | Естественное развитие M16 | Near-real-time UX | Высокая сложность, новая архитектура |
+| Word-level alignment (`whisperx`) | Улучшение subtitles / QA | Более точные таймкоды | Дополнительные модели и сложность |
+| VAD preprocessing (`silero-vad`) | Улучшение long/noisy audio | Лучшая устойчивость и меньше мусора | Дополнительный preprocessing path |
+| Diarization | Расшифровка многоспикерных записей | Более богатый STT workflow | Высокая стоимость внедрения |
+
+#### Patch Context (2026-04-03)
+
+- Перед реализацией M16 hardening проверены ключевые документы: `CLAUDE.md`, `Tasks/KADIMA_MASTER_PLAN_v2.md`, `Tasks/DEFINITION_OF_DONE.md`, `Tasks/Kadima_v2.md`.
+- Подтверждено расхождение: этот блок аудита отставал от кода и ошибочно утверждал, что `/generative/stt` отсутствует.
+- Blind spots, найденные на входе в итерацию, закрыты:
+  - STT tab теперь объясняет, что выбрано, что произойдёт и какой backend реально сработал.
+  - После выбора нового аудиофайла/смены backend-device есть явный статус, что transcript устарел.
+  - Router теперь покрыт и success-path веткой.
+  - Есть живой smoke-артефакт M16.
+
+#### Recommendations After Audit
+
+1. Следующий качественный прирост M16 даст не новый backend, а `TTS→STT` round-trip suite с автоматическим WER gate.
+2. Для качества long/noisy audio приоритетнее попробовать `silero-vad`, чем менять сам STT backend.
+3. Если нужны word-level timestamps и субтитры, следующий логичный шаг — `whisperx`.
+4. Любую новую "умную" модель сравнивать только по четырём критериям: Hebrew quality, latency, стабильность UX, простота offline bootstrap.
+5. `faster-whisper` должен оставаться в packaging/wheelhouse как first-class dependency, иначе M16 снова деградирует до “код есть, runtime нет”.
 
 #### Резюме модуля
 
-Зрелый. **Тот же разрыв**: API endpoint отсутствует в `generative.py`. Whisper — MIT (OK). faster-whisper — MIT (OK). ivrit-ai Hebrew Whisper — лицензия требует проверки.
+M16 доведён до продуктового baseline: engine, API, product-facing STT tab, regression coverage и живой smoke подтверждены. Остаточный backlog — integration-quality метрики (`TTS→STT WER`) и persistence/audit trail.
 
 ---
 
@@ -1288,7 +1323,7 @@ ul
 
 5. **`doc/` директория**: CLAUDE.md ссылается на `doc/Техническое задание разработка KADIMA/`, но эта директория не найдена (возможно не создана или gitignored). Требует проверки.
 
-6. **API endpoints для M15 TTS, M16 STT, M18 Sentiment, M20 QA**: CLAUDE.md отмечает их как "Planned", но они не добавлены в `generative.py` даже после реализации движков. Это явный разрыв между engine и API слоем.
+6. **Исторический разрыв engine/API для M15 TTS, M16 STT, M18 Sentiment, M20 QA**: был зафиксирован в старом срезе аудита, но на текущий момент устранён — соответствующие endpoints уже реализованы в `generative.py`.
 
 7. **Migration 005 (`005_generative_results.sql`)**: CLAUDE.md описывает эту миграцию как "create when first generative module lands", но из 12 реализованных генеративных модулей ни один не сохраняет результаты в DB. Миграция не создана.
 
@@ -1321,7 +1356,7 @@ ul
 ### Разрыв planned vs implemented
 
 - **Engine**: 21/22 модулей реализованы (95%). Только M25 отсутствует.
-- **API endpoints**: 10 из 18 endpoints генеративного роутера реализованы. **Отсутствуют**: TTS, STT, Sentiment, QA (4 missing).
+- **API endpoints**: phase-2 gap по M15/M16/M18/M20 уже закрыт; `/generative/tts`, `/generative/stt`, `/generative/sentiment`, `/generative/qa` реализованы. Остаточный API backlog нужно пересчитывать отдельно от этого исторического среза.
 - **DB migrations**: 4 из 5+ запланированных. Migration 005 (results storage) не создана.
 - **Infrastructure layers**: Фазы F (infra/) и S (services/) не начаты. Translation Memory, Study service, Audio cache — отсутствуют.
 - **Производительность UI**: ≤500ms first-paint contract (из COLD_AUDIT_FRAMEWORK) — не верифицирован.
@@ -1375,11 +1410,10 @@ ul
 
 ### P1 (важно — блокирует API completeness)
 
-**P1-1: Добавить отсутствующие API endpoints**
-- Что: Добавить в `api/routers/generative.py` endpoints: POST `/generative/tts`, POST `/generative/stt`, POST `/generative/sentiment`, POST `/generative/qa`
-- Зачем: M15, M16, M18, M20 реализованы но недоступны через REST
-- Файлы: `kadima/api/routers/generative.py`, `kadima/api/schemas.py`
-- Оценка: ~2-4 часа работы
+**P1-1: API gap M15/M16/M18/M20**
+- Статус: **ЗАКРЫТО**
+- Что было сделано: в `api/routers/generative.py` добавлены `/generative/tts`, `/generative/stt`, `/generative/sentiment`, `/generative/qa`
+- Следующий приоритет: не новые endpoints, а results storage и дальнейшее hardening
 
 **P1-2: Создать migration 005 (results storage)**
 - Что: Создать `kadima/data/migrations/005_generative_results.sql` с таблицами results_nikud, results_translation, results_tts, results_ner, results_sentiment, results_summary, results_qa
@@ -1455,7 +1489,7 @@ KADIMA — функционально завершённый Hebrew NLP pipeline
 - Migration 005 (results storage для M13-M24)
 - Фаза F: `kadima/domain/`, `kadima/infra/`, FTS5, SettingsService
 - Фаза S: Translation Memory, Study Service (SM-2 SRS), Audio cache
-- 4 API endpoints: TTS, STT, Sentiment, QA
+- Исторический API gap TTS/STT/Sentiment/QA уже закрыт
 - Docker production hardening
 - Circuit breaker / rate limiter
 - Security layer (path validation, audit log, AES для API keys)

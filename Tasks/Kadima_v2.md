@@ -247,6 +247,33 @@ CREATE TABLE results_qa (id, document_id, context, question, answer, score, crea
 - [ ] TTS→STT round-trip WER < 0.15
 - [ ] Миграция 005 применяется, результаты сохраняются в БД
 
+**M16 follow-up hardening track (2026-04-03):**
+- Не терять контекст post-implementation: M16 engine и `/generative/stt` уже есть, но нужен product-quality pass.
+- PATCH-01 Audit sync — DONE:
+  - обновить `doc/audit_v1.md` под фактическое состояние M16;
+  - зафиксировать blind spots, smoke evidence gap и реальные model paths.
+- PATCH-02 STT UI/UX — DONE:
+  - supported formats hint;
+  - ready/changed status после выбора/смены аудиофайла;
+  - итоговый status summary: backend used, duration, confidence;
+  - честный fallback note, если `auto` ушёл с `whisper` на `faster-whisper`.
+- PATCH-03 Tests + smoke — DONE:
+  - success-path API tests;
+  - отдельные UI regression tests для STT tab;
+  - живой STT smoke и артефакты.
+
+**Closed evidence:**
+- `67 PASS`: `tests/engine/test_stt_transcriber.py`, `tests/api/test_generative_router.py`, `tests/engine/test_stt_tab_ui.py`
+- Live smoke artifacts:
+  - `artefacts/stt_m16_smoke.txt`
+  - `artefacts/stt_m16_smoke.json`
+
+**Recommendations After Audit:**
+- Не добавлять новый STT backend до закрытия UX и smoke evidence.
+- Для улучшения качества long/noisy audio рассмотреть `silero-vad`.
+- Для word-level alignment и subtitle-oriented flow рассмотреть `whisperx`.
+- Любую новую модель сравнивать по Hebrew quality, latency, offline bootstrap и UX predictability.
+
 ---
 
 ### Фаза 3: Генеративные модули — Tier 3 + Инфраструктура (2-3 недели)
