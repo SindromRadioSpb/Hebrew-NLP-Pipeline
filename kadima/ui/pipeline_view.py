@@ -97,6 +97,11 @@ class _WorkerSignals(QObject):
     failed = pyqtSignal(str)          # error message
     log = pyqtSignal(str)             # single log line
 
+    # Premium Progress UX signals (per premium-operation-progress-ux skill)
+    activity = pyqtSignal(str)        # activity log line
+    counters = pyqtSignal(object)     # {"ok": N, "skip": N, "failed": N}
+    stage_info = pyqtSignal(str, int, int)  # (stage_name, current_stage, total_stages)
+
 
 # ── Pipeline worker ───────────────────────────────────────────────────────────
 
@@ -395,13 +400,31 @@ class PipelineView(QWidget):
         self._term_mode.addItems(["distinct", "canonical", "clustered", "related"])
         self._term_mode.setCurrentText("canonical")
         self._term_mode.setToolTip(
-            "distinct: все формы отдельно\n"
-            "canonical: дедуп (הפלדה→פלде)\n"
-            "clustered: семантические группы\n"
-            "related: без merge, но с cluster_id"
+            "distinct: \u0432\u0441\u0435 \u0444\u043e\u0440\u043c\u044b \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u043e\n"
+            "canonical: \u0434\u0435\u0434\u0443\u043f (\u05d4\u05e4\u05dc\u05d3\u05d4\u2192\u05e4\u05dc\u05d3\u05d4)\n"
+            "clustered: \u0441\u0435\u043c\u0430\u043d\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u0435 \u0433\u0440\u0443\u043f\u043f\u044b\n"
+            "related: \u0431\u0435\u0437 merge, \u043d\u043e \u0441 cluster_id"
         )
         term_row.addWidget(self._term_mode)
         tg_layout.addLayout(term_row)
+
+        # Noise filter toggle (M8/M12)
+        noise_row = QHBoxLayout()
+        noise_lbl = QLabel("Term Filter:")
+        noise_lbl.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        noise_row.addWidget(noise_lbl)
+        self._noise_filter = QCheckBox("Noise (Latin/Num/Punct)")
+        self._noise_filter.setObjectName("pipeline_noise_filter")
+        self._noise_filter.setChecked(True)
+        self._noise_filter.setToolTip("Filter n-grams containing non-Hebrew tokens")
+        noise_row.addWidget(self._noise_filter)
+        self._pos_filter = QCheckBox("POS (NOUN/ADJ only)")
+        self._pos_filter.setObjectName("pipeline_pos_filter")
+        self._pos_filter.setChecked(True)
+        self._pos_filter.setToolTip("Skip terms with non-content POS tags")
+        noise_row.addWidget(self._pos_filter)
+        noise_row.addStretch()
+        tg_layout.addLayout(noise_row)
 
         # Extraction Backend (T7-3)
         backend_row = QHBoxLayout()
@@ -563,6 +586,8 @@ class PipelineView(QWidget):
             "np_max_span": self._max_span.value(),
             "term_mode": self._term_mode.currentText(),
             "term_extractor_backend": self._term_backend.currentText(),
+            "noise_filter_enabled": self._noise_filter.isChecked(),
+            "pos_filter_enabled": self._pos_filter.isChecked(),
         }
         return {"profile": profile, "modules": modules, "thresholds": thresholds}
 

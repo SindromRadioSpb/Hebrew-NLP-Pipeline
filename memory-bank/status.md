@@ -1,10 +1,10 @@
 # Current Status — KADIMA
 # Обновляй этот файл после каждого значимого изменения!
-# Последнее обновление: 2026-04-02
+# Последнее обновление:
 
 ---
 
-## Версия: 0.9.x → цель 1.0.0
+## Версия: 0.9.x → цель 1.0.0 (обновлено 2026-04-02)
 
 ---
 
@@ -12,7 +12,9 @@
 
 | Компонент | Статус | Доказательство |
 |-----------|--------|----------------|
-| NLP pipeline M1-M8, M12 | Working | engine/*.py + tests/engine/ |
+| NLP pipeline M1-M8, M12 | Working | engine/*.py + tests/engine/ (236 PASS) |
+| Noise filter UI controls | Working | pipeline_view.py: _noise_filter, _pos_filter → _get_config_dict |
+| Premium Progress UX (infra) | Ready (not connected) | widgets/operation_progress.py, tests/ui/test_progress.py (24 PASS) |
 | Pipeline `run_on_text()` | Working | orchestrator.py |
 | Pipeline `run(corpus_id)` | Working | orchestrator.py + E2E tests |
 | Generative M13-M24 (12 модулей) | Working | engine/*.py + tests/engine/ |
@@ -81,15 +83,27 @@
 | — | Generative router расширен до 12 endpoints (M15/M16/M18/M20 добавлены) |
 | — | audit_v1.md создан (1106+ строк, все 15 противоречий устранены) |
 | — | M8 Term Extractor: POS-aware filtering (+21% precision), 111 tests |
-| — | M8 Term Extractor: 4 режима term_mode (distinct/canonical/clustered/related), UI selector, help panel, 14 колонок, 30 тестов, integration test script |
-| — | T7-3: AlephBERT Fine-Tuning infrastructure — M8Backend (ABC) + StatisticalBackend + AlephBERTBackend, training CLI (export/train/eval), PipelineView Extraction Method selector, ResultsView backend badge,
+| — | M8 Term Extractor: 4 режима term_mode (distinct/canonical/clustered/related), UI selector, help panel, 14 колонок, 40 тестов engine API 9/9, 172 строк) |
+| — | T7-3: AlephBERT Fine-Tuning infrastructure — M8Backend (ABC) + StatisticalBackend + AlephBERTBackend, training CLI (export/train/eval), PipelineView Extraction Method selector, ResultsView backend badge |
 | — | .cline/skills/ создан (13 skills) |
 | — | §§5.1-5.4 M1-M4 актуализированы: статусы, строки кода, тесты, баг min_n/max_n исправлен |
+| — | M5 NP Chunker: POS-aware filtering, _is_valid_np_head()/_is_valid_np_mod(), noise 43%→5%, 26/26 PASS |
+| — | UI: TermsTableModel sort fix (int/float cast), NgramTable/NPChunkTable уже numeric |
+| — | M8: noise_filter_enabled + pos_filter_enabled добавлены в UI (pipeline_view.py Thresholds) |
+| — | OperationProgressDialog создан (widgets/operation_progress.py, 330+ строк, 24 теста) |
+| — | _WorkerSignals расширены: activity, counters, stage_info сигналы |
+| — | audit_v1.md обновлён: добавлены разделы 13-14 (повторный аудит M1-M8) |
 
 ---
 
-## Test Count (приблизительно)
-~980 test functions в 47 файлах (не верифицировано последним запуском)
+## Test Count (последний запуск: 2026-04-02)
+**823/824 PASSED** (1 pre-existing failure в M15 TTS — `test_process_mms_unavailable_returns_failed`)
+
+M1-M8 engine tests: 236/236 PASS
+Integration E2E: 16/16 PASS
+API tests: 114/114 PASS
+Premium Progress UX: 24/24 PASS
+Noise filtering: 6/6 PASS
 
 Основные test файлы:
 - `tests/engine/test_*.py` — по одному на каждый engine модуль

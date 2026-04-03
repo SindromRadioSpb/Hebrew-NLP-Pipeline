@@ -344,6 +344,13 @@ class PipelineService:
                 am_result = proc_result.data  # AMResult
                 logger.debug("M7: %d AM scores", len(am_result.scores))
 
+        # ── M12: Noise Classification (before M8, needed for noise filtering) ──
+        if "noise" in enabled and "noise" in self.modules:
+            proc = self.modules["noise"]
+            proc_result = proc.process(all_tokens, self._get_module_config("noise"))
+            result.module_results["noise"] = proc_result
+            logger.debug("M12: noise classified %d tokens", len(all_tokens))
+
         # ── M8: Term Extraction ──────────────────────────────────────────
         if "term_extract" in enabled and "term_extract" in self.modules:
             proc = self.modules["term_extract"]
@@ -357,12 +364,23 @@ class PipelineService:
                         "t_score": score.t_score, "chi_square": score.chi_square, "phi": score.phi,
                     }
 
+            # M12 → M8: Build noise labels dict from M12 output
+            noise_labels: dict[str, str] = {}
+            noise_proc_result = result.module_results.get("noise")
+            if noise_proc_result and noise_proc_result.data:
+                noise_result_data = noise_proc_result.data  # NoiseResult
+                if hasattr(noise_result_data, "labels"):
+                    for nl in noise_result_data.labels:
+                        noise_labels[nl.surface] = nl.noise_type
+                logger.debug("M12→M8: %d noise labels passed to term extractor", len(noise_labels))
+
             term_input = {
                 "ngrams": ngram_result.ngrams if ngram_result else [],
                 "am_scores": am_scores,
                 "np_chunks": np_chunk_result.chunks if np_chunk_result else [],
                 "canonical_mappings": canonical_mappings,  # M6 → M8: use canonical forms for term dedup
                 "morph_analyses": m3_result.data.analyses if (m3_result and m3_result.data) else [],  # M3 → M8: POS-aware filtering
+                "noise_labels": noise_labels,  # M12 → M8: noise classification for filtering
             }
             proc_result = proc.process(term_input, self._get_module_config("term_extract"))
             result.module_results["term_extract"] = proc_result
@@ -372,13 +390,6 @@ class PipelineService:
                 term_result: TermResult = proc_result.data
                 result.terms = term_result.terms
                 logger.debug("M8: %d terms", len(term_result.terms))
-
-        # ── M12: Noise Classification ────────────────────────────────────
-        if "noise" in enabled and "noise" in self.modules:
-            proc = self.modules["noise"]
-            proc_result = proc.process(all_tokens, self._get_module_config("noise"))
-            result.module_results["noise"] = proc_result
-            logger.debug("M12: noise classified %d tokens", len(all_tokens))
 
         result.total_time_ms = (time.time() - start) * 1000
         result.status = ProcessorStatus.READY

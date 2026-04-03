@@ -671,10 +671,57 @@ class GenerativeView(QWidget):
         self._diacritize_backend.setObjectName("generative_diacritize_backend")
         lay.addWidget(self._diacritize_backend)
 
+        # Help text explaining backends
+        help_lbl = QLabel(
+            "<b>phonikud</b>: fast ONNX model (<1GB) &middot; "
+            "<b>dicta</b>: DictaBERT transformers (higher quality, slower) &middot; "
+            "<b>rules</b>: dictionary lookup (always available)"
+        )
+        help_lbl.setWordWrap(True)
+        help_lbl.setStyleSheet("color: #8888aa; font-size: 10px; padding: 2px 0;")
+        help_lbl.setObjectName("generative_diacritize_help")
+        lay.addWidget(help_lbl)
+
+        # ML availability badges
+        badge_row = QHBoxLayout()
+        self._diacritize_phonikud_badge = QLabel()
+        self._diacritize_phonikud_badge.setObjectName("generative_diacritize_phonikud_badge")
+        self._diacritize_phonikud_badge.setStyleSheet("font-size: 10px; padding: 2px 6px;")
+        badge_row.addWidget(self._diacritize_phonikud_badge)
+
+        self._diacritize_dicta_badge = QLabel()
+        self._diacritize_dicta_badge.setObjectName("generative_diacritize_dicta_badge")
+        self._diacritize_dicta_badge.setStyleSheet("font-size: 10px; padding: 2px 6px;")
+        badge_row.addWidget(self._diacritize_dicta_badge)
+        badge_row.addStretch()
+        lay.addLayout(badge_row)
+        self._update_diacritize_ml_badges()
+
+        # Input with character counter
+        input_row = QHBoxLayout()
+        input_row.setSpacing(4)
         self._diacritize_input = RTLTextEdit(placeholder="הכנס טקסט ללא ניקוד")
         self._diacritize_input.setObjectName("generative_diacritize_input")
         self._diacritize_input.setMaximumHeight(120)
-        lay.addWidget(self._diacritize_input)
+        input_row.addWidget(self._diacritize_input, stretch=1)
+
+        counter_col = QVBoxLayout()
+        counter_col.setSpacing(2)
+        self._diacritize_char_count = QLabel("0 chars")
+        self._diacritize_char_count.setStyleSheet("color: #a0a0c0; font-size: 10px;")
+        self._diacritize_char_count.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        counter_col.addWidget(self._diacritize_char_count)
+
+        self._diacritize_word_count = QLabel("0 words")
+        self._diacritize_word_count.setStyleSheet("color: #a0a0c0; font-size: 10px;")
+        self._diacritize_word_count.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        counter_col.addWidget(self._diacritize_word_count)
+        counter_col.addStretch()
+        input_row.addLayout(counter_col)
+        lay.addLayout(input_row)
+
+        # Wire text change signal to update counters
+        self._diacritize_input.textChanged.connect(self._on_diacritize_input_changed)
 
         btn_row, run_btn, clear_btn, copy_btn, _ = self._make_button_row(
             run_label="Diacritize", copy_label="Copy Result"
@@ -738,7 +785,8 @@ class GenerativeView(QWidget):
         try:
             text = ""
             if result.data:
-                text = str(getattr(result.data, "text", result.data))
+                # DiacritizeResult uses 'result' field, not 'text'
+                text = str(getattr(result.data, "result", ""))
             self._diacritize_result.setPlainText(text)
         except Exception as exc:
             logger.warning("diacritize result display error: %s", exc)
@@ -748,6 +796,53 @@ class GenerativeView(QWidget):
         self._diacritize_input.clear()
         self._diacritize_result.clear()
         self._diacritize_status.setText("Ready")
+
+    def _update_diacritize_ml_badges(self) -> None:
+        """Update ML availability badges for diacritize tab."""
+        # phonikud: check if _PhOnnx was imported successfully
+        try:
+            from kadima.engine.diacritizer import _PHONIKUD_AVAILABLE
+            phonikud_ok = _PHONIKUD_AVAILABLE
+        except Exception:
+            phonikud_ok = False
+
+        # dicta: check if transformers is available
+        try:
+            from kadima.engine.diacritizer import _TRANSFORMERS_AVAILABLE
+            dicta_ok = _TRANSFORMERS_AVAILABLE
+        except Exception:
+            dicta_ok = False
+
+        # Style badges
+        if phonikud_ok:
+            self._diacritize_phonikud_badge.setText("✅ phonikud ready")
+            self._diacritize_phonikud_badge.setStyleSheet(
+                "color: #22c55e; font-size: 10px; padding: 2px 6px;"
+            )
+        else:
+            self._diacritize_phonikud_badge.setText("⬜ phonikud (pip install phonikud-onnx)")
+            self._diacritize_phonikud_badge.setStyleSheet(
+                "color: #a0a0c0; font-size: 10px; padding: 2px 6px;"
+            )
+
+        if dicta_ok:
+            self._diacritize_dicta_badge.setText("✅ dicta ready")
+            self._diacritize_dicta_badge.setStyleSheet(
+                "color: #22c55e; font-size: 10px; padding: 2px 6px;"
+            )
+        else:
+            self._diacritize_dicta_badge.setText("⬜ dicta (pip install transformers)")
+            self._diacritize_dicta_badge.setStyleSheet(
+                "color: #a0a0c0; font-size: 10px; padding: 2px 6px;"
+            )
+
+    def _on_diacritize_input_changed(self) -> None:
+        """Update char/word counters when input text changes."""
+        text = self._diacritize_input.toPlainText()
+        char_count = len(text)
+        word_count = len(text.split()) if text.strip() else 0
+        self._diacritize_char_count.setText(f"{char_count} chars")
+        self._diacritize_word_count.setText(f"{word_count} words")
 
     # ------------------------------------------------------------------
     # Tab 5 — NER

@@ -272,7 +272,10 @@ kadima/infra/reference/hewiki_connector.py — Hebrew Wikipedia как reference
 | API endpoints | 29 | 40+ |
 | UI views | 10 | 13 (+ concordance, wizard, palette) |
 | DB migrations | 4 | 12+ |
-| Test functions | ~980 | 800+ верифицировано |
+| Test count (верифицировано) | 823/824 | 800+ |
+| M1-M8 tests | 236/236 PASS | — |
+| Progress UX | готов (не подключен) | подключён к PipelineView |
+| Noise filter UI | ✅ готов | — |
 | VRAM peak (3 модели) | — | ≤8GB |
 | UI first-paint | — | ≤500ms (cold-audit) |
 | Security issues | не проверено | 0 critical |

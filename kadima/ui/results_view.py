@@ -33,7 +33,7 @@ try:
         Qt,
         pyqtSignal,
     )
-    from PyQt6.QtGui import QKeySequence, QShortcut
+    from PyQt6.QtGui import QColor, QKeySequence, QShortcut
     from PyQt6.QtWidgets import (
         QHBoxLayout,
         QKeySequenceEdit,
@@ -456,6 +456,11 @@ class ResultsView(QWidget):
         # AM Scores tab
         self._am_widget = self._build_am_tab()
         self._tabs.addTab(self._am_widget, "📊  AM Scores")
+
+        # Noise Analysis tab (M12)
+        self._noise_widget = self._build_noise_tab()
+        self._tabs.addTab(self._noise_widget, "🔇  Noise Analysis")
+
         self._tabs.currentChanged.connect(self._on_tab_changed)
 
         layout.addWidget(self._tabs)
@@ -594,6 +599,184 @@ class ResultsView(QWidget):
         layout.addWidget(self._am_empty_label)
 
         return container
+
+    def _build_noise_tab(self) -> QWidget:
+        """Build the Noise Analysis dashboard tab (M12).
+
+        Shows:
+          1. Info panel — what noise classification means for term quality
+          2. Summary card: Total tokens, Noise count, Noise rate %, Distribution
+          3. Top noise tokens table: Token | Type | Count
+        """
+        from PyQt6.QtWidgets import QGroupBox, QTableWidget, QTableWidgetItem, QHeaderView
+        from PyQt6.QtCore import Qt as _Qt
+
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(12)
+
+        # Info panel
+        info_panel = QLabel(
+            "<b>🔇 Noise Analysis (M12)</b> — классификация токенов по типу шума.<br><br>"
+            "Noise-токены — это токены, которые <b>не являются значимыми терминами</b>:<br>"
+            "• <b>Numbers</b> — числа (42, 7.5, 50%)<br>"
+            "• <b>Latin</b> — латинские буквы (MPa, alpha, test)<br>"
+            "• <b>Punctuation</b> — знаки препинания (!!!, ...)<br>"
+            "• <b>Chemical</b> — химические формулы (H₂O, NaCl)<br>"
+            "• <b>Quantity</b> — единицы измерения (°C, mg, km)<br>"
+            "• <b>Math</b> — математические символы (+, =, ∫, ∞)<br>"
+            "• <b>Mixed</b> — смешанные Hebrew+Latin (חוזקX)<br><br>"
+            "<b>Зачем это нужно:</b> шумовые токены отфильтровываются при извлечении терминов. "
+            "Высокий noise rate (>20%) может указывать на низкое качество корпуса.<br>"
+            "<span style='color: #888;'>💡 Noise classification влияет на M8 Term Extractor filtering.</span>"
+        )
+        info_panel.setObjectName("noise_info_panel")
+        info_panel.setWordWrap(True)
+        info_panel.setTextInteractionFlags(
+            _Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        info_panel.setStyleSheet(
+            "QLabel#noise_info_panel { background: #1a1a3a; border: 1px solid #3d3d5c;"
+            "  border-radius: 6px; color: #d0d0e0; padding: 10px 14px; "
+            "  font-size: 12px; line-height: 1.5; }"
+        )
+        layout.addWidget(info_panel)
+
+        # Summary card
+        summary_group = QGroupBox("Noise Summary")
+        summary_group.setStyleSheet(
+            "QGroupBox { color: #e0e0e0; font-weight: bold; border: 1px solid #3d3d5c;"
+            "  border-radius: 6px; margin-top: 8px; padding-top: 12px; }"
+            "QGroupBox::title { subcontrol-origin: margin; left: 10px; color: #a0a0c0; }"
+        )
+        summary_layout = QVBoxLayout(summary_group)
+
+        self._noise_summary_table = QTableWidget(0, 3)
+        self._noise_summary_table.setObjectName("noise_summary_table")
+        self._noise_summary_table.setHorizontalHeaderLabels(["Metric", "Value", "Status"])
+        self._noise_summary_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._noise_summary_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self._noise_summary_table.verticalHeader().hide()
+        self._noise_summary_table.setShowGrid(False)
+        self._noise_summary_table.setAlternatingRowColors(True)
+        self._noise_summary_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self._noise_summary_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self._noise_summary_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self._noise_summary_table.setStyleSheet(
+            "QTableWidget { background: #1e1e2e; color: #e0e0e0; gridline-color: #2d2d44;"
+            "  alternate-background-color: #28283e; border: none; }"
+            "QHeaderView::section { background: #2d2d44; color: #a0a0c0;"
+            "  border: none; padding: 6px 10px; font-size: 11px; font-weight: bold; }"
+        )
+        summary_layout.addWidget(self._noise_summary_table)
+        layout.addWidget(summary_group)
+
+        # Distribution bar
+        dist_group = QGroupBox("Noise Distribution by Type")
+        dist_group.setStyleSheet(
+            "QGroupBox { color: #e0e0e0; font-weight: bold; border: 1px solid #3d3d5c;"
+            "  border-radius: 6px; margin-top: 8px; padding-top: 12px; }"
+            "QGroupBox::title { subcontrol-origin: margin; left: 10px; color: #a0a0c0; }"
+        )
+        dist_layout = QVBoxLayout(dist_group)
+
+        self._noise_dist_table = QTableWidget(0, 3)
+        self._noise_dist_table.setObjectName("noise_dist_table")
+        self._noise_dist_table.setHorizontalHeaderLabels(["Type", "Count", "% of Total"])
+        self._noise_dist_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._noise_dist_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self._noise_dist_table.verticalHeader().hide()
+        self._noise_dist_table.setShowGrid(False)
+        self._noise_dist_table.setAlternatingRowColors(True)
+        self._noise_dist_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self._noise_dist_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self._noise_dist_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        self._noise_dist_table.setStyleSheet(
+            "QTableWidget { background: #1e1e2e; color: #e0e0e0; gridline-color: #2d2d44;"
+            "  alternate-background-color: #28283e; border: none; }"
+            "QHeaderView::section { background: #2d2d44; color: #a0a0c0;"
+            "  border: none; padding: 6px 10px; font-size: 11px; font-weight: bold; }"
+        )
+        dist_layout.addWidget(self._noise_dist_table)
+        layout.addWidget(dist_group)
+
+        # Empty state
+        self._noise_empty_label = QLabel("Run pipeline with Noise Classifier (M12) to see analysis")
+        self._noise_empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._noise_empty_label.setStyleSheet("color: #555; font-size: 14px; padding: 40px;")
+        layout.addWidget(self._noise_empty_label)
+
+        return container
+
+    def _load_noise_scores(self, pipeline_result: Any) -> None:
+        """Populate Noise Analysis tab from pipeline result."""
+        from PyQt6.QtWidgets import QTableWidgetItem
+
+        # Extract noise result
+        if isinstance(pipeline_result, dict):
+            module_results = pipeline_result.get("module_results", {})
+        else:
+            module_results = getattr(pipeline_result, "module_results", {})
+
+        noise_result = module_results.get("noise")
+        if noise_result is None or not hasattr(noise_result, "data") or noise_result.data is None:
+            self._noise_summary_table.setRowCount(0)
+            self._noise_dist_table.setRowCount(0)
+            self._noise_empty_label.setVisible(True)
+            return
+
+        self._noise_empty_label.setVisible(False)
+        data = noise_result.data
+
+        total = getattr(data, "total_tokens", 0)
+        noise_count = getattr(data, "noise_count", 0)
+        noise_rate = getattr(data, "noise_rate", 0.0)
+        distribution = getattr(data, "distribution", {}) or {}
+
+        # Status icon based on noise rate
+        if noise_rate > 0.20:
+            status = "⚠️ High noise rate — consider cleaning corpus"
+            status_color = "#f87171"
+        elif noise_rate > 0.10:
+            status = "ℹ️ Moderate noise rate"
+            status_color = "#fbbf24"
+        else:
+            status = "✅ Clean corpus"
+            status_color = "#4ade80"
+
+        # Summary table
+        summary_rows = [
+            ("Total Tokens", str(total), "—"),
+            ("Noise Tokens", str(noise_count), f"{noise_rate*100:.1f}% of total"),
+            ("Clean Tokens", str(total - noise_count), f"{(1-noise_rate)*100:.1f}% of total"),
+            ("Noise Rate", f"{noise_rate*100:.2f}%", status),
+        ]
+        self._noise_summary_table.setRowCount(len(summary_rows))
+        for i, (metric, value, status_text) in enumerate(summary_rows):
+            self._noise_summary_table.setItem(i, 0, QTableWidgetItem(metric))
+            self._noise_summary_table.setItem(i, 1, QTableWidgetItem(value))
+            item = QTableWidgetItem(status_text)
+            if i == 3:
+                item.setForeground(QColor(status_color))
+            self._noise_summary_table.setItem(i, 2, item)
+
+        # Distribution table
+        # Sort by count descending, exclude non_noise for clarity
+        noise_dist = {k: v for k, v in distribution.items() if k != "non_noise"}
+        sorted_dist = sorted(noise_dist.items(), key=lambda x: x[1], reverse=True)
+
+        type_emoji = {
+            "number": "🔢", "latin": "🔤", "punct": "✂️",
+            "chemical": "🧪", "quantity": "📏", "math": "🔢",
+            "mixed": "🔀", "whitespace": "␣",
+        }
+        self._noise_dist_table.setRowCount(len(sorted_dist))
+        for i, (ntype, count) in enumerate(sorted_dist):
+            pct = (count / total * 100) if total > 0 else 0
+            self._noise_dist_table.setItem(i, 0, QTableWidgetItem(f"{type_emoji.get(ntype, '')} {ntype}"))
+            self._noise_dist_table.setItem(i, 1, QTableWidgetItem(str(count)))
+            self._noise_dist_table.setItem(i, 2, QTableWidgetItem(f"{pct:.1f}%"))
 
     def _build_detail_panel(self) -> QWidget:
         panel = QWidget()
@@ -930,6 +1113,8 @@ class ResultsView(QWidget):
 
         # AM Scores
         self._load_am_scores(pipeline_result)
+        # Noise Analysis (M12)
+        self._load_noise_scores(pipeline_result)
         self._restore_column_state()
 
         self._terms_view.setVisible(bool(terms))

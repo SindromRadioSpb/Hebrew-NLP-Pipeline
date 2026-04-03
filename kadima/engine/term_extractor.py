@@ -88,27 +88,22 @@ class TermExtractor(Processor):
     # Noise types to filter from term tokens
     NOISE_TYPES: set[str] = {"punct", "number", "latin"}
 
-    # Regex patterns for noise detection (mirrors M12 NoiseClassifier)
-    _HEBREW_RE = re.compile(r'^[\u0590-\u05FF]+$')
-    _NUMBER_RE = re.compile(r'^[0-9.,%]+$')
-    _LATIN_RE = re.compile(r'^[a-zA-Z]+$')
-    _PUNCT_RE = re.compile(r'^[^\w\s]+$')
-
-    def _classify_token(self, token: str) -> str:
-        """Classify a single token as noise type (mirrors M12 logic)."""
-        if self._HEBREW_RE.match(token):
-            return "non_noise"
-        elif self._NUMBER_RE.match(token):
-            return "number"
-        elif self._LATIN_RE.match(token):
-            return "latin"
-        elif self._PUNCT_RE.match(token):
-            return "punct"
-        return "non_noise"
-
-    def _is_noise(self, token: str, noise_types: set[str]) -> bool:
-        """Check if token is a noise type to filter."""
-        return self._classify_token(token) in noise_types
+    def _is_noise_from_m12(self, token: str, noise_types: set[str], noise_labels: dict[str, str]) -> bool:
+        """Check if token is noise using M12 output. Falls back to regex if M12 not available."""
+        if noise_labels:
+            label_type = noise_labels.get(token)
+            if label_type is not None:
+                return label_type in noise_types
+        # Fallback: M12 not available, use simple regex (mirrors M12 priority)
+        if re.match(r'^[0-9.,%‰⁰¹²³⁴⁵⁶⁷⁸⁹]+$', token):
+            return "number" in noise_types
+        if re.match(r'^[a-zA-Z]+$', token):
+            return "latin" in noise_types
+        if re.match(r'^[\u0590-\u05FFa-zA-Z]+$', token) and re.search(r'[\u0590-\u05FF]', token) and re.search(r'[a-zA-Z]', token):
+            return "mixed" in noise_types
+        if re.match(r'^[^\w\s]+$', token):
+            return "punct" in noise_types
+        return False  # Default: not noise
 
     def process(self, input_data: dict[str, Any], config: dict[str, Any]) -> ProcessorResult:
         start = time.time()
@@ -129,6 +124,8 @@ class TermExtractor(Processor):
             canonical_mappings: dict[str, str] = input_data.get("canonical_mappings", {})
             morph_analyses: list[Any] = input_data.get("morph_analyses", [])
             raw_text: str = input_data.get("raw_text", "")
+            # M12 noise labels: dict[surface_str, noise_type]
+            noise_labels: dict[str, str] = input_data.get("noise_labels", {})
 
             # AlephBERT backend: extract terms from raw text
             if term_extractor_backend == "alephbert" and raw_text:
@@ -193,11 +190,11 @@ class TermExtractor(Processor):
                 else:
                     kind = "NOUN_NOUN" if ngram.n == 2 else f"{ngram.n}-GRAM"
 
-                # Noise-aware filtering: skip n-grams with noise tokens (punct, number, latin)
+                # Noise-aware filtering: skip n-grams with noise tokens (uses M12 output)
                 if noise_filter_enabled:
                     skip = False
                     for tok in ngram.tokens:
-                        if self._is_noise(tok, noise_types_to_filter):
+                        if self._is_noise_from_m12(tok, noise_types_to_filter, noise_labels):
                             skip = True
                             logger.debug("M8: skip ngram due to noise token '%s'", tok)
                             break

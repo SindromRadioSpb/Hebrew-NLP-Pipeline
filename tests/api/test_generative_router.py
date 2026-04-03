@@ -139,6 +139,70 @@ class TestSTTEndpoint:
         assert response.status_code == 422
 
 
+# ── Diacritizer (M13) ────────────────────────────────────────────────────────
+
+
+class TestDiacritizeEndpoint:
+    """POST /generative/diacritize (M13)."""
+
+    def test_diacritize_rules_backend(self, client):
+        """Diacritize via rules backend should work without ML model."""
+        response = client.post(
+            "/api/v1/generative/diacritize",
+            json={"text": "שלום", "backend": "rules"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "result" in data
+        assert "source" in data
+        assert "backend" in data
+        assert data["backend"] == "rules"
+        assert data["source"] == "שלום"
+        assert data["char_count"] > 0
+        assert data["word_count"] == 1
+
+    def test_diacritize_multiword(self, client):
+        """Diacritize multiple known words."""
+        response = client.post(
+            "/api/v1/generative/diacritize",
+            json={"text": "של על כי", "backend": "rules"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "שֶׁל" in data["result"]
+        assert "עַל" in data["result"]
+        assert "כִּי" in data["result"]
+        assert data["word_count"] == 3
+
+    def test_diacritize_phonikud_fallback(self, client):
+        """If phonikud not installed, falls back to rules."""
+        response = client.post(
+            "/api/v1/generative/diacritize",
+            json={"text": "שלום", "backend": "phonikud"},
+        )
+        # Accept 200 (either phonikud or rules fallback)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["backend"] in ("phonikud", "rules")
+        assert data["result"] is not None
+
+    def test_diacritize_empty_text(self, client):
+        """Empty text should fail validation."""
+        response = client.post(
+            "/api/v1/generative/diacritize",
+            json={"text": "", "backend": "rules"},
+        )
+        assert response.status_code == 422
+
+    def test_diacritize_invalid_backend(self, client):
+        """Invalid backend should fail validation."""
+        response = client.post(
+            "/api/v1/generative/diacritize",
+            json={"text": "שלום", "backend": "invalid"},
+        )
+        assert response.status_code == 422
+
+
 # ── Schema Validation for all endpoints ───────────────────────────────────────
 
 
