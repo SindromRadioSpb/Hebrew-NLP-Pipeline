@@ -475,8 +475,9 @@ async def qa(req: QARequest) -> QAResponse:
 
 class TTSRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=5000, description="Hebrew text to synthesize")
-    backend: str = Field(default="auto", pattern=r"^(auto|xtts|mms)$")
+    backend: str = Field(default="auto", pattern=r"^(auto|piper|xtts|mms|bark)$")
     device: str = Field(default="cpu", pattern=r"^(cpu|cuda)$")
+    speaker_ref_path: str | None = Field(default=None, description="Path to speaker reference WAV for voice cloning")
 
 
 class TTSResponse(BaseModel):
@@ -491,9 +492,10 @@ async def tts(req: TTSRequest) -> TTSResponse:
     """Synthesize Hebrew text to speech (M15 TTS Synthesizer).
 
     Returns audio file path on server and metadata.
-    Backend auto-selects: XTTS v2 → MMS-TTS fallback.
+    Backend auto-selects: piper → XTTS v2 → MMS-TTS → Bark fallback.
     Returns audio_path=null if no TTS backend is installed.
     """
+    from pathlib import Path
     from kadima.engine.tts_synthesizer import TTSSynthesizer
 
     proc = TTSSynthesizer()
@@ -509,6 +511,32 @@ async def tts(req: TTSRequest) -> TTSResponse:
         backend=data.backend,
         text_length=data.text_length,
         duration_seconds=data.duration_seconds,
+    )
+
+
+@router.get("/tts/download/{filename}")
+async def tts_download(filename: str):
+    """Download synthesized audio file by filename.
+
+    Files are stored in ~/.kadima/tts_output/ (content-addressed by SHA-256).
+    """
+    import os
+    from pathlib import Path
+    from fastapi.responses import FileResponse
+
+    output_dir = Path(os.path.expanduser("~/.kadima/tts_output"))
+    file_path = output_dir / filename
+
+    # Security: prevent path traversal
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Audio file not found: {filename}")
+    if not str(file_path.resolve()).startswith(str(output_dir.resolve())):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    return FileResponse(
+        str(file_path),
+        media_type="audio/wav",
+        filename=filename,
     )
 
 

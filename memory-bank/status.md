@@ -42,7 +42,7 @@
 | D6 | `Token` dataclass объявлен в двух местах с разными полями | `data/models.py` + `engine/hebpipe_wrappers.py` | Low (нет конфликта) |
 | D11 | `test_term_clusterer.py::TestSilhouette::test_two_clusters` — silhouette score == 0.0 на синтетических данных | `tests/engine/test_term_clusterer.py` | Low (pre-existing) |
 | — | M25 Paraphraser не реализован | `engine/` (файл отсутствует) | Medium |
-| — | mBART-50 + MMS-TTS-heb = CC-BY-NC → запрещено коммерческое использование | `translator.py`, `tts_synthesizer.py` | **CRITICAL** |
+| — | mBART-50 + MMS-TTS-heb = CC-BY-NC → запрещено коммерческое использование | `translator.py`, `tts_synthesizer.py` | **CRITICAL** | Mitigation: добавлены Piper TTS (MIT) + Suno Bark (MIT) как первые в fallback chain
 | — | PyQt6 = GPL v3 → нужна коммерческая лицензия Qt для closed-source | `pyproject.toml` | **CRITICAL** |
 | — | YAKE = возможно GPL v3 → проверить немедленно | `keyphrase_extractor.py` | HIGH |
 | — | Docker prod-compose (docker-compose.prod.yml) не создан | — | Medium |

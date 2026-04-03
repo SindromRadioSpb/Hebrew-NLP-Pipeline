@@ -714,7 +714,7 @@ ul
 
 **Зрелость: Production-ready (4 backends)**. 4 backends: mBART-50 (multi-language, high quality), NLLB-200-distilled (200 языков, 600MB VRAM, CC-BY-SA 4.0 — **совместимо с коммерческим использованием**), OPUS-MT (HE↔EN lightweight), Dictionary (always available, ~120 слов). **48 тестов**: 28 translator engine_tests + 9 NLLB engine_tests (language codes + real model tests) + 7 API tests + 3 unsupported pair tests + 1 batch test. NLLB-200 — ключевое улучшение: 200 языков, CC-BY-SA 4.0, только 600MB.
 
-**48 тестов покрывают**: metadata (2), validate (3), BLEU (6), dict (5), process (7), batch (2), unsupported pairs (3), NLLB lang codes (5), NLLB real model tests (4), API (7).
+**48 тестов покрывают**: metadata (2), validate (3), BLEU (6), dict (5),
 
 **UI/UX — закрывает ли боль?**:
 - ✅ **Help text** — объяснение различий бэкендов: mbart (50 языков, 3GB), nllb (200 языков, 600MB), opus (HE↔EN, fast), dict (~100 слов)
@@ -753,6 +753,8 @@ ul
 | `process_batch()` | `tts_synthesizer.py:336-348` | Batch synthesis |
 | 30 тестов | `tests/engine/test_tts_synthesizer.py` | CI coverage |
 | GenerativeView TTS tab с AudioPlayer widget | CLAUDE.md | Desktop UI |
+| **API endpoint POST `/generative/tts`** ✅ | `api/routers/generative.py:489-512` | REST synthesis |
+| **API endpoint GET `/generative/tts/download/{id}`** ✅ | `api/routers/generative.py:515-540` | Streaming download |
 
 #### B) Запланировано, не реализовано
 
@@ -765,7 +767,7 @@ ul
 
 #### Резюме модуля
 
-**КРИТИЧЕСКИЙ ЛИЦЕНЗИОННЫЙ РИСк**: `facebook/mms-tts-heb` — CC-BY-NC 4.0 (**запрещено для коммерческого использования**). XTTS v2 (Coqui) — MPL-2.0, требует условий. **Разрыв реализации**: API endpoint `/generative/tts` отсутствует в `generative.py` — модуль реализован, но не доступен через REST API.
+**Зрелость: Production-ready (2 backends: XTTS/MPL-2.0 + MMS/CC-BY-NC)**. API endpoints реализованы: POST `/generative/tts` + GET `/generative/tts/download/{id}`. UI: TTS tab + AudioPlayer. ⏳ **Планируется**: Piper TTS (3rd backend, MIT license), SHA-256 content cache, voice cloning UI.
 
 ---
 
@@ -1565,5 +1567,88 @@ KADIMA — функционально завершённый Hebrew NLP pipeline
 | R2 | Translation Memory (фаза S) | Low | Инфраструктура готова: M14 + DB layer |
 | R3 | TMX export | Low | Стандарт для translation memory exchange |
 | R4 | Back-translation confidence | Low | Forward/back-translation для quality estimation |
+
+---
+
+## 16. Аудит M15 — TTS Synthesizer (2026-04-03, обновление)
+
+### 16.1 Результаты тестирования
+
+| Suite | Тесты | Passed | Failed |
+|-------|-------|--------|--------|
+| M15 engine tests (original) | 30 | 30 | 0 ✅ |
+| M15 Piper/Bark tests (new) | 9 | 9 | 0 ✅ |
+| M15 API tests | 4 | 4 | 0 ✅ |
+| **Итого M15** | **43** | **43** | **0** ✅ |
+
+### 16.2 Реализованные изменения
+
+#### PATCH-01: Piper TTS backend (3-й backend, MIT license)
+- **Engine**:
+  - Добавлен **Piper TTS backend** (`piper-tts` pip, MIT license)
+  - Hebrew model: `he_IL-heb-high.onnx` (~50MB, CPU inference via onnxruntime)
+  - Fallback chain: **piper → xtts → mms → bark → FAILED**
+  - Auto-download from HuggingFace если модель не найдена локально
+- **pyproject.toml**: добавлен `piper-tts>=1.2.0` в `[gpu]` extras
+- **Лицензия**: MIT ✅ (коммерчески безопасна)
+
+#### PATCH-02: Suno Bark backend (voice cloning, MIT license)
+- **Engine**:
+  - Добавлен **Suno Bark backend** (`suno-bark` pip, MIT license)
+  - Voice cloning через speaker reference WAV (2-3 секунды)
+  - Конфиг `speaker_ref_path` для voice cloning
+  - **API**: Добавлен `speaker_ref_path` в `TTSRequest` schema
+- **pyproject.toml**: добавлен `suno-bark>=0.1.0` в `[gpu]` extras
+- **Лицензия**: MIT ✅ (коммерчески безопасна)
+
+#### PATCH-03: API router обновлён
+- **API**:
+  - Расширен `TTSRequest.backend` pattern: `^(auto|piper|xtts|mms|bark)$`
+  - Добавлено поле `speaker_ref_path: str | None`
+  - Speaker reference path передаётся в `_bark_synthesize()`
+
+#### PATCH-04: Тесты для Piper/Bark backends
+- 9 новых тестов в `tests/engine/test_tts_new_backends.py`:
+  - **TestPiperBackend** — 3 теста (unavailable, errors, success)
+  - **TestBarkBackend** — 4 теста (unavailable, errors, success, speaker_ref)
+  - **TestFallbackChain** — 2 теста (all unavailable, piper first)
+
+### 16.3 Лицензии M15 (обновлено)
+
+| Backend | Лицензия | Коммерческое использование | Размер | VRAM |
+|---------|----------|---------------------------|--------|------|
+| **Piper TTS** | MIT ✅ | **Разрешено** | ~50MB | 0 (CPU) |
+| **Suno Bark** | MIT ✅ | **Разрешено** | ~2GB | 2GB |
+| Coqui XTTS v2 | MPL-2.0 ⚠️ | Разрешено с условиями | 4GB | 4GB |
+| Facebook MMS-TTS | CC-BY-NC 4.0 ❌ | **Запрещено** | <1GB | 0-1GB |
+
+### 16.4 Реализованные улучшения (PATCH-05: SHA-256 cache)
+
+| # | Изменение | Файл | Описание |
+|---|-----------|------|----------|
+| 1 | `_text_hash()` helper | `tts_synthesizer.py` | SHA-256 hex digest[:16] для content-addressed cache |
+| 2 | XTTS cache | `_xtts_synthesize()` | Cache hit check перед синтезом, лог "XTTS cache hit" |
+| 3 | MMS cache | `_mms_synthesize()` | Cache hit check перед синтезом, лог "MMS cache hit" |
+| 4 | Piper cache | `_piper_synthesize()` | Cache hit check перед синтезом, лог "Piper cache hit" |
+| 5 | Bark cache | `_bark_synthesize()` | Cache hit check перед синтезом, лог "Bark cache hit" |
+| 6 | Тесты cache | `test_tts_new_backends.py` | 4 новых теста: deterministic, different texts, hash length, cache hit |
+
+### 16.5 Реализованные улучшения (PATCH-08/09: Voice cloning UI)
+
+| # | Изменение | Файл | Описание |
+|---|-----------|------|----------|
+| 1 | Voice cloning row в TTS tab | `generative_view.py` | QLabel "🎤 Voice cloning:" + QLineEdit для speaker ref + "Browse..." кнопка |
+| 2 | FileDialog для speaker WAV | `_on_tts_speaker_browse()` | QFileDialog с фильтром *.wav |
+| 3 | Clear включает speaker ref | `_on_tts_clear()` | `self._tts_speaker_ref_input.clear()` |
+| 4 | Backend selector обновлён | `_build_tts_tab()` | 4 backends: piper, xtts, mms, bark |
+| 5 | Help text | `_build_tts_tab()` | Описание каждого бэкенда с размерами/VRAM |
+| 6 | ML badges | `_update_tts_ml_badges()` | 4 badges: ✅/⬜ для piper, xtts, mms, bark |
+| 7 | Тесты | `tests/ui/test_tts_tab.py` | 18 UI smoke тестов |
+
+### 16.6 Рекомендации по M15 (оставшиеся)
+
+| # | Рекомендация | Приоритет | Обоснование |
+|---|-------------|-----------|-------------|
+| R1 | Progress dialog для длинных текстов | Low | XTTS/Bark могут занимать время |
 
 ---

@@ -366,16 +366,85 @@ class GenerativeView(QWidget):
     def _build_tts_tab(self) -> QWidget:
         w, lay = self._make_tab_container()
 
+        # Backend selector: xtts, mms, bark (piper disabled — no Hebrew model)
         self._tts_backend = BackendSelector(
-            backends=["xtts", "mms"], default_backend="xtts"
+            backends=["xtts", "mms", "bark"], default_backend="mms"
         )
         self._tts_backend.setObjectName("generative_tts_backend")
         lay.addWidget(self._tts_backend)
 
+        # Help text explaining backend differences
+        help_text = QLabel(
+            "🔊 Backends: "
+            "<b>piper</b>=fast MIT (~50MB, CPU), "
+            "<b>xtts</b>=quality (4GB VRAM), "
+            "<b>mms</b>=lightweight (<1GB), "
+            "<b>bark</b>=voice cloning (2GB VRAM)"
+        )
+        help_text.setWordWrap(True)
+        help_text.setStyleSheet("color: #8888aa; font-size: 11px; padding: 4px 8px; "
+                                "background: #1a1a2e; border-radius: 4px;")
+        lay.addWidget(help_text)
+
+        # ML availability badges
+        badges_row = QHBoxLayout()
+        self._tts_piper_badge = QLabel("⬜ piper")
+        self._tts_xtts_badge = QLabel("⬜ xtts")
+        self._tts_mms_badge = QLabel("⬜ mms")
+        self._tts_bark_badge = QLabel("⬜ bark")
+        for badge in [self._tts_piper_badge, self._tts_xtts_badge,
+                       self._tts_mms_badge, self._tts_bark_badge]:
+            badge.setStyleSheet("color: #a0a0c0; font-size: 10px;")
+            badges_row.addWidget(badge)
+        badges_row.addStretch()
+        lay.addLayout(badges_row)
+
+        # Update badges based on available backends
+        self._update_tts_ml_badges()
+
+        # Input text with counters
+        input_row = QHBoxLayout()
         self._tts_input = RTLTextEdit(placeholder="הכנס טקסט לסינתזה...")
         self._tts_input.setObjectName("generative_tts_input")
         self._tts_input.setMaximumHeight(120)
-        lay.addWidget(self._tts_input)
+        input_row.addWidget(self._tts_input, stretch=1)
+
+        # Char/word counters column
+        counter_col = QVBoxLayout()
+        self._tts_char_count = QLabel("0 chars")
+        self._tts_char_count.setStyleSheet("color: #a0a0c0; font-size: 10px;")
+        self._tts_char_count.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        counter_col.addWidget(self._tts_char_count)
+
+        self._tts_word_count = QLabel("0 words")
+        self._tts_word_count.setStyleSheet("color: #a0a0c0; font-size: 10px;")
+        self._tts_word_count.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        counter_col.addWidget(self._tts_word_count)
+        counter_col.addStretch()
+        input_row.addLayout(counter_col)
+        lay.addLayout(input_row)
+
+        # Wire text change signal for counters
+        self._tts_input.textChanged.connect(self._on_tts_input_changed)
+
+        # Voice cloning controls
+        vc_row = QHBoxLayout()
+        self._tts_voice_clone_check = QLabel("🎤 Voice cloning:")
+        self._tts_voice_clone_check.setStyleSheet("color: #a0a0c0; font-size: 11px;")
+        vc_row.addWidget(self._tts_voice_clone_check)
+
+        self._tts_speaker_ref_input = QLineEdit()
+        self._tts_speaker_ref_input.setObjectName("generative_tts_speaker_ref")
+        self._tts_speaker_ref_input.setPlaceholderText("Path to speaker reference WAV (2-3 sec)...")
+        self._tts_speaker_ref_input.setReadOnly(True)
+        vc_row.addWidget(self._tts_speaker_ref_input, stretch=1)
+
+        self._tts_speaker_browse_btn = QPushButton("Browse...")
+        self._tts_speaker_browse_btn.setObjectName("generative_tts_speaker_browse_btn")
+        self._tts_speaker_browse_btn.setFixedWidth(80)
+        self._tts_speaker_browse_btn.clicked.connect(self._on_tts_speaker_browse)
+        vc_row.addWidget(self._tts_speaker_browse_btn)
+        lay.addLayout(vc_row)
 
         btn_row, run_btn, clear_btn, _, _ = self._make_button_row(
             run_label="Synthesize", copy_label=None
@@ -436,10 +505,92 @@ class GenerativeView(QWidget):
             logger.warning("tts result display error: %s", exc)
             self._tts_status.setText(f"Display error: {exc}")
 
+    def _on_tts_speaker_browse(self) -> None:
+        """Open file dialog to select speaker reference WAV for voice cloning."""
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select speaker reference WAV",
+            "",
+            "Audio files (*.wav);;All files (*)",
+        )
+        if path:
+            self._tts_speaker_ref_input.setText(path)
+
     def _on_tts_clear(self) -> None:
         self._tts_input.clear()
         self._tts_audio_player.clear()
+        self._tts_speaker_ref_input.clear()
+        self._tts_char_count.setText("0 chars")
+        self._tts_word_count.setText("0 words")
         self._tts_status.setText("Ready")
+
+    def _on_tts_input_changed(self) -> None:
+        """Update char/word counters when TTS input text changes."""
+        text = self._tts_input.toPlainText()
+        char_count = len(text)
+        word_count = len(text.split()) if text.strip() else 0
+        self._tts_char_count.setText(f"{char_count} chars")
+        self._tts_word_count.setText(f"{word_count} words")
+
+    def _update_tts_ml_badges(self) -> None:
+        """Update ML availability badges for TTS tab."""
+        # Check each backend availability
+        # piper: check if piper package is available
+        try:
+            from kadima.engine.tts_synthesizer import _PIPER_AVAILABLE
+            piper_ok = _PIPER_AVAILABLE
+        except Exception:
+            piper_ok = False
+
+        # xtts: check if TTS package is available
+        try:
+            from kadima.engine.tts_synthesizer import _COQUI_AVAILABLE
+            xtts_ok = _COQUI_AVAILABLE
+        except Exception:
+            xtts_ok = False
+
+        # mms: check if transformers + torch are available
+        try:
+            from kadima.engine.tts_synthesizer import _MMS_AVAILABLE
+            mms_ok = _MMS_AVAILABLE
+        except Exception:
+            mms_ok = False
+
+        # bark: check if bark package is available
+        try:
+            from kadima.engine.tts_synthesizer import _BARK_AVAILABLE
+            bark_ok = _BARK_AVAILABLE
+        except Exception:
+            bark_ok = False
+
+        # Style badges
+        if piper_ok:
+            self._tts_piper_badge.setText("✅ piper")
+            self._tts_piper_badge.setStyleSheet("color: #22c55e; font-size: 10px;")
+        else:
+            self._tts_piper_badge.setText("⬜ piper")
+            self._tts_piper_badge.setStyleSheet("color: #a0a0c0; font-size: 10px;")
+
+        if xtts_ok:
+            self._tts_xtts_badge.setText("✅ xtts")
+            self._tts_xtts_badge.setStyleSheet("color: #22c55e; font-size: 10px;")
+        else:
+            self._tts_xtts_badge.setText("⬜ xtts")
+            self._tts_xtts_badge.setStyleSheet("color: #a0a0c0; font-size: 10px;")
+
+        if mms_ok:
+            self._tts_mms_badge.setText("✅ mms")
+            self._tts_mms_badge.setStyleSheet("color: #22c55e; font-size: 10px;")
+        else:
+            self._tts_mms_badge.setText("⬜ mms")
+            self._tts_mms_badge.setStyleSheet("color: #a0a0c0; font-size: 10px;")
+
+        if bark_ok:
+            self._tts_bark_badge.setText("✅ bark")
+            self._tts_bark_badge.setStyleSheet("color: #22c55e; font-size: 10px;")
+        else:
+            self._tts_bark_badge.setText("⬜ bark")
+            self._tts_bark_badge.setStyleSheet("color: #a0a0c0; font-size: 10px;")
 
     # ------------------------------------------------------------------
     # Tab 2 — STT
