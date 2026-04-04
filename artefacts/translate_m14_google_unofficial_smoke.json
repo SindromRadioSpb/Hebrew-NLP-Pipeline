@@ -1,0 +1,7 @@
+{
+  "status": "ProcessorStatus.READY",
+  "backend": "google_unofficial",
+  "result": "hello world",
+  "note": "Unofficial Google web backend used (experimental).",
+  "source": "שלום עולם"
+}

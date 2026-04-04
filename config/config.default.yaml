@@ -62,7 +62,7 @@ diacritizer:
   device: cuda
 
 translator:
-  backend: nllb        # nllb (recommended) | google (cloud verification) | dict (basic fallback) | mbart/opus (secondary)
+  backend: nllb        # nllb (recommended) | google (cloud verification) | google_unofficial (experimental, no API) | dict (basic fallback) | mbart/opus (secondary)
   device: cuda
   default_tgt_lang: en
 

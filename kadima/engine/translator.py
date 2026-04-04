@@ -3,6 +3,7 @@
 
 Backends:
 - google: Google Cloud Translation Basic API v2 (credential-gated cloud backend)
+- google_unofficial: Unofficial Google web translate adapter (experimental, no API key)
 - mbart: facebook/mbart-large-50-many-to-many-mmt (3GB VRAM)
 - nllb: facebook/nllb-200-distilled-600M (600MB VRAM, 200 languages, CC-BY-SA 4.0)
 - opus: Helsinki-NLP/opus-mt-tc-big-he-en (lighter, HE↔EN only)
@@ -15,9 +16,12 @@ Example:
     'hello'
 """
 
+import asyncio
 import html
+import inspect
 import logging
 import os
+import threading
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -65,6 +69,13 @@ try:
     _SENTENCEPIECE_AVAILABLE = True
 except ImportError:
     pass
+
+_GOOGLETRANS_AVAILABLE = False
+try:
+    from googletrans import Translator as _GoogleTransClient
+    _GOOGLETRANS_AVAILABLE = True
+except ImportError:
+    _GoogleTransClient = None  # type: ignore[assignment]
 
 _GOOGLE_AUTH_AVAILABLE = False
 try:
@@ -255,6 +266,21 @@ class Translator(Processor):
                         input_data, src_lang, tgt_lang, "nllb", config
                     )
                     notes.extend(local_notes)
+            elif backend == "google_unofficial":
+                try:
+                    result_text, unofficial_note = self._translate_google_unofficial(
+                        input_data, src_lang, tgt_lang, config
+                    )
+                    used_backend = "google_unofficial"
+                    if unofficial_note:
+                        notes.append(unofficial_note)
+                except Exception as e:
+                    logger.warning("Unofficial Google translation failed, falling back to local path: %s", e)
+                    notes.append("Unofficial Google web backend unavailable; local fallback used.")
+                    result_text, used_backend, local_notes = self._translate_local(
+                        input_data, src_lang, tgt_lang, "nllb", config
+                    )
+                    notes.extend(local_notes)
             else:
                 result_text, used_backend, local_notes = self._translate_local(
                     input_data, src_lang, tgt_lang, backend, config
@@ -366,6 +392,58 @@ class Translator(Processor):
             raise RuntimeError("Unexpected Google Translate API response") from exc
 
         return html.unescape(str(translated)), note
+
+    def _translate_google_unofficial(
+        self,
+        text: str,
+        src_lang: str,
+        tgt_lang: str,
+        config: Dict[str, Any],
+    ) -> tuple[str, str]:
+        """Translate using an unofficial Google Translate web adapter."""
+        if not _GOOGLETRANS_AVAILABLE:
+            raise RuntimeError("googletrans is required for google_unofficial backend")
+
+        timeout_seconds = float(config.get("google_unofficial_timeout_seconds", 15.0))
+        max_chars = int(config.get("google_unofficial_max_chars", 4000))
+        if len(text) > max_chars:
+            raise RuntimeError(
+                f"google_unofficial supports up to {max_chars} characters per request in this runtime"
+            )
+
+        translator = _GoogleTransClient(timeout=timeout_seconds)
+        translated = translator.translate(text, src=src_lang, dest=tgt_lang)
+        if inspect.isawaitable(translated):
+            translated = self._run_googletrans_awaitable(translated)
+        output = str(getattr(translated, "text", "") or "").strip()
+        if not output:
+            raise RuntimeError("Unofficial Google backend returned an empty translation")
+        return output, "Unofficial Google web backend used (experimental)."
+
+    @staticmethod
+    def _run_googletrans_awaitable(awaitable: Any) -> Any:
+        """Run googletrans coroutine from sync code, even if an event loop already exists."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(awaitable)
+
+        result_box: dict[str, Any] = {}
+        error_box: dict[str, BaseException] = {}
+
+        def _runner() -> None:
+            try:
+                result_box["result"] = asyncio.run(awaitable)
+            except BaseException as exc:  # noqa: BLE001
+                error_box["error"] = exc
+
+        thread = threading.Thread(target=_runner, daemon=True)
+        thread.start()
+        thread.join()
+
+        if "error" in error_box:
+            raise error_box["error"]
+        return result_box.get("result")
 
     def _resolve_google_auth(self, config: Dict[str, Any]) -> tuple[dict[str, str], dict[str, str], str]:
         """Resolve Google auth mode for Translation API.

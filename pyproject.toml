@@ -51,6 +51,7 @@ ml = [
     "sentencepiece>=0.1.99",
     "sacrebleu>=2.4.0",
     "sacremoses>=0.1.1",
+    "googletrans>=4.0.2",
     # M24 Keyphrase
     "yake>=0.4.8",
 ]

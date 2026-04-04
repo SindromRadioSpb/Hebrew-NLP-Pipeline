@@ -534,6 +534,43 @@ class TestTranslateEndpoint:
         assert data["backend"] == "google"
         assert "Google Cloud Translation API" in data["note"]
 
+    def test_translate_google_unofficial_backend_schema_and_note(self, client):
+        from unittest.mock import patch
+
+        from kadima.engine.base import ProcessorResult, ProcessorStatus
+        from kadima.engine.translator import TranslationResult
+
+        fake_result = ProcessorResult(
+            module_name="translator",
+            status=ProcessorStatus.READY,
+            data=TranslationResult(
+                result="hello world",
+                source="שלום עולם",
+                src_lang="he",
+                tgt_lang="en",
+                backend="google_unofficial",
+                word_count=2,
+                note="Unofficial Google web backend used (experimental).",
+            ),
+        )
+
+        with patch("kadima.engine.translator.Translator.process", return_value=fake_result):
+            response = client.post(
+                "/api/v1/generative/translate",
+                json={
+                    "text": "שלום עולם",
+                    "src_lang": "he",
+                    "tgt_lang": "en",
+                    "backend": "google_unofficial",
+                    "device": "cpu",
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["backend"] == "google_unofficial"
+        assert "experimental" in data["note"].lower()
+
 
 # ── Schema Validation for all endpoints ───────────────────────────────────────
 
@@ -583,6 +620,6 @@ class TestGenerativeSchema:
         """TranslateRequest should validate backend + device."""
         from kadima.api.routers.generative import TranslateRequest
 
-        req = TranslateRequest(text="שלום", backend="google", device="cpu")
-        assert req.backend == "google"
+        req = TranslateRequest(text="שלום", backend="google_unofficial", device="cpu")
+        assert req.backend == "google_unofficial"
         assert req.device == "cpu"

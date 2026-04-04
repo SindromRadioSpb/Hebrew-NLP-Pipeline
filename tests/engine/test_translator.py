@@ -151,6 +151,13 @@ class TestTranslatorProcess:
         assert params == {"key": "demo-google-key"}
         assert "api key" in note.lower()
 
+    def test_google_unofficial_fallbacks_to_local_backend_when_package_missing(self, t, monkeypatch):
+        monkeypatch.setattr("kadima.engine.translator._GOOGLETRANS_AVAILABLE", False)
+        r = t.process("שלום", {"backend": "google_unofficial", "src_lang": "he", "tgt_lang": "en"})
+        assert r.status == ProcessorStatus.READY
+        assert r.data.backend in ("nllb", "dict")
+        assert "unofficial google web backend unavailable" in r.data.note.lower()
+
 
 class TestTranslatorBatch:
     def test_batch(self):

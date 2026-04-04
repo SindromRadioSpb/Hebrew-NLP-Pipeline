@@ -14,6 +14,7 @@ Place Python wheels into [wheels](E:/projects/Project_Vibe/Kadima/offline/wheels
 - `sentencepiece`
 - `sacrebleu`
 - `sacremoses`
+- `googletrans` (experimental M14 no-API backend)
 - `ctranslate2` (future M14 acceleration track)
 - `f5-tts`
 - `lightblue-onnx` (official LightBlue package from source)
@@ -40,7 +41,7 @@ Recommended M14 install command:
 cd E:\projects\Project_Vibe\Kadima
 .\.venv\Scripts\Activate.ps1
 python -m pip install --no-index --find-links=offline\wheels `
-  transformers sentencepiece sacrebleu sacremoses
+  transformers sentencepiece sacrebleu sacremoses googletrans
 ```
 
 Recommended STT install command:
@@ -92,7 +93,9 @@ $env:FASTER_WHISPER_MODEL_PATH='F:\datasets_models\stt\whisper-large-v3-turbo-he
 
 - Release-default M14 backend is now `nllb`.
 - Optional cloud verification backend: `google`.
+- Optional no-API experimental backend: `google_unofficial` via `googletrans`.
 - `google` supports either `GOOGLE_TRANSLATE_API_KEY` or `GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON`, plus outbound network access.
+- `google_unofficial` does not require credentials, but it is explicitly experimental and may fail, throttle or break due to upstream web changes.
 - Desktop GUI can persist and switch the Google credential from the top toolbar via `Tools -> API Keys`.
 - The `External API Keys` dialog can load the Google key directly from `.txt`, `.env` or `.json` files, and it can also connect a full Google service account JSON.
 - `dict` is kept only as a basic fallback for prototype resilience; it is not a full translation backend.

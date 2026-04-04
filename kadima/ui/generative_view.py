@@ -1196,7 +1196,7 @@ class GenerativeView(QWidget):
         w, lay = self._make_tab_container()
 
         self._translate_backend = BackendSelector(
-            backends=["nllb", "google", "dict", "mbart", "opus"], default_backend="nllb"
+            backends=["nllb", "google", "google_unofficial", "dict", "mbart", "opus"], default_backend="nllb"
         )
         self._translate_backend.setObjectName("generative_translate_backend")
         lay.addWidget(self._translate_backend)
@@ -1208,6 +1208,7 @@ class GenerativeView(QWidget):
         self._translate_help_hint = QLabel(
             "<b>nllb</b>: recommended release backend (200 languages, staged locally) &middot; "
             "<b>google</b>: cloud verification backend, requires API key or service account JSON plus network; configure it from the top toolbar via <b>Tools → API Keys</b> &middot; "
+            "<b>google_unofficial</b>: experimental web backend without API key; may break or be rate-limited at any time &middot; "
             "<b>dict</b>: basic fallback only, useful mainly for HE↔EN sanity checks &middot; "
             "<b>mbart</b>: experimental until tokenizer/runtime hygiene is confirmed &middot; "
             "<b>opus</b>: experimental HE↔EN path; not guaranteed outside the staged pair"

@@ -706,8 +706,10 @@ ul
 | 20 | Translator config default switched to `nllb` and now explicitly allows `dict` | `pipeline/config.py`, `config/config.default.yaml` | Config/runtime alignment |
 | 21 | Optional Google Cloud Translation backend implemented (`google`) | `translator.py`, `api/routers/generative.py`, `ui/generative_view.py`, `pipeline/config.py` | Cloud verification backend for quality cross-checks |
 | 22 | **Top-toolbar Tools → API Keys control** with local Google credential management, file-based key loading (`.txt`, `.env`, `.json`) and service account JSON support | `ui/main_window.py`, `engine/translator.py` | Product path for connecting/changing external API credentials from desktop UI |
-| 23 | Offline/bootstrap docs now include translation stack (`sentencepiece`, `sacrebleu`, `sacremoses`, staged NLLB path) plus Google API key note | `offline/README.md` | Reproducible local setup |
-| 24 | Live M14 smoke artifact for local backends | `artefacts/translate_m14_smoke.json` | Real user-path evidence |
+| 23 | **Experimental `google_unofficial` backend** (no API key, unofficial web adapter) | `engine/translator.py`, `api/routers/generative.py`, `ui/generative_view.py`, `pipeline/config.py` | Optional emergency path when cloud credentials are absent |
+| 24 | Offline/bootstrap docs now include translation stack (`sentencepiece`, `sacrebleu`, `sacremoses`, `googletrans`, staged NLLB path) plus Google credential notes | `offline/README.md` | Reproducible local setup |
+| 25 | Live M14 smoke artifact for local backends | `artefacts/translate_m14_smoke.json` | Real user-path evidence |
+| 26 | Live smoke artifact for `google_unofficial` experimental backend | `artefacts/translate_m14_google_unofficial_smoke.json` | Real proof that no-API path currently works in this environment |
 
 #### B) Запланировано, не реализовано
 
@@ -716,6 +718,7 @@ ul
 | Translation Memory (TM) | KADIMA_MASTER_PLAN_v2: фаза S `tm_service` | Corpus-level consistency | Фаза S не начата | ⏳ **Отложить до Фазы S** |
 | DB сохранение переводов | CLAUDE.md migration 005 planned | Audit trail | Migration не создана | ⏳ **Отложить до Фазы S** |
 | Live cloud smoke for `google` backend in current workspace | Нет реальных cloud credentials в среде | End-to-end verification against Google Cloud Translation (API key or service account JSON) | Нет credentials в среде | ⏳ **Implemented, but not live-verified locally** |
+| Long-term confidence / consistency gate for `google_unofficial` | Это неофициальный web adapter | Product-grade acceptance for unofficial path | Upstream may change without notice | ⏳ **Keep experimental only** |
 
 #### C) Технически возможно, не планировалось
 
@@ -723,10 +726,11 @@ ul
 |-----------------|-----------|------------------------|------------|
 | `CTranslate2` как future acceleration layer | Wheel уже staged в `offline/wheels` | Более быстрый и стабильный offline inference path | Отдельная integration/eval ветка |
 | `mbart`/`opus` как secondary or experimental backends beyond the current staged path | Кодовые пути уже восстановлены | Больше coverage по направлениям и моделям | Требуют отдельного smoke/perf мониторинга и staged models по направлению |
+| `google_unofficial` как no-API fallback path | `googletrans` adapter уже интегрирован | Может выручить без cloud credentials | Нестабильный неофициальный upstream, только experimental |
 
 #### Резюме модуля
 
-M14 доведён до product-grade baseline. После runtime hygiene (`sentencepiece`, corrected OPUS model id, SacreBLEU integration) локальный smoke подтвердил: `nllb`, `mbart` и `opus` реально переводят; `dict` остаётся basic fallback. Дополнительно реализован credential-gated `google` backend как cloud verification path. Основная пользовательская боль во вкладке Translate закрыта: есть честный default backend, surfaced fallback note, dirty-state, empty-input feedback и export/save path. Верхняя панель desktop UI теперь также даёт продуктовый путь для подключения/смены Google credentials через `Tools → API Keys`, включая обычный API key и Google service account JSON, без ручного редактирования env.
+M14 доведён до product-grade baseline. После runtime hygiene (`sentencepiece`, corrected OPUS model id, SacreBLEU integration) локальный smoke подтвердил: `nllb`, `mbart` и `opus` реально переводят; `dict` остаётся basic fallback. Дополнительно реализован credential-gated `google` backend как cloud verification path и отдельный `google_unofficial` path без API key, но строго в статусе `experimental`. Основная пользовательская боль во вкладке Translate закрыта: есть честный default backend, surfaced fallback note, dirty-state, empty-input feedback и export/save path. Верхняя панель desktop UI теперь также даёт продуктовый путь для подключения/смены Google credentials через `Tools → API Keys`, включая обычный API key и Google service account JSON, без ручного редактирования env.
 
 #### Recommendations After Audit
 
@@ -735,6 +739,7 @@ M14 доведён до product-grade baseline. После runtime hygiene (`sen
 3. `google` стоит держать как optional cloud verification backend, а не как новый default path.
 4. `CTranslate2` — следующий логичный шаг для acceleration/offline stability.
 5. Следующий максимальный ROI уже не в новых backend, а в Translation Memory, persistence и corpus-level quality gates.
+6. `google_unofficial` должен оставаться strictly experimental, даже при наличии live smoke.
 
 #### Follow-up Implementation (2026-04-04)
 
@@ -756,6 +761,11 @@ M14 доведён до product-grade baseline. После runtime hygiene (`sen
    - Поддержаны оба режима: `API key` и `service account JSON`.
    - Текущее состояние подключения видно в toolbar.
    - Ключ или credential file можно загрузить из файлового диалога без ручного copy/paste.
+5. **PATCH-05 Experimental no-API Google backend — DONE**
+   - Добавлен `google_unofficial` через `googletrans`.
+   - В UI/API/config он помечен как experimental и не входит в release-default path.
+   - При сбое честно уходит в local fallback с surfaced note.
+   - Live smoke сохранён в `artefacts/translate_m14_google_unofficial_smoke.json`.
 
 ---
 

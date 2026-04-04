@@ -29,6 +29,8 @@ def test_translate_defaults_to_nllb_and_explains_dict_fallback(qtbot) -> None:
     assert "basic fallback" in view._translate_help_hint.text()
     assert "cloud verification backend" in view._translate_help_hint.text()
     assert "Tools" in view._translate_help_hint.text()
+    assert "google_unofficial" in view._translate_help_hint.text()
+    assert "without API key" in view._translate_help_hint.text()
 
 
 def test_translate_dirty_status_before_first_run(qtbot) -> None:

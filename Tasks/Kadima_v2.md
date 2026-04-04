@@ -233,6 +233,8 @@ M14 Translator (3GB VRAM) ────────────────┘─
 **Recommendations After Audit:**
 - текущий фактический release backend M14 = `nllb`;
 - `google` реализован как optional cloud verification backend;
+- `google_unofficial` добавлен как experimental no-API backend через `googletrans`;
+- для `google_unofficial` сохранён live smoke: `artefacts/translate_m14_google_unofficial_smoke.json`;
 - desktop UI теперь даёт `Tools → API Keys` для подключения и смены Google credentials без ручного env-editing, включая service account JSON;
 - `sacrebleu` уже внедрён поверх legacy BLEU-1 как reproducible quality metric;
 - `CTranslate2` держать как future acceleration layer;

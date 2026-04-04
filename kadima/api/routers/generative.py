@@ -88,7 +88,7 @@ class TranslateRequest(BaseModel):
     text: str = Field(..., min_length=1, description="Source text")
     src_lang: str = Field(default="he", description="Source language code")
     tgt_lang: str = Field(default="en", description="Target language code")
-    backend: str = Field(default="nllb", pattern=r"^(google|mbart|nllb|opus|dict)$")
+    backend: str = Field(default="nllb", pattern=r"^(google|google_unofficial|mbart|nllb|opus|dict)$")
     device: str = Field(default="cpu", pattern=r"^(cpu|cuda)$")
 
 

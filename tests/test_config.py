@@ -289,7 +289,7 @@ class TestTranslatorConfig:
         assert c.default_tgt_lang == "en"
 
     def test_valid_backends(self):
-        for b in ("mbart", "opus", "nllb", "dict", "google"):
+        for b in ("mbart", "opus", "nllb", "dict", "google", "google_unofficial"):
             c = TranslatorConfig(backend=b)
             assert c.backend == b
 
