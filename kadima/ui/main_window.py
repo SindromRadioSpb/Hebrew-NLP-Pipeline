@@ -25,23 +25,30 @@ Keyboard shortcuts (global):
 from __future__ import annotations
 
 import importlib
+import json
 import logging
 import os
 from typing import Dict, List, Optional, Tuple
 
 try:
-    from PyQt6.QtCore import QObject, Qt, QSize, QTimer, pyqtSignal
+    from PyQt6.QtCore import QObject, Qt, QSize, QTimer, QSettings, pyqtSignal
     from PyQt6.QtGui import QAction, QKeySequence
     from PyQt6.QtWidgets import (
         QApplication,
         QComboBox,
+        QDialog,
+        QDialogButtonBox,
+        QFileDialog,
+        QFormLayout,
         QFrame,
         QHBoxLayout,
         QLabel,
+        QLineEdit,
         QListWidget,
         QListWidgetItem,
         QMainWindow,
         QMessageBox,
+        QPushButton,
         QSizePolicy,
         QStackedWidget,
         QStatusBar,
@@ -73,8 +80,243 @@ _VIEW_REGISTRY: List[Tuple[str, str, str, str, str]] = [
 ]
 
 _PROFILES = ["balanced", "precise", "recall"]
-_KADIMA_HOME = os.environ.get("KADIMA_HOME", os.path.expanduser("~/.kadima"))
-_DB_PATH = os.path.join(_KADIMA_HOME, "kadima.db")
+
+
+def _kadima_home() -> str:
+    return os.environ.get("KADIMA_HOME", os.path.expanduser("~/.kadima"))
+
+
+def _db_path() -> str:
+    return os.path.join(_kadima_home(), "kadima.db")
+
+
+def _external_api_settings_path() -> str:
+    kadima_home = _kadima_home()
+    os.makedirs(kadima_home, exist_ok=True)
+    return os.path.join(kadima_home, "external_api.ini")
+
+
+def _mask_secret(secret: str) -> str:
+    value = (secret or "").strip()
+    if not value:
+        return "Not connected"
+    if len(value) <= 4:
+        return "••••"
+    return f"••••{value[-4:]}"
+
+
+def _effective_google_endpoint() -> str:
+    return (
+        os.environ.get("GOOGLE_TRANSLATE_ENDPOINT")
+        or "https://translation.googleapis.com/language/translate/v2"
+    )
+
+
+class _ExternalApiKeysDialog(QDialog):
+    """Desktop settings dialog for external API credentials."""
+
+    def __init__(
+        self,
+        google_api_key: str,
+        google_endpoint: str,
+        google_service_account_json: str,
+        parent: Optional[QWidget] = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setObjectName("external_api_keys_dialog")
+        self.setWindowTitle("External API Keys")
+        self.setModal(True)
+        self.resize(560, 220)
+
+        root = QVBoxLayout(self)
+        intro = QLabel(
+            "Configure external providers used by desktop tools. "
+            "Google Translate uses this key for the `google` backend."
+        )
+        intro.setWordWrap(True)
+        intro.setObjectName("external_api_intro")
+        root.addWidget(intro)
+
+        form = QFormLayout()
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+
+        self._google_api_key = QLineEdit()
+        self._google_api_key.setObjectName("external_api_google_key")
+        self._google_api_key.setEchoMode(QLineEdit.EchoMode.Password)
+        self._google_api_key.setPlaceholderText("Enter Google Translate API key")
+        self._google_api_key.setText(google_api_key)
+
+        key_row = QHBoxLayout()
+        key_row.setContentsMargins(0, 0, 0, 0)
+        key_row.addWidget(self._google_api_key, stretch=1)
+
+        self._browse_button = QPushButton("Browse…")
+        self._browse_button.setObjectName("external_api_browse_btn")
+        self._browse_button.clicked.connect(self._browse_google_key_file)
+        key_row.addWidget(self._browse_button)
+        form.addRow("Google API key", key_row)
+
+        self._google_endpoint = QLineEdit()
+        self._google_endpoint.setObjectName("external_api_google_endpoint")
+        self._google_endpoint.setPlaceholderText("https://translation.googleapis.com/language/translate/v2")
+        self._google_endpoint.setText(google_endpoint)
+        form.addRow("Google endpoint", self._google_endpoint)
+
+        self._google_service_account_json = QLineEdit()
+        self._google_service_account_json.setObjectName("external_api_google_service_account")
+        self._google_service_account_json.setPlaceholderText("Path to service account JSON (optional)")
+        self._google_service_account_json.setText(google_service_account_json)
+        self._google_service_account_json.setReadOnly(True)
+
+        service_row = QHBoxLayout()
+        service_row.setContentsMargins(0, 0, 0, 0)
+        service_row.addWidget(self._google_service_account_json, stretch=1)
+
+        self._browse_service_account_button = QPushButton("Browse JSON…")
+        self._browse_service_account_button.setObjectName("external_api_service_account_browse_btn")
+        self._browse_service_account_button.clicked.connect(self._browse_google_service_account_json)
+        service_row.addWidget(self._browse_service_account_button)
+        form.addRow("Service account JSON", service_row)
+        root.addLayout(form)
+
+        hint = QLabel(
+            "Leave the key empty to disconnect the cloud backend. "
+            "The key is masked in the toolbar and never written to logs. "
+            "You can load a simple API key from .txt/.env/.json, or connect a full Google service account JSON file."
+        )
+        hint.setWordWrap(True)
+        hint.setObjectName("external_api_hint")
+        hint.setStyleSheet("color: #8a8aa0; font-size: 11px;")
+        root.addWidget(hint)
+
+        controls = QHBoxLayout()
+        self._reveal_button = QPushButton("Show key")
+        self._reveal_button.setObjectName("external_api_reveal_btn")
+        self._reveal_button.setCheckable(True)
+        self._reveal_button.toggled.connect(self._toggle_key_visibility)
+        controls.addWidget(self._reveal_button)
+
+        self._clear_button = QPushButton("Clear Google auth")
+        self._clear_button.setObjectName("external_api_clear_btn")
+        self._clear_button.clicked.connect(self._clear_google_auth)
+        controls.addWidget(self._clear_button)
+        controls.addStretch(1)
+        root.addLayout(controls)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        root.addWidget(buttons)
+
+    def _toggle_key_visibility(self, visible: bool) -> None:
+        self._google_api_key.setEchoMode(
+            QLineEdit.EchoMode.Normal if visible else QLineEdit.EchoMode.Password
+        )
+        self._reveal_button.setText("Hide key" if visible else "Show key")
+
+    @staticmethod
+    def _extract_google_api_key_from_file(path: str) -> str:
+        with open(path, encoding="utf-8") as fh:
+            content = fh.read().strip()
+
+        if not content:
+            raise ValueError("Selected file is empty")
+
+        if path.lower().endswith(".json"):
+            try:
+                data = json.loads(content)
+            except json.JSONDecodeError as exc:
+                raise ValueError("JSON key file is invalid") from exc
+            for candidate in ("GOOGLE_TRANSLATE_API_KEY", "google_translate_api_key", "api_key", "key"):
+                value = str(data.get(candidate, "")).strip() if isinstance(data, dict) else ""
+                if value:
+                    return value
+            raise ValueError("JSON file does not contain a supported API key field")
+
+        for line in content.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if "=" in stripped:
+                key_name, value = stripped.split("=", 1)
+                if key_name.strip() in {"GOOGLE_TRANSLATE_API_KEY", "google_translate_api_key", "API_KEY", "api_key"}:
+                    value = value.strip().strip("\"'")
+                    if value:
+                        return value
+            elif stripped:
+                return stripped
+
+        raise ValueError("Could not find a usable API key in the selected file")
+
+    @staticmethod
+    def _is_google_service_account_file(path: str) -> bool:
+        if not path.lower().endswith(".json"):
+            return False
+        try:
+            with open(path, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (OSError, json.JSONDecodeError):
+            return False
+        if not isinstance(data, dict):
+            return False
+        return (
+            data.get("type") == "service_account"
+            and all(
+                str(data.get(key, "")).strip()
+                for key in ("private_key", "client_email", "token_uri")
+            )
+        )
+
+    def _browse_google_key_file(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Google credential file",
+            _kadima_home(),
+            "Key files (*.txt *.env *.json);;All files (*.*)",
+        )
+        if not path:
+            return
+        try:
+            if self._is_google_service_account_file(path):
+                self._google_service_account_json.setText(path)
+                self._google_api_key.clear()
+                return
+            self._google_api_key.setText(self._extract_google_api_key_from_file(path))
+            self._google_service_account_json.clear()
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Invalid key file", f"Could not load API key:\n{exc}")
+
+    def _browse_google_service_account_json(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Google service account JSON",
+            _kadima_home(),
+            "JSON files (*.json);;All files (*.*)",
+        )
+        if not path:
+            return
+        if not self._is_google_service_account_file(path):
+            QMessageBox.warning(
+                self,
+                "Invalid credentials file",
+                "Selected JSON file is not a supported Google service account credential.",
+            )
+            return
+        self._google_service_account_json.setText(path)
+        self._google_api_key.clear()
+
+    def _clear_google_auth(self) -> None:
+        self._google_api_key.clear()
+        self._google_service_account_json.clear()
+
+    def payload(self) -> dict[str, str]:
+        return {
+            "google_translate_api_key": self._google_api_key.text().strip(),
+            "google_translate_endpoint": self._google_endpoint.text().strip(),
+            "google_translate_service_account_json": self._google_service_account_json.text().strip(),
+        }
 
 
 # ── Validation worker ─────────────────────────────────────────────────────────
@@ -296,6 +538,10 @@ class MainWindow(QMainWindow):
         self._current_index: int = -1
         self._wired: set[str] = set()
         self._gold_corpus: Optional[object] = None  # GoldCorpus, loaded by _upload_gold_corpus
+        self._external_api_settings = QSettings(
+            _external_api_settings_path(), QSettings.Format.IniFormat
+        )
+        self._sync_external_api_env_from_settings()
 
         self._setup_window()
         self._create_menubar()
@@ -401,6 +647,23 @@ class MainWindow(QMainWindow):
         self._profile_combo.setCurrentText("balanced")
         self._profile_combo.currentTextChanged.connect(self.profile_changed)
         tb.addWidget(self._profile_combo)
+
+        tb.addSeparator()
+
+        tools_label = QLabel("  Tools: ")
+        tools_label.setObjectName("toolbar_tools_label")
+        tb.addWidget(tools_label)
+
+        self._act_api_keys = QAction("🔑  API Keys…", self)
+        self._act_api_keys.setObjectName("action_api_keys")
+        self._act_api_keys.triggered.connect(self._open_external_api_keys_dialog)
+        tb.addAction(self._act_api_keys)
+
+        self._api_status_label = QLabel()
+        self._api_status_label.setObjectName("toolbar_api_status")
+        self._api_status_label.setStyleSheet("color: #a0a0c0; font-size: 11px; padding-left: 6px;")
+        tb.addWidget(self._api_status_label)
+        self._refresh_external_api_status()
 
     # ── Central widget ────────────────────────────────────────────────────────
 
@@ -608,7 +871,7 @@ class MainWindow(QMainWindow):
             return
 
         self.set_pipeline_status("Validation running…")
-        worker = _ValidationWorker(self._gold_corpus, _DB_PATH)
+        worker = _ValidationWorker(self._gold_corpus, _db_path())
         worker.signals.finished.connect(self._on_validation_finished)
         worker.signals.failed.connect(self._on_validation_failed)
 
@@ -723,8 +986,9 @@ class MainWindow(QMainWindow):
 
     def _refresh_status(self) -> None:
         """Update status bar labels after the event loop starts."""
-        if os.path.exists(_DB_PATH):
-            size_kb = os.path.getsize(_DB_PATH) // 1024
+        db_path = _db_path()
+        if os.path.exists(db_path):
+            size_kb = os.path.getsize(db_path) // 1024
             self._status_db.setText(f"DB: OK  ({size_kb} KB)")
             self._status_db.setStyleSheet("color: #22c55e;")
         else:
@@ -739,9 +1003,117 @@ class MainWindow(QMainWindow):
         except ImportError:
             self._status_model.setText("Torch: not installed")
             self._status_model.setStyleSheet("color: #a0a0c0;")
+        self._refresh_external_api_status()
 
     def _apply_styles(self) -> None:
         self.setStyleSheet(_load_qss())
+
+    def _read_external_api_settings(self) -> dict[str, str]:
+        return {
+            "google_translate_api_key": str(
+                self._external_api_settings.value("google/api_key", "", str) or ""
+            ).strip(),
+            "google_translate_endpoint": str(
+                self._external_api_settings.value("google/endpoint", "", str) or ""
+            ).strip(),
+            "google_translate_service_account_json": str(
+                self._external_api_settings.value("google/service_account_json", "", str) or ""
+            ).strip(),
+        }
+
+    def _sync_external_api_env_from_settings(self) -> None:
+        settings = self._read_external_api_settings()
+        google_key = settings["google_translate_api_key"]
+        google_endpoint = settings["google_translate_endpoint"]
+        google_service_account_json = settings["google_translate_service_account_json"]
+
+        if google_key:
+            os.environ["GOOGLE_TRANSLATE_API_KEY"] = google_key
+        if google_endpoint:
+            os.environ["GOOGLE_TRANSLATE_ENDPOINT"] = google_endpoint
+        if google_service_account_json:
+            os.environ["GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON"] = google_service_account_json
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = google_service_account_json
+
+    def _apply_external_api_settings(self, payload: dict[str, str], *, persist: bool = True) -> None:
+        google_key = (payload.get("google_translate_api_key") or "").strip()
+        google_endpoint = (payload.get("google_translate_endpoint") or "").strip()
+        google_service_account_json = (payload.get("google_translate_service_account_json") or "").strip()
+
+        if persist:
+            self._external_api_settings.setValue("google/api_key", google_key)
+            self._external_api_settings.setValue("google/endpoint", google_endpoint)
+            self._external_api_settings.setValue("google/service_account_json", google_service_account_json)
+            self._external_api_settings.sync()
+
+        if google_key:
+            os.environ["GOOGLE_TRANSLATE_API_KEY"] = google_key
+        else:
+            os.environ.pop("GOOGLE_TRANSLATE_API_KEY", None)
+
+        if google_endpoint:
+            os.environ["GOOGLE_TRANSLATE_ENDPOINT"] = google_endpoint
+        else:
+            os.environ.pop("GOOGLE_TRANSLATE_ENDPOINT", None)
+
+        if google_service_account_json:
+            os.environ["GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON"] = google_service_account_json
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = google_service_account_json
+        else:
+            os.environ.pop("GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON", None)
+            os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
+
+        self._refresh_external_api_status()
+
+    def _refresh_external_api_status(self) -> None:
+        google_key = os.environ.get("GOOGLE_TRANSLATE_API_KEY", "").strip()
+        google_service_account_json = os.environ.get("GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON", "").strip()
+        endpoint = _effective_google_endpoint()
+        endpoint_hint = endpoint.replace("https://", "").replace("http://", "")
+        if len(endpoint_hint) > 36:
+            endpoint_hint = f"{endpoint_hint[:33]}..."
+
+        if google_service_account_json:
+            creds_name = os.path.basename(google_service_account_json)
+            self._api_status_label.setText(
+                f"Google Translate: service account ({creds_name})"
+            )
+            self._api_status_label.setToolTip(
+                f"Google Translate cloud backend is configured via service account JSON.\n"
+                f"Endpoint: {endpoint_hint}\n"
+                f"Credentials file: {google_service_account_json}"
+            )
+        elif google_key:
+            self._api_status_label.setText(
+                f"Google Translate: connected ({_mask_secret(google_key)})"
+            )
+            self._api_status_label.setToolTip(
+                f"Google Translate cloud backend is configured.\nEndpoint: {endpoint_hint}"
+            )
+        else:
+            self._api_status_label.setText("Google Translate: not connected")
+            self._api_status_label.setToolTip(
+                "Configure Google Translate API access for the `google` translation backend."
+            )
+
+    def _open_external_api_keys_dialog(self) -> None:
+        current = self._read_external_api_settings()
+        google_key = current["google_translate_api_key"] or os.environ.get(
+            "GOOGLE_TRANSLATE_API_KEY", ""
+        )
+        google_endpoint = current["google_translate_endpoint"] or _effective_google_endpoint()
+        google_service_account_json = current["google_translate_service_account_json"] or os.environ.get(
+            "GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON", ""
+        )
+        dialog = _ExternalApiKeysDialog(
+            google_key,
+            google_endpoint,
+            google_service_account_json,
+            self,
+        )
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._apply_external_api_settings(dialog.payload(), persist=True)
+            self.statusBar().showMessage("External API settings updated", 3000)
 
     # ── Public API ────────────────────────────────────────────────────────────
 

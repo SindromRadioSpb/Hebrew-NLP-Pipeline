@@ -216,6 +216,30 @@ M14 Translator (3GB VRAM) ────────────────┘─
 - Метрика: BLEU
 - VRAM: 3GB
 
+**M14 follow-up hardening track (2026-04-04):**
+- PATCH-01 Contract cleanup — DONE:
+  - release-default path выровнен вокруг `nllb`;
+  - `dict` позиционируется только как basic fallback;
+  - engine/API/config/UI contract и surfaced fallback note синхронизированы.
+- PATCH-02 Translate UX productization — DONE:
+  - dirty-state, empty-input feedback, honest backend hints;
+  - export/save translated text;
+  - status line показывает backend used + direction + fallback note.
+- PATCH-03 Tests + smoke + offline docs — DONE:
+  - live smoke artifact for M14: `artefacts/translate_m14_smoke.json`;
+  - M14-specific UI coverage добавлена;
+  - translation section added to `offline/README.md`.
+
+**Recommendations After Audit:**
+- текущий фактический release backend M14 = `nllb`;
+- `google` реализован как optional cloud verification backend;
+- desktop UI теперь даёт `Tools → API Keys` для подключения и смены Google credentials без ручного env-editing, включая service account JSON;
+- `sacrebleu` уже внедрён поверх legacy BLEU-1 как reproducible quality metric;
+- `CTranslate2` держать как future acceleration layer;
+- `mbart`/`opus` уже восстановлены после runtime hygiene:
+  `sentencepiece`, корректные model ids, tokenizer paths;
+  но они остаются secondary path, не default.
+
 **Критерий выхода из Фазы 1:**
 - [ ] 5 модулей реализованы, тесты проходят
 - [ ] API /generative/* endpoints работают

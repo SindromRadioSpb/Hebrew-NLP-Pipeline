@@ -1196,22 +1196,26 @@ class GenerativeView(QWidget):
         w, lay = self._make_tab_container()
 
         self._translate_backend = BackendSelector(
-            backends=["mbart", "nllb", "opus", "dict"], default_backend="dict"
+            backends=["nllb", "google", "dict", "mbart", "opus"], default_backend="nllb"
         )
         self._translate_backend.setObjectName("generative_translate_backend")
         lay.addWidget(self._translate_backend)
+        self._translate_backend.changed.connect(
+            lambda _backend, _device: self._on_translate_selection_changed()
+        )
 
         # Help text explaining backends
-        help_lbl = QLabel(
-            "<b>mbart</b>: 50 languages, high quality (3GB VRAM) &middot; "
-            "<b>nllb</b>: 200 languages, lighter (600MB VRAM) &middot; "
-            "<b>opus</b>: HE↔EN only, fast &middot; "
-            "<b>dict</b>: basic dictionary (always available, ~100 words)"
+        self._translate_help_hint = QLabel(
+            "<b>nllb</b>: recommended release backend (200 languages, staged locally) &middot; "
+            "<b>google</b>: cloud verification backend, requires API key or service account JSON plus network; configure it from the top toolbar via <b>Tools → API Keys</b> &middot; "
+            "<b>dict</b>: basic fallback only, useful mainly for HE↔EN sanity checks &middot; "
+            "<b>mbart</b>: experimental until tokenizer/runtime hygiene is confirmed &middot; "
+            "<b>opus</b>: experimental HE↔EN path; not guaranteed outside the staged pair"
         )
-        help_lbl.setWordWrap(True)
-        help_lbl.setStyleSheet("color: #8888aa; font-size: 10px; padding: 2px 0;")
-        help_lbl.setObjectName("generative_translate_help")
-        lay.addWidget(help_lbl)
+        self._translate_help_hint.setWordWrap(True)
+        self._translate_help_hint.setStyleSheet("color: #8888aa; font-size: 10px; padding: 2px 0;")
+        self._translate_help_hint.setObjectName("generative_translate_help")
+        lay.addWidget(self._translate_help_hint)
 
         # ML availability badges
         badge_row = QHBoxLayout()
@@ -1243,6 +1247,9 @@ class GenerativeView(QWidget):
             "HE → EN", "HE → RU", "HE → AR", "HE → FR",
             "HE → DE", "HE → ES", "EN → HE",
         ])
+        self._translate_direction.currentIndexChanged.connect(
+            lambda _index: self._on_translate_selection_changed()
+        )
         direction_row.addWidget(self._translate_direction)
         direction_row.addStretch()
         lay.addLayout(direction_row)
@@ -1273,11 +1280,15 @@ class GenerativeView(QWidget):
         # Wire text change signal to update counters
         self._translate_input.textChanged.connect(self._on_translate_input_changed)
 
-        btn_row, run_btn, clear_btn, copy_btn, _ = self._make_button_row(
-            run_label="Translate", copy_label="Copy Result"
+        btn_row, run_btn, clear_btn, copy_btn, export_btn = self._make_button_row(
+            run_label="Translate", copy_label="Copy Result", export_label="Save TXT..."
         )
         run_btn.setObjectName("generative_translate_run_btn")
         clear_btn.setObjectName("generative_translate_clear_btn")
+        if copy_btn is not None:
+            copy_btn.setObjectName("generative_translate_copy_btn")
+        if export_btn is not None:
+            export_btn.setObjectName("generative_translate_export_btn")
         if _TranslatorCls is None:
             run_btn.setEnabled(False)
             run_btn.setToolTip("Translator not available (install [ml] extras)")
@@ -1296,14 +1307,21 @@ class GenerativeView(QWidget):
         self._translate_status.setObjectName("generative_translate_status")
         lay.addWidget(self._translate_status)
 
+        self._translate_dirty_status = QLabel("")
+        self._translate_dirty_status.setObjectName("generative_translate_dirty_status")
+        self._translate_dirty_status.setStyleSheet("color: #d9a441; font-size: 11px;")
+        self._translate_dirty_status.setVisible(False)
+        lay.addWidget(self._translate_dirty_status)
+
         run_btn.clicked.connect(self._on_translate_run)
         clear_btn.clicked.connect(self._on_translate_clear)
         if copy_btn is not None:
-            copy_btn.clicked.connect(
-                lambda: self._copy_text_to_clipboard(
-                    self._translate_result.toPlainText()
-                )
-            )
+            copy_btn.clicked.connect(self._on_translate_copy)
+        if export_btn is not None:
+            export_btn.clicked.connect(self._on_translate_export)
+        self._translate_input.textChanged.connect(self._update_translate_dirty_status)
+        self._translate_last_run_signature: tuple[str, str, str, str, str] | None = None
+        self._translate_pending_signature: tuple[str, str, str, str, str] | None = None
 
         return w
 
@@ -1318,11 +1336,17 @@ class GenerativeView(QWidget):
 
     def _on_translate_run(self) -> None:
         text = self._translate_input.toPlainText().strip()
-        if not text or _TranslatorCls is None:
+        if not text:
+            self._translate_status.setText("Enter text first")
+            self._update_translate_dirty_status()
+            return
+        if _TranslatorCls is None:
+            self._translate_status.setText("Translator not available")
             return
         backend = self._translate_backend.backend
         device = self._translate_backend.device
         src_lang, tgt_lang = self._tgt_lang_from_direction()
+        self._translate_pending_signature = (text, backend, device, src_lang, tgt_lang)
         worker = GenerativeWorker(
             tab_name="translate",
             module_cls=_TranslatorCls,
@@ -1350,27 +1374,40 @@ class GenerativeView(QWidget):
             if result.data:
                 # TranslationResult uses 'result' field
                 text = str(getattr(result.data, "result", ""))
+                if self._translate_pending_signature is not None:
+                    self._translate_last_run_signature = self._translate_pending_signature
                 # Update status with backend info
                 backend = getattr(result.data, "backend", "unknown")
-                self._translate_status.setText(
+                note = str(getattr(result.data, "note", "") or "").strip()
+                status_text = (
                     f"Done ({backend}) · {getattr(result.data, 'src_lang', '?')}→"
                     f"{getattr(result.data, 'tgt_lang', '?')} · "
                     f"{getattr(result.data, 'word_count', 0)} words"
                 )
+                if note:
+                    status_text = f"{status_text} · {note}"
+                self._translate_status.setText(status_text)
                 # BUG FIX: was missing setPlainText() — result never appeared in UI
                 self._translate_result.setPlainText(text)
             else:
                 self._translate_result.setPlainText("No translation result.")
+            self._update_translate_dirty_status()
         except Exception as exc:
             logger.warning("translate result display error: %s", exc)
             self._translate_status.setText(f"Display error: {exc}")
+            self._update_translate_dirty_status()
+        finally:
+            self._translate_pending_signature = None
 
     def _on_translate_clear(self) -> None:
         self._translate_input.clear()
         self._translate_result.clear()
         self._translate_char_count.setText("0 chars")
         self._translate_word_count.setText("0 words")
+        self._translate_last_run_signature = None
+        self._translate_pending_signature = None
         self._translate_status.setText("Ready")
+        self._update_translate_dirty_status()
 
     def _on_translate_input_changed(self) -> None:
         """Update char/word counters when input text changes."""
@@ -1384,32 +1421,36 @@ class GenerativeView(QWidget):
         """Update ML availability badges for translate tab."""
         # Check if transformers + torch are available
         try:
-            from kadima.engine.translator import _TRANSFORMERS_AVAILABLE, _TORCH_AVAILABLE
+            from kadima.engine.translator import (
+                _TRANSFORMERS_AVAILABLE,
+                _TORCH_AVAILABLE,
+                _SENTENCEPIECE_AVAILABLE,
+            )
             ml_ok = _TRANSFORMERS_AVAILABLE and _TORCH_AVAILABLE
         except Exception:
             ml_ok = False
+            _SENTENCEPIECE_AVAILABLE = False  # type: ignore[misc]
 
-        # All ML backends share the same transformers dependency
-        mbart_ok = ml_ok
+        mbart_ok = ml_ok and _SENTENCEPIECE_AVAILABLE
         nllb_ok = ml_ok
-        opus_ok = ml_ok
+        opus_ok = ml_ok and _SENTENCEPIECE_AVAILABLE
 
         # Style badges
         if mbart_ok:
-            self._translate_mbart_badge.setText("✅ mbart ready (3GB)")
+            self._translate_mbart_badge.setText("✅ mbart staged (experimental)")
             self._translate_mbart_badge.setStyleSheet(
                 "color: #22c55e; font-size: 10px; padding: 2px 6px;"
             )
         else:
             self._translate_mbart_badge.setText(
-                "⬜ mbart (pip install transformers + download model)"
+                "⬜ mbart needs sentencepiece + staged model"
             )
             self._translate_mbart_badge.setStyleSheet(
                 "color: #a0a0c0; font-size: 10px; padding: 2px 6px;"
             )
 
         if nllb_ok:
-            self._translate_nllb_badge.setText("✅ nllb ready (600MB)")
+            self._translate_nllb_badge.setText("✅ nllb ready (recommended)")
             self._translate_nllb_badge.setStyleSheet(
                 "color: #22c55e; font-size: 10px; padding: 2px 6px;"
             )
@@ -1422,17 +1463,68 @@ class GenerativeView(QWidget):
             )
 
         if opus_ok:
-            self._translate_opus_badge.setText("✅ opus ready (HE↔EN)")
+            self._translate_opus_badge.setText("✅ opus staged (experimental HE↔EN)")
             self._translate_opus_badge.setStyleSheet(
                 "color: #22c55e; font-size: 10px; padding: 2px 6px;"
             )
         else:
             self._translate_opus_badge.setText(
-                "⬜ opus (pip install transformers + download model)"
+                "⬜ opus needs sentencepiece + verified model id"
             )
             self._translate_opus_badge.setStyleSheet(
                 "color: #a0a0c0; font-size: 10px; padding: 2px 6px;"
             )
+
+    def _current_translate_signature(self) -> tuple[str, str, str, str, str] | None:
+        text = self._translate_input.toPlainText().strip()
+        if not text:
+            return None
+        src_lang, tgt_lang = self._tgt_lang_from_direction()
+        return (
+            text,
+            self._translate_backend.backend,
+            self._translate_backend.device,
+            src_lang,
+            tgt_lang,
+        )
+
+    def _on_translate_selection_changed(self) -> None:
+        self._update_translate_dirty_status()
+
+    def _update_translate_dirty_status(self) -> None:
+        current_signature = self._current_translate_signature()
+        message = ""
+        if current_signature is not None:
+            if self._translate_last_run_signature is None:
+                message = "Text ready — click Translate to generate a fresh result."
+            elif current_signature != self._translate_last_run_signature:
+                message = "Text, backend or direction changed — translate again to refresh the result."
+        self._translate_dirty_status.setText(message)
+        self._translate_dirty_status.setVisible(bool(message))
+
+    def _on_translate_copy(self) -> None:
+        text = self._translate_result.toPlainText().strip()
+        if not text:
+            self._translate_status.setText("No translation to copy yet")
+            return
+        self._copy_text_to_clipboard(text)
+        self._translate_status.setText(f"{self._translate_status.text()} · copied")
+
+    def _on_translate_export(self) -> None:
+        text = self._translate_result.toPlainText().strip()
+        if not text:
+            self._translate_status.setText("No translation to save yet")
+            return
+        path, _selected_filter = QFileDialog.getSaveFileName(
+            self,
+            "Save Translation",
+            "translation.txt",
+            "Text Files (*.txt)",
+        )
+        if not path:
+            return
+        Path(path).write_text(text, encoding="utf-8")
+        self._translate_status.setText(f"{self._translate_status.text()} · saved to {Path(path).name}")
 
     # ------------------------------------------------------------------
     # Tab 4 — Diacritize

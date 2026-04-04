@@ -152,11 +152,11 @@ class DiacritizerConfig(BaseModel):
 
 
 class TranslatorConfig(BaseModel):
-    """M14: Перевод. backend: mbart | opus | nllb."""
+    """M14: Перевод. backend: nllb | dict | google | mbart | opus."""
 
     model_config = ConfigDict(extra="forbid")
 
-    backend: str = Field(default="mbart", pattern=r"^(mbart|opus|nllb)$")
+    backend: str = Field(default="nllb", pattern=r"^(google|mbart|opus|nllb|dict)$")
     device: DeviceEnum = DeviceEnum.CUDA
     default_tgt_lang: str = "en"
 

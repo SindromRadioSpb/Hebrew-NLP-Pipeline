@@ -1,6 +1,6 @@
-# Offline TTS Bootstrap
+# Offline Generative Bootstrap
 
-This folder is the offline staging area for the M15 TTS and M16 STT backends.
+This folder is the offline staging area for the M14 translation stack and the M15/M16 speech backends.
 
 Repository runtime convention:
 
@@ -11,6 +11,10 @@ Repository runtime convention:
 
 Place Python wheels into [wheels](E:/projects/Project_Vibe/Kadima/offline/wheels):
 
+- `sentencepiece`
+- `sacrebleu`
+- `sacremoses`
+- `ctranslate2` (future M14 acceleration track)
 - `f5-tts`
 - `lightblue-onnx` (official LightBlue package from source)
 - `piper-tts`
@@ -28,6 +32,15 @@ cd E:\projects\Project_Vibe\Kadima
 .\.venv\Scripts\Activate.ps1
 python -m pip install --no-index --find-links=offline\wheels --no-deps `
   f5-tts lightblue-onnx piper-tts phonikud phonikud-onnx soundfile
+```
+
+Recommended M14 install command:
+
+```powershell
+cd E:\projects\Project_Vibe\Kadima
+.\.venv\Scripts\Activate.ps1
+python -m pip install --no-index --find-links=offline\wheels `
+  transformers sentencepiece sacrebleu sacremoses
 ```
 
 Recommended STT install command:
@@ -52,6 +65,7 @@ python -m pip install --no-index --find-links=offline\wheels whisperx
 
 Expected local model paths:
 
+- `F:\datasets_models\translation\nllb-200-distilled-600M\models--facebook--nllb-200-distilled-600M\`
 - `F:\datasets_models\tts\f5tts-hebrew-v2\model.safetensors`
 - `F:\datasets_models\tts\f5tts-hebrew-v2\vocab.txt`
 - `F:\datasets_models\tts\f5tts-hebrew-v2\vocoder`
@@ -72,6 +86,30 @@ $env:PHONIKUD_TTS_MODEL_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-high
 $env:PHONIKUD_TTS_CONFIG_PATH='F:\datasets_models\tts\phonikud-tts\he_IL-heb-high.onnx.json'
 $env:WHISPER_MODEL_PATH='F:\datasets_models\stt\whisper-large-v3-turbo\large-v3-turbo.pt'
 $env:FASTER_WHISPER_MODEL_PATH='F:\datasets_models\stt\whisper-large-v3-turbo-he\models--ivrit-ai--whisper-large-v3-turbo-ct2\snapshots\72ad623a37947395efcc3933132353790e5a12f5'
+```
+
+## M14 Translation Notes
+
+- Release-default M14 backend is now `nllb`.
+- Optional cloud verification backend: `google`.
+- `google` supports either `GOOGLE_TRANSLATE_API_KEY` or `GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON`, plus outbound network access.
+- Desktop GUI can persist and switch the Google credential from the top toolbar via `Tools -> API Keys`.
+- The `External API Keys` dialog can load the Google key directly from `.txt`, `.env` or `.json` files, and it can also connect a full Google service account JSON.
+- `dict` is kept only as a basic fallback for prototype resilience; it is not a full translation backend.
+- `mbart` and `opus` are available only after runtime hygiene:
+  - `sentencepiece` installed
+  - correct tokenizer/model ids
+  - staged/local Hugging Face cache available
+- Current staged translation model path:
+  - `F:\datasets_models\translation\nllb-200-distilled-600M\`
+- `sacrebleu` is the preferred translation quality metric.
+- `ctranslate2` is staged as a future acceleration layer, but not part of the current release path.
+
+Optional environment variable for Google Cloud Translation Basic API v2:
+
+```powershell
+$env:GOOGLE_TRANSLATE_API_KEY='your-key-here'
+$env:GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON='C:\path\to\service-account.json'
 ```
 
 ## F5 Hebrew v2 Notes

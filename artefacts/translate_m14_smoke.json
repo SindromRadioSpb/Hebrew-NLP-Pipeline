@@ -1,0 +1,37 @@
+{
+  "text": "תהליך ייצור הפלדה מתחיל.",
+  "results": [
+    {
+      "backend_requested": "dict",
+      "status": "ProcessorStatus.READY",
+      "backend_used": "dict",
+      "result": "תהליך ייצור הפלדה מתחיל.",
+      "note": "Basic dictionary fallback used.",
+      "errors": []
+    },
+    {
+      "backend_requested": "nllb",
+      "status": "ProcessorStatus.READY",
+      "backend_used": "nllb",
+      "result": "The steel production process is starting.",
+      "note": "",
+      "errors": []
+    },
+    {
+      "backend_requested": "mbart",
+      "status": "ProcessorStatus.READY",
+      "backend_used": "mbart",
+      "result": "The steel manufacturing process begins.",
+      "note": "",
+      "errors": []
+    },
+    {
+      "backend_requested": "opus",
+      "status": "ProcessorStatus.READY",
+      "backend_used": "opus",
+      "result": "The steel manufacturing process begins.",
+      "note": "",
+      "errors": []
+    }
+  ]
+}

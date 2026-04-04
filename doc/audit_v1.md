@@ -678,30 +678,36 @@ ul
 
 ### 5.11 M14 — Translator (Translator)
 
-**Статус: ✅ Production-ready (4 backends)** | **Тесты: 52/52 PASS (25 engine + 20 NLLB + 7 API)** | **Файл: `kadima/engine/translator.py` (322 строки)**
+**Статус: ✅ Product-grade baseline (release path: `nllb` → `dict`; `mbart`/`opus` restored after hygiene pass, but remain secondary)** | **Тесты: 58/58 PASS по targeted M14 regression suite; live smoke artifact saved** | **Файл: `kadima/engine/translator.py`**
 
 #### A) Реализованный функционал
 
 | # | Функциональность | Строки | Связанные процессы |
 |---|-----------------|--------|-------------------|
-| 1 | mBART-50 backend (facebook/mbart-large-50-many-to-many-mmt, 3GB VRAM) | `translator.py:284-310` | 50 языков, high quality |
-| 2 | **NLLB-200 backend (facebook/nllb-200-distilled-600M, 600MB VRAM, CC-BY-SA 4.0)** | `translator.py:312-344` | **200 языков, лёгкая модель** |
-| 3 | OPUS-MT backend (Helsinki-NLP/opus-mt-tc-big-he-en) | `translator.py:310-322` | Lightweight HE↔EN |
-| 4 | Dictionary fallback (word-by-word, HE↔EN, ~120 слов) | `translator.py:101-136` | Always available |
+| 1 | **NLLB-200 backend (facebook/nllb-200-distilled-600M)** | `translator.py` | Confirmed release-default ML path |
+| 2 | Dictionary fallback (word-by-word, HE↔EN, ~120 слов) | `translator.py` | Safe fallback for prototype, explicitly not a full translator |
+| 3 | mBART-50 backend restored after `sentencepiece` hygiene | `translator.py` | Secondary ML path |
+| 4 | OPUS-MT backend restored for HE↔EN after model-id hygiene | `translator.py` | Secondary HE↔EN path |
 | 5 | **NLLB language codes (16 языков)**: he, en, ar, fr, de, ru, es, it, zh, ja, ko, tr, am, hi, th, pt | `translator.py:127-135` | Multi-language |
 | 6 | mBART language codes (12 языков) | `translator.py:119-123` | Multi-language |
-| 7 | BLEU-1 метрика (упрощённая) | `translator.py:60-96` | Validation |
+| 7 | SacreBLEU-backed translation quality metric (`bleu_score()`) with legacy fallback only for lightweight envs | `translator.py` | Reproducible evaluation |
 | 8 | `process_batch()` для пакетной обработки | `translator.py:232-248` | Batch pipeline |
 | 9 | Fallback chain: mbart/nllb/opus → dict | `translator.py:188-195` | Graceful degradation |
 | 10 | API endpoint POST `/generative/translate` | `api/routers/generative.py:243-264` | REST API |
 | 11 | API schema: TranslateRequest/TranslateResponse | `api/routers/generative.py:85-98` | Validation |
-| 12 | **UI: BackendSelector с 4 бэкендами** (mbart, nllb, opus, dict) | `ui/generative_view.py:561-565` | Desktop UI |
+| 12 | UI: BackendSelector reordered to `nllb`, `dict`, `mbart`, `opus` with `nllb` default | `ui/generative_view.py` | Honest desktop contract |
 | 13 | **UI: Help text** — объяснение различий бэкендов | `ui/generative_view.py:569-575` | UX информирования |
 | 14 | **UI: ML availability badges** — ✅/⬜ для mbart, nllb, opus | `ui/generative_view.py:578-595` | Визуальная индикация |
 | 15 | **UI: Char/word counters** | `ui/generative_view.py:604-617` | Live feedback |
 | 16 | **UI: 7 языковых направлений**: HE→EN, HE→RU, HE→AR, HE→FR, HE→DE, HE→ES, EN→HE | `ui/generative_view.py:598-601` | Multi-language support |
-| 17 | **UI: Backend badge в статусе** — показывает backend · src→tgt · word count | `ui/generative_view.py:665-673` | Visual feedback |
-| 18 | API паттерн `nllb` добавлен в TranslateRequest | `api/routers/generative.py:89` | API validation |
+| 17 | UI: backend badge в статусе — показывает backend · src→tgt · word count · fallback note | `ui/generative_view.py` | Honest visual feedback |
+| 18 | UI: dirty-state + empty-input feedback + Save TXT export | `ui/generative_view.py` | Product workflow instead of black-box tab |
+| 19 | API schema supports `mbart|nllb|opus|dict` and now includes `device` + `note` | `api/routers/generative.py` | Honest API contract |
+| 20 | Translator config default switched to `nllb` and now explicitly allows `dict` | `pipeline/config.py`, `config/config.default.yaml` | Config/runtime alignment |
+| 21 | Optional Google Cloud Translation backend implemented (`google`) | `translator.py`, `api/routers/generative.py`, `ui/generative_view.py`, `pipeline/config.py` | Cloud verification backend for quality cross-checks |
+| 22 | **Top-toolbar Tools → API Keys control** with local Google credential management, file-based key loading (`.txt`, `.env`, `.json`) and service account JSON support | `ui/main_window.py`, `engine/translator.py` | Product path for connecting/changing external API credentials from desktop UI |
+| 23 | Offline/bootstrap docs now include translation stack (`sentencepiece`, `sacrebleu`, `sacremoses`, staged NLLB path) plus Google API key note | `offline/README.md` | Reproducible local setup |
+| 24 | Live M14 smoke artifact for local backends | `artefacts/translate_m14_smoke.json` | Real user-path evidence |
 
 #### B) Запланировано, не реализовано
 
@@ -709,31 +715,47 @@ ul
 |-----------------|---------------|-------------------|---------|---------|
 | Translation Memory (TM) | KADIMA_MASTER_PLAN_v2: фаза S `tm_service` | Corpus-level consistency | Фаза S не начата | ⏳ **Отложить до Фазы S** |
 | DB сохранение переводов | CLAUDE.md migration 005 planned | Audit trail | Migration не создана | ⏳ **Отложить до Фазы S** |
+| Live cloud smoke for `google` backend in current workspace | Нет реальных cloud credentials в среде | End-to-end verification against Google Cloud Translation (API key or service account JSON) | Нет credentials в среде | ⏳ **Implemented, but not live-verified locally** |
+
+#### C) Технически возможно, не планировалось
+
+| Функциональность | Основание | Потенциальная ценность | Риски/цена |
+|-----------------|-----------|------------------------|------------|
+| `CTranslate2` как future acceleration layer | Wheel уже staged в `offline/wheels` | Более быстрый и стабильный offline inference path | Отдельная integration/eval ветка |
+| `mbart`/`opus` как secondary or experimental backends beyond the current staged path | Кодовые пути уже восстановлены | Больше coverage по направлениям и моделям | Требуют отдельного smoke/perf мониторинга и staged models по направлению |
 
 #### Резюме модуля
 
-**Зрелость: Production-ready (4 backends)**. 4 backends: mBART-50 (multi-language, high quality), NLLB-200-distilled (200 языков, 600MB VRAM, CC-BY-SA 4.0 — **совместимо с коммерческим использованием**), OPUS-MT (HE↔EN lightweight), Dictionary (always available, ~120 слов). **48 тестов**: 28 translator engine_tests + 9 NLLB engine_tests (language codes + real model tests) + 7 API tests + 3 unsupported pair tests + 1 batch test. NLLB-200 — ключевое улучшение: 200 языков, CC-BY-SA 4.0, только 600MB.
+M14 доведён до product-grade baseline. После runtime hygiene (`sentencepiece`, corrected OPUS model id, SacreBLEU integration) локальный smoke подтвердил: `nllb`, `mbart` и `opus` реально переводят; `dict` остаётся basic fallback. Дополнительно реализован credential-gated `google` backend как cloud verification path. Основная пользовательская боль во вкладке Translate закрыта: есть честный default backend, surfaced fallback note, dirty-state, empty-input feedback и export/save path. Верхняя панель desktop UI теперь также даёт продуктовый путь для подключения/смены Google credentials через `Tools → API Keys`, включая обычный API key и Google service account JSON, без ручного редактирования env.
 
-**48 тестов покрывают**: metadata (2), validate (3), BLEU (6), dict (5),
+#### Recommendations After Audit
 
-**UI/UX — закрывает ли боль?**:
-- ✅ **Help text** — объяснение различий бэкендов: mbart (50 языков, 3GB), nllb (200 языков, 600MB), opus (HE↔EN, fast), dict (~100 слов)
-- ✅ **ML availability badges** — ✅/⬜ для mbart, nllb, opus — пользователь знает что установлено
-- ✅ **Char/word counters** — live feedback при вводе текста
-- ✅ **7 языковых направлений** — HE→EN, HE→RU, HE→AR, HE→FR, HE→DE, HE→ES, EN→HE
-- ✅ **Backend badge в статусе** — "Done (dict) · he→en · 2 words"
-- ✅ **API `/generative/translate`** — с nllb backend в паттерне
+1. Главный release backend M14 — `nllb`; `mbart`/`opus` имеют смысл держать как secondary paths, не как product default.
+2. `dict` должен и дальше оставаться только `basic fallback`.
+3. `google` стоит держать как optional cloud verification backend, а не как новый default path.
+4. `CTranslate2` — следующий логичный шаг для acceleration/offline stability.
+5. Следующий максимальный ROI уже не в новых backend, а в Translation Memory, persistence и corpus-level quality gates.
 
-**Исправления и улучшения (2026-04-03)**:
-1. **NLLB-200 backend** — новый бэкенд: 200 языков, 600MB VRAM, CC-BY-SA 4.0.
-2. **NLLB language codes** — 16 языковых кодов с proper fallback.
-3. **UI: Help text + Badges + Counters** — информирование пользователя о бэкендах, ML статуса, live counters.
-4. **UI: 7 языковых направлений** — расширено с 3 до 7.
-5. **UI: Backend badge в статусе** — показывает backend · src_lang→tgt_lang · word_count.
-6. **API: nllb backend** в TranslateRequest паттерне.
-7. **API: 7 endpoint тестов** — dict HE↔EN, mbart/nllb fallback, empty text, schema validation.
-8. **Engine: 20 NLLB тестов** — language codes (16), fallback (5).
-9. **Total tests: 25 → 52** (engine: 25+20=45, API: 7).
+#### Follow-up Implementation (2026-04-04)
+
+1. **PATCH-01 M14 factual sync + release contract cleanup — DONE**
+   - Engine/API/config/UI выровнены.
+   - Добавлен `note` для surfaced fallback-state.
+   - Default path переведён на `nllb`.
+2. **PATCH-02 Translate tab UI/UX productization — DONE**
+   - Добавлены dirty-state, empty-input feedback и Save TXT export.
+   - `dict` честно обозначен как basic fallback.
+   - Fallback note поднят в status line.
+3. **PATCH-03 Tests + smoke + offline docs — DONE**
+   - Добавлена M14-specific UI coverage.
+   - Сохранён live smoke artifact `artefacts/translate_m14_smoke.json`.
+   - Translation stack описан в `offline/README.md`.
+4. **PATCH-04 External API key management in top toolbar — DONE**
+   - Добавлен desktop control `Tools → API Keys`.
+   - Google Translate credentials можно подключать и менять из GUI.
+   - Поддержаны оба режима: `API key` и `service account JSON`.
+   - Текущее состояние подключения видно в toolbar.
+   - Ключ или credential file можно загрузить из файлового диалога без ручного copy/paste.
 
 ---
 
@@ -1716,7 +1738,7 @@ KADIMA — функционально завершённый Hebrew NLP pipeline
 
 ---
 
-## 15. Аудит M14 — Translator (2026-04-03, обновление)
+## 15. Аудит M14 — Translator (2026-04-04, обновление)
 
 ### 15.1 Результаты тестирования
 
@@ -1724,47 +1746,48 @@ KADIMA — функционально завершённый Hebrew NLP pipeline
 |-------|-------|--------|--------|
 | M14 engine tests (original) | 25 | 25 | 0 ✅ |
 | M14 NLLB engine tests (new) | 20 | 20 | 0 ✅ |
-| M14 API tests (new) | 7 | 7 | 0 ✅ |
-| **Итого M14** | **52** | **52** | **0** ✅ |
+| M14 Translate UI tests | 6 | 6 | 0 ✅ |
+| M14 API/config targeted additions | 7 | 7 | 0 ✅ |
+| **Итого M14** | **58** | **58** | **0** ✅ |
 
 ### 15.2 Реализованные изменения
 
-#### PATCH-01: UI/UX fixes + NLLB backend
+#### PATCH-01: Release contract cleanup + runtime hygiene
 - **Engine**:
-  - Добавлен **NLLB-200 backend** (facebook/nllb-200-distilled-600M, 600MB, 200 языков, CC-BY-SA 4.0)
-  - Добавлены **16 NLLB language codes**: he, en, ar, fr, de, ru, es, it, zh, ja, ko, tr, am, hi, th, pt
-  - Добавлен метод `_translate_nllb()`
-  - Обновлены docstring-и и fallback chain
+  - `nllb` зафиксирован как release-default backend
+  - `dict` честно переведён в статус basic fallback
+  - Добавлен surfaced `note` в `TranslationResult`
+  - NLLB Hebrew code исправлен на `heb_Hebr`
+  - `bleu_score()` переведён на SacreBLEU с legacy fallback
+  - `mbart` и `opus` восстановлены после hygiene-pass (`sentencepiece`, corrected OPUS model id)
 - **UI**:
-  - BackendSelector расширен: `["mbart", "nllb", "opus", "dict"]`
-  - Добавлен **Help text** — объяснение различий бэкендов
-  - Добавлены **ML availability badges** (✅/⬜) для mbart, nllb, opus
-  - Добавлены **Char/word counters** — live update при вводе
-  - Расширены **языковые направления** с 3 до 7: HE→EN, HE→RU, HE→AR, HE→FR, HE→DE, HE→ES, EN→HE
-  - Добавлен **Backend badge в статусе** — "Done (dict) · he→en · 2 words"
+  - BackendSelector reordered: `["nllb", "dict", "mbart", "opus"]`
+  - `nllb` выбран по умолчанию
+  - help text теперь честно объясняет `dict` как fallback и `mbart/opus` как secondary paths
+  - badges учитывают `sentencepiece`
 - **API**:
-  - Добавлен `nllb` в паттерн TranslateRequest: `^(mbart|nllb|opus|dict)$`
+  - `TranslateRequest` теперь принимает `device`
+  - `TranslateResponse` теперь возвращает `note`
 
-#### PATCH-02: API endpoint тесты
-- 7 новых тестов в `tests/api/test_generative_router.py::TestTranslateEndpoint`:
-  - dict HE→EN, dict EN→HE
-  - mBART fallback, NLLB fallback
-  - empty text validation, invalid backend validation
-  - response schema verification
+#### PATCH-02: Translate tab UX productization
+- dirty-state: `Text ready...` / `Text, backend or direction changed...`
+- empty-input feedback вместо silent return
+- `Save TXT...` export path
+- status line показывает backend used, direction, word count и fallback note
 
-#### PATCH-03: NLLB engine тесты
-- 20 новых тестов в `tests/engine/test_translator_nllb.py`:
-  - **TestNLLBLangCodes** — 16 тестов для языковых кодов
-  - **TestNLLBBackendFallback** — 5 тестов (HE→EN, EN→HE, HE→RU, HE→AR, batch)
+#### PATCH-03: Tests + smoke + offline docs
+- новый M14 UI regression suite: `tests/engine/test_translate_tab_ui.py`
+- live smoke artifact: `artefacts/translate_m14_smoke.json`
+- translation stack описан в `offline/README.md`
 
 ### 15.3 Рекомендации по M14
 
 | # | Рекомендация | Приоритет | Обоснование |
 |---|-------------|-----------|-------------|
-| R1 | Использовать NLLB как default вместо mBART | Medium | CC-BY-SA 4.0 (**коммерчески разрешено**) vs CC-BY-NC (запрещено). 600MB vs 3GB. |
-| R2 | Translation Memory (фаза S) | Low | Инфраструктура готова: M14 + DB layer |
-| R3 | TMX export | Low | Стандарт для translation memory exchange |
-| R4 | Back-translation confidence | Low | Forward/back-translation для quality estimation |
+| R1 | Держать `nllb` как default release backend | High | Фактически подтверждённый staged/local path |
+| R2 | `CTranslate2` как future acceleration layer | Medium | wheel уже staged, может дать более быстрый offline inference |
+| R3 | Translation Memory (фаза S) | Low | Инфраструктура готова: M14 + DB layer |
+| R4 | TMX export | Low | Стандарт для translation memory exchange |
 
 ---
 

@@ -62,7 +62,7 @@ diacritizer:
   device: cuda
 
 translator:
-  backend: mbart       # mbart (50 langs) | opus (fast, HE-EN only) | nllb (200 langs)
+  backend: nllb        # nllb (recommended) | google (cloud verification) | dict (basic fallback) | mbart/opus (secondary)
   device: cuda
   default_tgt_lang: en
 

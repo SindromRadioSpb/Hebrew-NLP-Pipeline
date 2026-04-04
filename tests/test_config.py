@@ -285,11 +285,11 @@ class TestDiacritizerConfig:
 class TestTranslatorConfig:
     def test_defaults(self):
         c = TranslatorConfig()
-        assert c.backend == "mbart"
+        assert c.backend == "nllb"
         assert c.default_tgt_lang == "en"
 
     def test_valid_backends(self):
-        for b in ("mbart", "opus", "nllb"):
+        for b in ("mbart", "opus", "nllb", "dict", "google"):
             c = TranslatorConfig(backend=b)
             assert c.backend == b
 
@@ -412,7 +412,7 @@ class TestGetGenerativeModuleConfig:
     def test_translator_config(self):
         c = PipelineConfig()
         cfg = c.get_module_config("translator")
-        assert cfg["backend"] == "mbart"
+        assert cfg["backend"] == "nllb"
         assert cfg["default_tgt_lang"] == "en"
 
     def test_keyphrase_config(self):
@@ -439,7 +439,7 @@ class TestLoadConfigGenerative:
     def test_load_default_yaml_with_generative(self):
         config = load_config("config/config.default.yaml")
         assert config.diacritizer.backend == "phonikud"
-        assert config.translator.backend == "mbart"
+        assert config.translator.backend == "nllb"
         assert config.keyphrase.top_n == 10
         assert config.paraphrase.num_variants == 3
 

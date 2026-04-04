@@ -88,7 +88,8 @@ class TranslateRequest(BaseModel):
     text: str = Field(..., min_length=1, description="Source text")
     src_lang: str = Field(default="he", description="Source language code")
     tgt_lang: str = Field(default="en", description="Target language code")
-    backend: str = Field(default="mbart", pattern=r"^(mbart|nllb|opus|dict)$")
+    backend: str = Field(default="nllb", pattern=r"^(google|mbart|nllb|opus|dict)$")
+    device: str = Field(default="cpu", pattern=r"^(cpu|cuda)$")
 
 
 class TranslateResponse(BaseModel):
@@ -98,6 +99,7 @@ class TranslateResponse(BaseModel):
     tgt_lang: str
     backend: str
     word_count: int
+    note: str = ""
 
 
 # ── Canonicalization schemas ────────────────────────────────────────────────
@@ -250,6 +252,7 @@ async def translate(req: TranslateRequest) -> TranslateResponse:
     proc = Translator()
     config = {
         "backend": req.backend,
+        "device": req.device,
         "src_lang": req.src_lang,
         "tgt_lang": req.tgt_lang,
     }
@@ -264,6 +267,7 @@ async def translate(req: TranslateRequest) -> TranslateResponse:
         tgt_lang=result.data.tgt_lang,
         backend=result.data.backend,
         word_count=result.data.word_count,
+        note=result.data.note,
     )
 
 

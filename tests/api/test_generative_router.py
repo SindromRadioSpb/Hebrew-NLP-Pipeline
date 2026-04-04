@@ -383,6 +383,7 @@ class TestTranslateEndpoint:
         assert data["tgt_lang"] == "en"
         assert data["backend"] == "dict"
         assert data["word_count"] == 2
+        assert "fallback" in data["note"].lower()
 
     def test_translate_dict_en_to_he(self, client):
         response = client.post(
@@ -452,8 +453,86 @@ class TestTranslateEndpoint:
         )
         assert response.status_code == 200
         data = response.json()
-        for key in ("result", "source", "src_lang", "tgt_lang", "backend", "word_count"):
+        for key in ("result", "source", "src_lang", "tgt_lang", "backend", "word_count", "note"):
             assert key in data
+
+    def test_translate_forwards_device(self, client):
+        from unittest.mock import patch
+
+        captured = {}
+
+        class DummyTranslator:
+            def process(self, text, config):
+                captured["text"] = text
+                captured["config"] = config
+                from kadima.engine.base import ProcessorResult, ProcessorStatus
+                from kadima.engine.translator import TranslationResult
+
+                return ProcessorResult(
+                    module_name="translator",
+                    status=ProcessorStatus.READY,
+                    data=TranslationResult(
+                        result="hello",
+                        source=text,
+                        src_lang=config["src_lang"],
+                        tgt_lang=config["tgt_lang"],
+                        backend="nllb",
+                        word_count=1,
+                        note="",
+                    ),
+                )
+
+        with patch("kadima.engine.translator.Translator", return_value=DummyTranslator()):
+            response = client.post(
+                "/api/v1/generative/translate",
+                json={
+                    "text": "שלום",
+                    "src_lang": "he",
+                    "tgt_lang": "en",
+                    "backend": "nllb",
+                    "device": "cpu",
+                },
+            )
+
+        assert response.status_code == 200
+        assert captured["config"]["device"] == "cpu"
+
+    def test_translate_google_backend_schema_and_note(self, client):
+        from unittest.mock import patch
+
+        from kadima.engine.base import ProcessorResult, ProcessorStatus
+        from kadima.engine.translator import TranslationResult
+
+        fake_result = ProcessorResult(
+            module_name="translator",
+            status=ProcessorStatus.READY,
+            data=TranslationResult(
+                result="hello world",
+                source="שלום עולם",
+                src_lang="he",
+                tgt_lang="en",
+                backend="google",
+                word_count=2,
+                note="Google Cloud Translation API used.",
+            ),
+        )
+
+        with patch("kadima.engine.translator.Translator.process", return_value=fake_result):
+            response = client.post(
+                "/api/v1/generative/translate",
+                json={
+                    "text": "שלום עולם",
+                    "src_lang": "he",
+                    "tgt_lang": "en",
+                    "backend": "google",
+                    "device": "cpu",
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["backend"] == "google"
+        assert "Google Cloud Translation API" in data["note"]
 
 
 # ── Schema Validation for all endpoints ───────────────────────────────────────
@@ -498,4 +577,12 @@ class TestGenerativeSchema:
 
         req = NERRequest(text="פרופ׳ כהן", backend="heq_ner", device="cpu")
         assert req.backend == "heq_ner"
+        assert req.device == "cpu"
+
+    def test_translate_request_schema(self):
+        """TranslateRequest should validate backend + device."""
+        from kadima.api.routers.generative import TranslateRequest
+
+        req = TranslateRequest(text="שלום", backend="google", device="cpu")
+        assert req.backend == "google"
         assert req.device == "cpu"

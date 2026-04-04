@@ -2,6 +2,7 @@
 """M14: Machine translation for Hebrew ↔ other languages.
 
 Backends:
+- google: Google Cloud Translation Basic API v2 (credential-gated cloud backend)
 - mbart: facebook/mbart-large-50-many-to-many-mmt (3GB VRAM)
 - nllb: facebook/nllb-200-distilled-600M (600MB VRAM, 200 languages, CC-BY-SA 4.0)
 - opus: Helsinki-NLP/opus-mt-tc-big-he-en (lighter, HE↔EN only)
@@ -14,7 +15,9 @@ Example:
     'hello'
 """
 
+import html
 import logging
+import os
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -35,12 +38,42 @@ try:
 except ImportError:
     pass
 
+_HTTPX_AVAILABLE = False
+try:
+    import httpx
+    _HTTPX_AVAILABLE = True
+except ImportError:
+    pass
+
 _TORCH_AVAILABLE = False
 try:
     import torch
     _TORCH_AVAILABLE = True
 except ImportError:
     pass
+
+_SACREBLEU_AVAILABLE = False
+try:
+    from sacrebleu import corpus_bleu as _corpus_bleu
+    _SACREBLEU_AVAILABLE = True
+except ImportError:
+    _corpus_bleu = None  # type: ignore[assignment]
+
+_SENTENCEPIECE_AVAILABLE = False
+try:
+    import sentencepiece  # noqa: F401
+    _SENTENCEPIECE_AVAILABLE = True
+except ImportError:
+    pass
+
+_GOOGLE_AUTH_AVAILABLE = False
+try:
+    from google.auth.transport.requests import Request as _GoogleAuthRequest
+    from google.oauth2 import service_account as _google_service_account
+    _GOOGLE_AUTH_AVAILABLE = True
+except ImportError:
+    _GoogleAuthRequest = None  # type: ignore[assignment]
+    _google_service_account = None  # type: ignore[assignment]
 
 
 # ── Data classes ────────────────────────────────────────────────────────────
@@ -54,23 +87,13 @@ class TranslationResult:
     tgt_lang: str
     backend: str
     word_count: int = 0
+    note: str = ""
 
 
 # ── Metrics ─────────────────────────────────────────────────────────────────
 
-def bleu_score(predicted: str, reference: str) -> float:
-    """Simplified BLEU-1 score (unigram precision with brevity penalty).
-
-    For production use, prefer sacrebleu. This is a lightweight metric
-    for quick evaluation without extra dependencies.
-
-    Args:
-        predicted: Predicted translation.
-        reference: Reference (gold) translation.
-
-    Returns:
-        BLEU-1 score in [0.0, 1.0].
-    """
+def _legacy_bleu1_score(predicted: str, reference: str) -> float:
+    """Legacy BLEU-1 fallback used only when SacreBLEU is unavailable."""
     pred_tokens = predicted.lower().split()
     ref_tokens = reference.lower().split()
     if not ref_tokens:
@@ -95,6 +118,21 @@ def bleu_score(predicted: str, reference: str) -> float:
     bp = min(1.0, len(pred_tokens) / len(ref_tokens)) if ref_tokens else 1.0
 
     return precision * bp
+
+
+def bleu_score(predicted: str, reference: str) -> float:
+    """Return translation quality score in [0.0, 1.0].
+
+    Uses SacreBLEU when available and falls back to the legacy BLEU-1
+    approximation only in lightweight environments where SacreBLEU is
+    not installed.
+    """
+    if _SACREBLEU_AVAILABLE and predicted and reference:
+        score = float(
+            _corpus_bleu([predicted], [[reference]], use_effective_order=True).score / 100.0
+        )
+        return max(0.0, min(1.0, score))
+    return _legacy_bleu1_score(predicted, reference)
 
 
 # ── Dictionary fallback ─────────────────────────────────────────────────────
@@ -125,7 +163,7 @@ _MBART_LANG_CODES: Dict[str, str] = {
 
 # NLLB-200 language codes (distilled model supports 200 languages)
 _NLLB_LANG_CODES: Dict[str, str] = {
-    "he": "heb_Latn", "en": "eng_Latn", "ar": "arb_Arab", "fr": "fra_Latn",
+    "he": "heb_Hebr", "en": "eng_Latn", "ar": "arb_Arab", "fr": "fra_Latn",
     "de": "deu_Latn", "ru": "rus_Cyrl", "es": "spa_Latn", "it": "ita_Latn",
     "zh": "zho_Hans", "ja": "jpn_Jpan", "ko": "kor_Hang", "tr": "tur_Latn",
     "am": "amh_Ethi", "hi": "hin_Deva", "th": "tha_Thai", "pt": "por_Latn",
@@ -165,7 +203,7 @@ class Translator(Processor):
         - dict: Word-by-word dictionary (always available)
 
     Config:
-        backend: str = "mbart"
+        backend: str = "nllb"
         device: str = "cuda"
         default_tgt_lang: str = "en"
     """
@@ -199,26 +237,34 @@ class Translator(Processor):
         """
         start = time.time()
         try:
-            backend = config.get("backend", "mbart")
+            backend = config.get("backend", "nllb")
             src_lang = config.get("src_lang", "he")
             tgt_lang = config.get("tgt_lang", config.get("default_tgt_lang", "en"))
+            notes: list[str] = []
 
-            if backend in ("mbart", "nllb", "opus") and _TRANSFORMERS_AVAILABLE and _TORCH_AVAILABLE:
+            if backend == "google":
                 try:
-                    result_text = self._translate_ml(input_data, src_lang, tgt_lang, backend, config)
-                    used_backend = backend
+                    result_text, google_note = self._translate_google(input_data, src_lang, tgt_lang, config)
+                    used_backend = "google"
+                    if google_note:
+                        notes.append(google_note)
                 except Exception as e:
-                    logger.warning("ML translation failed, falling back to dict: %s", e)
-                    result_text = _translate_dict(input_data, src_lang, tgt_lang)
-                    used_backend = "dict"
-            else:
-                if backend != "dict" and not _TRANSFORMERS_AVAILABLE:
-                    logger.warning(
-                        "transformers not available, falling back to dict. "
-                        "Install with: pip install transformers"
+                    logger.warning("Google translation failed, falling back to local path: %s", e)
+                    notes.append("Google Cloud Translation unavailable; local fallback used.")
+                    result_text, used_backend, local_notes = self._translate_local(
+                        input_data, src_lang, tgt_lang, "nllb", config
                     )
-                result_text = _translate_dict(input_data, src_lang, tgt_lang)
-                used_backend = "dict"
+                    notes.extend(local_notes)
+            else:
+                result_text, used_backend, local_notes = self._translate_local(
+                    input_data, src_lang, tgt_lang, backend, config
+                )
+                notes.extend(local_notes)
+
+            if used_backend == "dict" and (
+                src_lang not in {"he", "en"} or tgt_lang not in {"he", "en"}
+            ):
+                notes.append("Basic dictionary fallback supports only HE↔EN; source text may be returned unchanged.")
 
             data = TranslationResult(
                 result=result_text,
@@ -227,6 +273,7 @@ class Translator(Processor):
                 tgt_lang=tgt_lang,
                 backend=used_backend,
                 word_count=len(input_data.split()),
+                note=" | ".join(dict.fromkeys(note for note in notes if note)),
             )
             return ProcessorResult(
                 module_name=self.name, status=ProcessorStatus.READY,
@@ -240,6 +287,143 @@ class Translator(Processor):
                 data=None, errors=[str(e)],
                 processing_time_ms=(time.time() - start) * 1000,
             )
+
+    def _translate_local(
+        self,
+        text: str,
+        src_lang: str,
+        tgt_lang: str,
+        backend: str,
+        config: Dict[str, Any],
+    ) -> tuple[str, str, list[str]]:
+        """Translate using local backends and return (text, backend_used, notes)."""
+        notes: list[str] = []
+
+        if backend in ("mbart", "nllb", "opus") and _TRANSFORMERS_AVAILABLE and _TORCH_AVAILABLE:
+            try:
+                result_text = self._translate_ml(text, src_lang, tgt_lang, backend, config)
+                used_backend = backend
+            except Exception as e:
+                logger.warning("ML translation failed, falling back to dict: %s", e)
+                result_text = _translate_dict(text, src_lang, tgt_lang)
+                used_backend = "dict"
+                notes.append(f"{backend} unavailable; basic dictionary fallback used.")
+        else:
+            if backend != "dict" and not _TRANSFORMERS_AVAILABLE:
+                logger.warning(
+                    "transformers not available, falling back to dict. "
+                    "Install with: pip install transformers"
+                )
+                notes.append("Transformers unavailable; basic dictionary fallback used.")
+            elif backend == "mbart" and not _SENTENCEPIECE_AVAILABLE:
+                notes.append("SentencePiece missing; mbart fell back to basic dictionary mode.")
+            elif backend == "opus" and not _SENTENCEPIECE_AVAILABLE:
+                notes.append("SentencePiece missing; opus fell back to basic dictionary mode.")
+            elif backend == "dict":
+                notes.append("Basic dictionary fallback used.")
+            result_text = _translate_dict(text, src_lang, tgt_lang)
+            used_backend = "dict"
+
+        return result_text, used_backend, notes
+
+    def _translate_google(
+        self,
+        text: str,
+        src_lang: str,
+        tgt_lang: str,
+        config: Dict[str, Any],
+    ) -> tuple[str, str]:
+        """Translate using Google Cloud Translation Basic API v2."""
+        if not _HTTPX_AVAILABLE:
+            raise RuntimeError("httpx is required for google translation backend")
+
+        endpoint = str(
+            config.get("google_translate_endpoint")
+            or os.getenv("GOOGLE_TRANSLATE_ENDPOINT")
+            or "https://translation.googleapis.com/language/translate/v2"
+        ).strip()
+        timeout_seconds = float(config.get("google_timeout_seconds", 20.0))
+        headers, params, note = self._resolve_google_auth(config)
+
+        with httpx.Client(timeout=timeout_seconds) as client:
+            response = client.post(
+                endpoint,
+                params=params,
+                headers=headers,
+                data={
+                    "q": text,
+                    "source": src_lang,
+                    "target": tgt_lang,
+                    "format": "text",
+                },
+            )
+            response.raise_for_status()
+            payload = response.json()
+
+        try:
+            translated = payload["data"]["translations"][0]["translatedText"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RuntimeError("Unexpected Google Translate API response") from exc
+
+        return html.unescape(str(translated)), note
+
+    def _resolve_google_auth(self, config: Dict[str, Any]) -> tuple[dict[str, str], dict[str, str], str]:
+        """Resolve Google auth mode for Translation API.
+
+        Returns:
+            (headers, params, note)
+        """
+        explicit_service_account_json = str(config.get("google_service_account_json") or "").strip()
+        explicit_api_key = str(config.get("google_api_key") or "").strip()
+        env_service_account_json = str(
+            os.getenv("GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON")
+            or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+            or ""
+        ).strip()
+        env_api_key = str(os.getenv("GOOGLE_TRANSLATE_API_KEY") or "").strip()
+
+        if explicit_service_account_json:
+            token = self._get_google_service_account_access_token(explicit_service_account_json)
+            return (
+                {"Authorization": f"Bearer {token}"},
+                {},
+                "Google Cloud Translation service account credentials used.",
+            )
+
+        if explicit_api_key:
+            return {}, {"key": explicit_api_key}, "Google Cloud Translation API key used."
+
+        if env_service_account_json:
+            token = self._get_google_service_account_access_token(env_service_account_json)
+            return (
+                {"Authorization": f"Bearer {token}"},
+                {},
+                "Google Cloud Translation service account credentials used.",
+            )
+
+        if env_api_key:
+            return {}, {"key": env_api_key}, "Google Cloud Translation API key used."
+
+        raise RuntimeError(
+            "Google Translate credentials are not configured. "
+            "Set GOOGLE_TRANSLATE_API_KEY or GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON."
+        )
+
+    def _get_google_service_account_access_token(self, credentials_path: str) -> str:
+        """Return an OAuth access token for a Google service account JSON file."""
+        if not _GOOGLE_AUTH_AVAILABLE:
+            raise RuntimeError("google-auth is required for service account credentials")
+        if not os.path.isfile(credentials_path):
+            raise RuntimeError(f"Google service account file not found: {credentials_path}")
+
+        credentials = _google_service_account.Credentials.from_service_account_file(
+            credentials_path,
+            scopes=["https://www.googleapis.com/auth/cloud-translation"],
+        )
+        credentials.refresh(_GoogleAuthRequest())
+        if not credentials.token:
+            raise RuntimeError("Failed to obtain Google OAuth access token from service account")
+        return str(credentials.token)
 
     def process_batch(
         self, inputs: List[str], config: Dict[str, Any]
@@ -274,6 +458,8 @@ class Translator(Processor):
 
     def _translate_mbart(self, text: str, src_lang: str, tgt_lang: str, device: str) -> str:
         """Translate via mBART-50."""
+        if not _SENTENCEPIECE_AVAILABLE:
+            raise RuntimeError("SentencePiece is required for mbart")
         if self._loaded_backend != "mbart" or self._model is None:
             model_name = "facebook/mbart-large-50-many-to-many-mmt"
             self._tokenizer = MBart50TokenizerFast.from_pretrained(model_name)
@@ -293,8 +479,10 @@ class Translator(Processor):
 
     def _translate_opus(self, text: str, src_lang: str, tgt_lang: str, device: str) -> str:
         """Translate via Helsinki-NLP OPUS-MT."""
+        if not _SENTENCEPIECE_AVAILABLE:
+            raise RuntimeError("SentencePiece is required for opus")
         if self._loaded_backend != "opus" or self._model is None:
-            model_name = f"Helsinki-NLP/opus-mt-{src_lang}-{tgt_lang}"
+            model_name = self._resolve_opus_model_id(src_lang, tgt_lang)
             self._tokenizer = AutoTokenizer.from_pretrained(model_name)
             self._model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
             self._loaded_backend = "opus"
@@ -312,7 +500,7 @@ class Translator(Processor):
         """
         if self._loaded_backend != "nllb" or self._model is None:
             model_name = "facebook/nllb-200-distilled-600M"
-            src_code = _NLLB_LANG_CODES.get(src_lang, "heb_Latn")
+            src_code = _NLLB_LANG_CODES.get(src_lang, "heb_Hebr")
             self._tokenizer = AutoTokenizer.from_pretrained(
                 model_name, src_lang=src_code
             )
@@ -331,3 +519,15 @@ class Translator(Processor):
             max_length=512,
         )
         return self._tokenizer.batch_decode(generated, skip_special_tokens=True)[0]
+
+    @staticmethod
+    def _resolve_opus_model_id(src_lang: str, tgt_lang: str) -> str:
+        """Return a supported OPUS model id for a language pair."""
+        mapping = {
+            ("he", "en"): "Helsinki-NLP/opus-mt-tc-big-he-en",
+            ("en", "he"): "Helsinki-NLP/opus-mt-en-he",
+        }
+        try:
+            return mapping[(src_lang, tgt_lang)]
+        except KeyError as exc:
+            raise RuntimeError(f"OPUS backend supports only HE↔EN, not {src_lang}→{tgt_lang}") from exc

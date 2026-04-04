@@ -10,6 +10,8 @@ on signals.
 """
 from __future__ import annotations
 
+import os
+
 import pytest
 
 pytest.importorskip("PyQt6", reason="PyQt6 not installed")
@@ -17,7 +19,12 @@ pytest.importorskip("PyQt6", reason="PyQt6 not installed")
 from PyQt6.QtCore import Qt  # noqa: E402
 from PyQt6.QtWidgets import QComboBox, QFrame, QLabel, QListWidget, QStackedWidget, QToolBar  # noqa: E402
 
-from kadima.ui.main_window import MainWindow, _PROFILES, _VIEW_REGISTRY  # noqa: E402
+from kadima.ui.main_window import (  # noqa: E402
+    MainWindow,
+    _ExternalApiKeysDialog,
+    _PROFILES,
+    _VIEW_REGISTRY,
+)
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -154,6 +161,208 @@ def test_profile_combo_values(window):
 def test_current_profile_default(window):
     """Default profile is 'balanced'."""
     assert window.current_profile == "balanced"
+
+
+def test_api_keys_action_exists(window):
+    """Toolbar exposes the API keys action for cloud backends."""
+    assert window._act_api_keys.objectName() == "action_api_keys"
+    assert "API Keys" in window._act_api_keys.text()
+
+
+def test_external_api_dialog_has_browse_button(qtbot):
+    """External API dialog exposes file-based key selection."""
+    dialog = _ExternalApiKeysDialog("", "", "", None)
+    qtbot.addWidget(dialog)
+    assert dialog._browse_button.objectName() == "external_api_browse_btn"
+    assert "Browse" in dialog._browse_button.text()
+    assert dialog._browse_service_account_button.objectName() == "external_api_service_account_browse_btn"
+
+
+def test_api_status_label_defaults_to_not_connected(qtbot, monkeypatch, tmp_path):
+    """Toolbar shows that Google Translate is disconnected by default."""
+    monkeypatch.setenv("KADIMA_HOME", str(tmp_path))
+    monkeypatch.delenv("GOOGLE_TRANSLATE_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_TRANSLATE_ENDPOINT", raising=False)
+    monkeypatch.delenv("GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON", raising=False)
+    monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+
+    win = MainWindow()
+    qtbot.addWidget(win)
+    win.show()
+
+    status = win.findChild(QLabel, "toolbar_api_status")
+    assert status is not None
+    assert "not connected" in status.text().lower()
+
+
+def test_apply_external_api_settings_updates_env_and_status(qtbot, monkeypatch, tmp_path):
+    """Saving toolbar API settings updates current-session env and toolbar status."""
+    monkeypatch.setenv("KADIMA_HOME", str(tmp_path))
+    monkeypatch.delenv("GOOGLE_TRANSLATE_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_TRANSLATE_ENDPOINT", raising=False)
+
+    win = MainWindow()
+    qtbot.addWidget(win)
+    win.show()
+
+    win._apply_external_api_settings(
+        {
+            "google_translate_api_key": "test-google-key-1234",
+            "google_translate_endpoint": "https://example.test/translate",
+            "google_translate_service_account_json": "",
+        },
+        persist=True,
+    )
+
+    assert os.environ["GOOGLE_TRANSLATE_API_KEY"] == "test-google-key-1234"
+    assert os.environ["GOOGLE_TRANSLATE_ENDPOINT"] == "https://example.test/translate"
+    assert "connected" in win._api_status_label.text().lower()
+    assert "1234" in win._api_status_label.text()
+
+
+def test_apply_external_api_settings_can_disconnect_google(qtbot, monkeypatch, tmp_path):
+    """Clearing the Google key disconnects the cloud backend for the session."""
+    monkeypatch.setenv("KADIMA_HOME", str(tmp_path))
+    monkeypatch.setenv("GOOGLE_TRANSLATE_API_KEY", "persisted-secret")
+    monkeypatch.setenv("GOOGLE_TRANSLATE_ENDPOINT", "https://example.test/translate")
+    monkeypatch.setenv("GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON", "C:/secrets/google.json")
+    monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "C:/secrets/google.json")
+
+    win = MainWindow()
+    qtbot.addWidget(win)
+    win.show()
+
+    win._apply_external_api_settings(
+        {
+            "google_translate_api_key": "",
+            "google_translate_endpoint": "",
+            "google_translate_service_account_json": "",
+        },
+        persist=True,
+    )
+
+    assert "GOOGLE_TRANSLATE_API_KEY" not in os.environ
+    assert "GOOGLE_TRANSLATE_ENDPOINT" not in os.environ
+    assert "GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON" not in os.environ
+    assert "GOOGLE_APPLICATION_CREDENTIALS" not in os.environ
+    assert "not connected" in win._api_status_label.text().lower()
+
+
+def test_saved_external_api_settings_are_reloaded_on_next_window(qtbot, monkeypatch, tmp_path):
+    """Persisted API settings are restored for the next desktop session."""
+    monkeypatch.setenv("KADIMA_HOME", str(tmp_path))
+    monkeypatch.delenv("GOOGLE_TRANSLATE_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_TRANSLATE_ENDPOINT", raising=False)
+
+    first = MainWindow()
+    qtbot.addWidget(first)
+    first.show()
+    first._apply_external_api_settings(
+        {
+            "google_translate_api_key": "persisted-google-key-9999",
+            "google_translate_endpoint": "https://translation.googleapis.com/language/translate/v2",
+            "google_translate_service_account_json": "",
+        },
+        persist=True,
+    )
+    first.close()
+
+    monkeypatch.delenv("GOOGLE_TRANSLATE_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_TRANSLATE_ENDPOINT", raising=False)
+
+    second = MainWindow()
+    qtbot.addWidget(second)
+    second.show()
+
+    assert os.environ["GOOGLE_TRANSLATE_API_KEY"] == "persisted-google-key-9999"
+    assert "connected" in second._api_status_label.text().lower()
+    assert "9999" in second._api_status_label.text()
+
+
+def test_external_api_dialog_extracts_key_from_text_file(tmp_path):
+    """A plain text key file can be loaded without manual copy-paste."""
+    key_file = tmp_path / "google-key.txt"
+    key_file.write_text("plain-text-google-key\n", encoding="utf-8")
+
+    assert (
+        _ExternalApiKeysDialog._extract_google_api_key_from_file(str(key_file))
+        == "plain-text-google-key"
+    )
+
+
+def test_external_api_dialog_extracts_key_from_env_file(tmp_path):
+    """An .env-style file is supported for Google API key loading."""
+    key_file = tmp_path / ".env"
+    key_file.write_text(
+        "OTHER_VAR=value\nGOOGLE_TRANSLATE_API_KEY=env-google-key-5678\n",
+        encoding="utf-8",
+    )
+
+    assert (
+        _ExternalApiKeysDialog._extract_google_api_key_from_file(str(key_file))
+        == "env-google-key-5678"
+    )
+
+
+def test_external_api_dialog_extracts_key_from_json_file(tmp_path):
+    """A JSON key file with an api_key field is supported."""
+    key_file = tmp_path / "google.json"
+    key_file.write_text('{"api_key": "json-google-key-4321"}', encoding="utf-8")
+
+    assert (
+        _ExternalApiKeysDialog._extract_google_api_key_from_file(str(key_file))
+        == "json-google-key-4321"
+    )
+
+
+def test_external_api_dialog_detects_service_account_file(tmp_path):
+    """Google service account JSON is detected as credentials file, not API key."""
+    key_file = tmp_path / "service-account.json"
+    key_file.write_text(
+        (
+            '{'
+            '"type":"service_account",'
+            '"project_id":"demo",'
+            '"private_key_id":"abc",'
+            '"private_key":"-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n",'
+            '"client_email":"demo@example.iam.gserviceaccount.com",'
+            '"client_id":"123",'
+            '"auth_uri":"https://accounts.google.com/o/oauth2/auth",'
+            '"token_uri":"https://oauth2.googleapis.com/token"'
+            '}'
+        ),
+        encoding="utf-8",
+    )
+
+    assert _ExternalApiKeysDialog._is_google_service_account_file(str(key_file)) is True
+
+
+def test_apply_external_api_settings_supports_service_account_json(qtbot, monkeypatch, tmp_path):
+    """Toolbar settings can persist a Google service account credentials path."""
+    monkeypatch.setenv("KADIMA_HOME", str(tmp_path))
+    monkeypatch.delenv("GOOGLE_TRANSLATE_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON", raising=False)
+    monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+
+    creds_file = tmp_path / "service-account.json"
+    creds_file.write_text("{}", encoding="utf-8")
+
+    win = MainWindow()
+    qtbot.addWidget(win)
+    win.show()
+
+    win._apply_external_api_settings(
+        {
+            "google_translate_api_key": "",
+            "google_translate_endpoint": "https://translation.googleapis.com/language/translate/v2",
+            "google_translate_service_account_json": str(creds_file),
+        },
+        persist=True,
+    )
+
+    assert os.environ["GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON"] == str(creds_file)
+    assert os.environ["GOOGLE_APPLICATION_CREDENTIALS"] == str(creds_file)
+    assert "service account" in win._api_status_label.text().lower()
 
 
 # ── Menu bar ──────────────────────────────────────────────────────────────────

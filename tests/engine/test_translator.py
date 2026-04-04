@@ -92,6 +92,17 @@ class TestTranslatorProcess:
         r = t.process("שלום", {"backend": "mbart", "tgt_lang": "en"})
         assert r.status == ProcessorStatus.READY
         assert r.data.backend in ("mbart", "dict")
+        if r.data.backend == "dict":
+            assert "fallback" in r.data.note.lower() or "sentencepiece" in r.data.note.lower()
+
+    def test_google_fallbacks_to_local_backend_without_key(self, t, monkeypatch):
+        monkeypatch.delenv("GOOGLE_TRANSLATE_API_KEY", raising=False)
+        monkeypatch.delenv("GOOGLE_TRANSLATE_SERVICE_ACCOUNT_JSON", raising=False)
+        monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+        r = t.process("שלום", {"backend": "google", "src_lang": "he", "tgt_lang": "en"})
+        assert r.status == ProcessorStatus.READY
+        assert r.data.backend in ("nllb", "dict")
+        assert "google cloud translation unavailable" in r.data.note.lower()
 
     def test_source_preserved(self, t):
         r = t.process("שלום", {"backend": "dict", "tgt_lang": "en"})
@@ -114,6 +125,31 @@ class TestTranslatorProcess:
         r = t.process("hello world", {"backend": "dict", "src_lang": "en", "tgt_lang": "he"})
         assert r.status == ProcessorStatus.READY
         assert "שלום" in r.data.result
+
+    def test_dict_marks_basic_fallback_note(self, t):
+        r = t.process("שלום עולם", {"backend": "dict", "src_lang": "he", "tgt_lang": "en"})
+        assert r.status == ProcessorStatus.READY
+        assert "basic dictionary fallback" in r.data.note.lower()
+
+    def test_google_service_account_auth_mode(self, t, tmp_path):
+        creds = tmp_path / "service-account.json"
+        creds.write_text("{}", encoding="utf-8")
+        t._get_google_service_account_access_token = lambda path: "service-token"  # type: ignore[method-assign]
+
+        headers, params, note = t._resolve_google_auth(
+            {"google_service_account_json": str(creds)}
+        )
+        assert headers["Authorization"] == "Bearer service-token"
+        assert params == {}
+        assert "service account" in note.lower()
+
+    def test_google_api_key_auth_mode(self, t):
+        headers, params, note = t._resolve_google_auth(
+            {"google_api_key": "demo-google-key"}
+        )
+        assert headers == {}
+        assert params == {"key": "demo-google-key"}
+        assert "api key" in note.lower()
 
 
 class TestTranslatorBatch:
@@ -141,6 +177,7 @@ class TestTranslatorUnsupportedPair:
         assert r.status == ProcessorStatus.READY
         assert r.data.result == "שלום עולם"
         assert r.data.backend == "dict"
+        assert "only he↔en" in r.data.note.lower()
 
     def test_dict_he_to_fr_returns_source(self, t):
         """dict for HE→FR should return source text."""

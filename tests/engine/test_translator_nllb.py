@@ -14,7 +14,7 @@ class TestNLLBLangCodes:
     """NLLB language code mapping validation."""
 
     def test_hebrew_code(self):
-        assert _NLLB_LANG_CODES["he"] == "heb_Latn"
+        assert _NLLB_LANG_CODES["he"] == "heb_Hebr"
 
     def test_english_code(self):
         assert _NLLB_LANG_CODES["en"] == "eng_Latn"
