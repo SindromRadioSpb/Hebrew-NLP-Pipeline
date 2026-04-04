@@ -958,6 +958,8 @@ M16 доведён до product-grade baseline: engine, API, product-facing STT 
 | GenerativeView NER tab: help text, ready/changed status, summary status, empty-input feedback | `ui/generative_view.py` | Product-grade desktop UX |
 | EntityTable renders entity span/type/score table | `ui/widgets/entity_table.py` | Inspectable NER output |
 | Entity labels surfaced with user-friendly display names | `ui/widgets/entity_table.py`, `ui/generative_view.py` | Lower cognitive load in desktop UX |
+| NER entities can be copied to clipboard and saved as CSV | `ui/generative_view.py`, `ui/widgets/entity_table.py` | Real export workflow from desktop UI |
+| NER column headers explain Text/Type/Start/End/Score via tooltips | `ui/widgets/entity_table.py` | Removes ambiguity around offsets and confidence |
 | NER-specific API regression coverage | `tests/api/test_generative_router.py` | Router regression protection |
 | NER-specific UI regression coverage | `tests/engine/test_ner_tab_ui.py` | UX regression protection |
 | M17 verification suite: 161 PASS | `pytest tests/engine/test_ner_extractor.py tests/engine/test_ner_tab_ui.py tests/engine/test_ner_gold_corpus_smoke.py tests/api/test_generative_router.py tests/test_config.py tests/ui/test_generative.py -q` | Engine + API + UI + config verification |
@@ -977,9 +979,9 @@ M16 доведён до product-grade baseline: engine, API, product-facing STT 
 
 | Функциональность | Основание | Потенциальная ценность | Риски/цена |
 |-----------------|-----------|------------------------|------------|
-| `GLiNER` как optional zero-shot NER layer | Zero-shot NER ecosystem | Быстрые эксперименты с новыми label sets | Hebrew quality нужно валидировать отдельно |
-| `NuNER Zero` как optional experimental backend | Zero-shot NER model family | Более сильный zero-shot baseline без fine-tune | Неизвестное качество на иврите, дополнительный runtime path |
-| `dicta-il/dictabert-large-parse` как joint parsing/NER path | Более богатый Hebrew structured layer | Единый structured pipeline для syntax + NER | Более тяжёлая интеграция и отдельная model-validation ветка |
+| `GLiNER` / `NuNER Zero` как optional experimental zero-shot layer | Zero-shot NER ecosystem | Быстрые эксперименты с новыми label sets без fine-tune | Только как opt-in experimental backend с обязательным A/B smoke против `heq_ner`; Hebrew quality и offline bootstrap нужно валидировать отдельно |
+| `dicta-il/dictabert-large-parse` как joint parsing/NER path | Более богатый Hebrew structured layer | Единый structured pipeline для syntax + NER, потенциально лучше multi-word spans | Только как отдельный heavier comparison track; внедрять в UI/release path имеет смысл лишь при доказанном выигрыше по качеству и latency |
+| Fine-tuned domain NER | Annotation + training pipeline | Лучший путь к реальному росту качества на отраслевом иврите | Сначала нужен annotation schema, train/val/test split и acceptance gate против текущего `heq_ner`; без этого не вводить в продукт |
 
 #### Recommendations After Audit
 

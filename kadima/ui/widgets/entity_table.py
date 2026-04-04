@@ -20,6 +20,13 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 _COLUMNS = ["Text", "Type", "Start", "End", "Score"]
+_COLUMN_TOOLTIPS = {
+    "Text": "Entity text span extracted from the input.",
+    "Type": "Entity label predicted by the backend, for example Person or Organization.",
+    "Start": "Start character offset of the entity in the original input text.",
+    "End": "End character offset of the entity in the original input text.",
+    "Score": "Model confidence score for the entity prediction, from 0.0 to 1.0.",
+}
 
 _ENTITY_COLOURS: dict[str, str] = {
     "PER": "#1a3d2b",   # green-ish
@@ -102,8 +109,11 @@ class EntityTableModel(QAbstractTableModel):
         self, section: int, orientation: Qt.Orientation,
         role: int = Qt.ItemDataRole.DisplayRole,
     ) -> Any:
-        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
-            return self.COLUMNS[section]
+        if orientation == Qt.Orientation.Horizontal:
+            if role == Qt.ItemDataRole.DisplayRole:
+                return self.COLUMNS[section]
+            if role == Qt.ItemDataRole.ToolTipRole:
+                return _COLUMN_TOOLTIPS.get(self.COLUMNS[section], "")
         return None
 
     def entity_at(self, row: int) -> Any:
@@ -111,6 +121,21 @@ class EntityTableModel(QAbstractTableModel):
         if 0 <= row < len(self._entities):
             return self._entities[row]
         return None
+
+    def export_rows(self) -> list[list[str]]:
+        """Return all entities as plain string rows for clipboard/export."""
+        rows: list[list[str]] = []
+        for row in self._entities:
+            rows.append(
+                [
+                    str(self._get(row, "text", "")),
+                    str(_ENTITY_LABEL_DISPLAY.get(str(self._get(row, "label", "")), self._get(row, "label", ""))),
+                    str(self._get(row, "start", "")),
+                    str(self._get(row, "end", "")),
+                    f"{float(self._get(row, 'score', 0.0)):.3f}",
+                ]
+            )
+        return rows
 
     @staticmethod
     def _get(obj: Any, field: str, default: Any) -> Any:
@@ -158,3 +183,13 @@ class EntityTable(QTableView):
     def clear(self) -> None:
         """Remove all rows."""
         self._model.load([])
+
+    def to_tsv(self) -> str:
+        """Return table contents as TSV for clipboard/export workflows."""
+        lines = ["\t".join(_COLUMNS)]
+        lines.extend("\t".join(row) for row in self._model.export_rows())
+        return "\n".join(lines)
+
+    def export_rows(self) -> list[list[str]]:
+        """Return plain rows suitable for CSV export."""
+        return self._model.export_rows()

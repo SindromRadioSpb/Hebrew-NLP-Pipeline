@@ -1658,11 +1658,15 @@ class GenerativeView(QWidget):
         self._ner_input.textChanged.connect(self._update_ner_dirty_status)
         lay.addWidget(self._ner_input)
 
-        btn_row, run_btn, clear_btn, _, _ = self._make_button_row(
-            run_label="Extract Entities", copy_label=None
+        btn_row, run_btn, clear_btn, copy_btn, export_btn = self._make_button_row(
+            run_label="Extract Entities", copy_label="Copy Entities", export_label="Save CSV..."
         )
         run_btn.setObjectName("generative_ner_run_btn")
         clear_btn.setObjectName("generative_ner_clear_btn")
+        if copy_btn is not None:
+            copy_btn.setObjectName("generative_ner_copy_btn")
+        if export_btn is not None:
+            export_btn.setObjectName("generative_ner_export_btn")
         if _NERCls is None:
             run_btn.setEnabled(False)
             run_btn.setToolTip("NERExtractor not available (install [ml] extras)")
@@ -1688,6 +1692,10 @@ class GenerativeView(QWidget):
 
         run_btn.clicked.connect(self._on_ner_run)
         clear_btn.clicked.connect(self._on_ner_clear)
+        if copy_btn is not None:
+            copy_btn.clicked.connect(self._on_ner_copy)
+        if export_btn is not None:
+            export_btn.clicked.connect(self._on_ner_export)
         self._ner_last_run_signature: tuple[str, str, str] | None = None
         self._ner_pending_signature: tuple[str, str, str] | None = None
 
@@ -1783,6 +1791,31 @@ class GenerativeView(QWidget):
                 message = "Text or backend changed — run extraction again to refresh entities."
         self._ner_dirty_status.setText(message)
         self._ner_dirty_status.setVisible(bool(message))
+
+    def _on_ner_copy(self) -> None:
+        if self._ner_entity_table.model().rowCount() == 0:
+            self._ner_status.setText("No entities to copy yet")
+            return
+        self._copy_text_to_clipboard(self._ner_entity_table.to_tsv())
+        self._ner_status.setText(f"{self._ner_status.text()} · copied")
+
+    def _on_ner_export(self) -> None:
+        if self._ner_entity_table.model().rowCount() == 0:
+            self._ner_status.setText("No entities to save yet")
+            return
+        path, _selected_filter = QFileDialog.getSaveFileName(
+            self,
+            "Save Entities",
+            "entities.csv",
+            "CSV Files (*.csv)",
+        )
+        if not path:
+            return
+        with Path(path).open("w", encoding="utf-8", newline="") as fh:
+            writer = csv.writer(fh)
+            writer.writerow(["Text", "Type", "Start", "End", "Score"])
+            writer.writerows(self._ner_entity_table.export_rows())
+        self._ner_status.setText(f"{self._ner_status.text()} · saved to {Path(path).name}")
 
     # ------------------------------------------------------------------
     # Public API

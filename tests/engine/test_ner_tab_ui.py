@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
 
@@ -90,6 +91,64 @@ def test_ner_result_displays_summary_and_note(qtbot) -> None:
     )
     assert "Person" in label_cell
     assert view._ner_dirty_status.isHidden()
+
+
+def test_ner_column_tooltips_explain_offsets_and_score(qtbot) -> None:
+    from PyQt6.QtCore import Qt
+
+    view = _make_view()
+    qtbot.add_widget(view)
+
+    model = view._ner_entity_table.model()
+    assert "character offset" in model.headerData(
+        2, Qt.Orientation.Horizontal, Qt.ItemDataRole.ToolTipRole
+    )
+    assert "character offset" in model.headerData(
+        3, Qt.Orientation.Horizontal, Qt.ItemDataRole.ToolTipRole
+    )
+    assert "confidence score" in model.headerData(
+        4, Qt.Orientation.Horizontal, Qt.ItemDataRole.ToolTipRole
+    )
+
+
+def test_ner_copy_exports_tsv_to_clipboard(qtbot) -> None:
+    from PyQt6.QtWidgets import QApplication
+
+    view = _make_view()
+    qtbot.add_widget(view)
+
+    view._ner_entity_table.load(
+        [SimpleNamespace(text="כהן", label="PER", start=6, end=10, score=0.92)]
+    )
+
+    view._on_ner_copy()
+
+    copied = QApplication.clipboard().text()
+    assert "Text\tType\tStart\tEnd\tScore" in copied
+    assert "כהן\tPER · Person\t6\t10\t0.920" in copied
+    assert "copied" in view._ner_status.text()
+
+
+def test_ner_export_saves_csv(qtbot, monkeypatch, tmp_path: Path) -> None:
+    view = _make_view()
+    qtbot.add_widget(view)
+
+    target = tmp_path / "entities.csv"
+    view._ner_entity_table.load(
+        [SimpleNamespace(text="כהן", label="PER", start=6, end=10, score=0.92)]
+    )
+
+    monkeypatch.setattr(
+        "kadima.ui.generative_view.QFileDialog.getSaveFileName",
+        lambda *args, **kwargs: (str(target), "CSV Files (*.csv)"),
+    )
+
+    view._on_ner_export()
+
+    saved = target.read_text(encoding="utf-8")
+    assert "Text,Type,Start,End,Score" in saved
+    assert "כהן,PER · Person,6,10,0.920" in saved
+    assert "saved to entities.csv" in view._ner_status.text()
 
 
 def test_ner_dirty_status_warns_after_backend_change(qtbot) -> None:
